@@ -1,0 +1,17 @@
+{
+  "name": "1CRM - Sistema CRM",
+  "short_name": "1CRM",
+  "description": "Sistema CRM profesional con WhatsApp integrado",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

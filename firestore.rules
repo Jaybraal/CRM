@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return userDoc().role;
+    }
+
+    function userOrg() {
+      return userDoc().orgId;
+    }
+
+    function isSuperAdmin() {
+      return isAuth() && userRole() == 'super_admin';
+    }
+
+    function inOrg(orgId) {
+      return isAuth() && userOrg() == orgId;
+    }
+
+    function isOwner(orgId) {
+      return inOrg(orgId) && userRole() in ['owner', 'super_admin'];
+    }
+
+    function isManager(orgId) {
+      return inOrg(orgId) && userRole() in ['manager', 'owner', 'super_admin'];
+    }
+
+    function isMember(orgId) {
+      return inOrg(orgId) && userRole() in ['agent', 'manager', 'owner', 'super_admin'];
+    }
+
+    // Perfiles de usuario
+    match /users/{userId} {
+      allow read: if isAuth() && (request.auth.uid == userId || isSuperAdmin());
+      allow read: if isAuth() && userOrg() == resource.data.orgId; // ver compañeros de la misma org
+      allow create: if isAuth();
+      allow update: if isAuth() && (request.auth.uid == userId || isSuperAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    // WhatsApp configs (solo lectura/escritura desde el servidor vía Admin SDK)
+    match /whatsapp_configs/{phoneNumberId} {
+      allow read, write: if isOwner(phoneNumberId) || isSuperAdmin();
+    }
+
+    // Organizaciones
+    match /organizations/{orgId} {
+      allow read: if isMember(orgId) || isSuperAdmin();
+      allow create: if isSuperAdmin();
+      allow update: if isOwner(orgId) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+
+      // Clientes
+      match /clients/{clientId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create: if isMember(orgId) || isSuperAdmin();
+        allow update: if isMember(orgId) || isSuperAdmin();
+        allow delete: if isManager(orgId) || isSuperAdmin();
+
+        // Mensajes del chat
+        match /messages/{msgId} {
+          allow read: if isMember(orgId) || isSuperAdmin();
+          allow create: if isMember(orgId) || isSuperAdmin();
+          allow update, delete: if false;
+        }
+      }
+
+      // Categorías
+      match /categories/{categoryId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isManager(orgId) || isSuperAdmin();
+      }
+
+      // Catálogo
+      match /catalog/{itemId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isManager(orgId) || isSuperAdmin();
+      }
+
+      // Pipeline / Deals
+      match /deals/{dealId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update: if isMember(orgId) || isSuperAdmin();
+        allow delete: if isManager(orgId) || isSuperAdmin();
+      }
+
+      // Tareas
+      match /tasks/{taskId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isMember(orgId) || isSuperAdmin();
+      }
+    }
+  }
+}
