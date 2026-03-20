@@ -8,21 +8,78 @@ interface SendBody {
   to: string
   text?: string
   photoUrls?: string[]
+  location?: { lat: number; lng: number; name?: string }
+  type?: 'text' | 'image' | 'location' | 'call'
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, to, text, photoUrls = [] }: SendBody = await req.json()
+    const { orgId, to, text, photoUrls = [], location, type }: SendBody = await req.json()
 
     if (!orgId || !to) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    // Obtener config de WhatsApp de la org
-    const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
-    if (!orgSnap.exists) {
-      return NextResponse.json({ error: 'Org no encontrada' }, { status: 404 })
+    const baileysUrl = process.env.BAILEYS_URL
+
+    if (baileysUrl) {
+      // Send images
+      for (const url of photoUrls) {
+        const imgRes = await fetch(`${baileysUrl}/send-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, url, caption: '' }),
+        })
+        if (!imgRes.ok) {
+          const err = await imgRes.json().catch(() => ({ error: 'Error desconocido' }))
+          return NextResponse.json({ error: err.error || 'Error al enviar imagen' }, { status: imgRes.status })
+        }
+      }
+
+      // Send location
+      if (type === 'location' && location) {
+        const locRes = await fetch(`${baileysUrl}/send-location`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, lat: location.lat, lng: location.lng, name: location.name }),
+        })
+        if (!locRes.ok) {
+          const err = await locRes.json().catch(() => ({ error: 'Error desconocido' }))
+          return NextResponse.json({ error: err.error || 'Error al enviar ubicación' }, { status: locRes.status })
+        }
+        return NextResponse.json({ ok: true })
+      }
+
+      // Initiate call
+      if (type === 'call') {
+        const callRes = await fetch(`${baileysUrl}/call`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to }),
+        })
+        return NextResponse.json(await callRes.json())
+      }
+
+      // Send text
+      if (text?.trim()) {
+        const sendRes = await fetch(`${baileysUrl}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, text: text.trim() }),
+        })
+        if (!sendRes.ok) {
+          const err = await sendRes.json().catch(() => ({ error: 'Error desconocido' }))
+          console.error('Baileys send error:', err)
+          return NextResponse.json({ error: err.error || 'Error al enviar por WhatsApp' }, { status: sendRes.status })
+        }
+      }
+
+      return NextResponse.json({ ok: true })
     }
+
+    // Meta Cloud API fallback
+    const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
+    if (!orgSnap.exists) return NextResponse.json({ error: 'Org no encontrada' }, { status: 404 })
 
     const orgData = orgSnap.data() as { settings: { whatsapp?: { phoneNumberId: string; token: string } } }
     const waConfig = orgData.settings?.whatsapp
@@ -38,7 +95,6 @@ export async function POST(req: NextRequest) {
       Authorization: `Bearer ${token}`,
     }
 
-    // Enviar fotos primero
     for (const url of photoUrls) {
       await fetch(apiUrl, {
         method: 'POST',
@@ -52,7 +108,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Enviar texto
     if (text?.trim()) {
       await fetch(apiUrl, {
         method: 'POST',

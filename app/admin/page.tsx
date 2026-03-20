@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import {
-  createOrganization, createUserProfile, getUserProfile,
-  updateOrganization, deleteOrganization,
-} from '@/lib/firestore'
+import { createOrganization, createUserProfile, getUserProfile } from '@/lib/firestore'
 import type { Organization, OrgStats } from '@/types'
 import AuthGuard from '@/components/auth/AuthGuard'
 import Modal from '@/components/ui/Modal'
@@ -136,11 +133,16 @@ export default function AdminPage() {
     if (!editOrg) return
     setSaving(true)
     try {
-      await updateOrganization(editOrg.id, {
-        name: editForm.name,
-        plan: editForm.plan,
-        settings: { ...editOrg.settings, industry: editForm.industry },
+      const res = await fetch(`/api/admin/organizations/${editOrg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          plan: editForm.plan,
+          'settings.industry': editForm.industry,
+        }),
       })
+      if (!res.ok) throw new Error()
       setOrgs(prev => prev.map(o => o.id === editOrg.id
         ? { ...o, name: editForm.name, plan: editForm.plan, settings: { ...o.settings, industry: editForm.industry } }
         : o
@@ -158,7 +160,8 @@ export default function AdminPage() {
     if (!deleteOrg || deleteConfirm !== deleteOrg.name) return
     setDeleting(true)
     try {
-      await deleteOrganization(deleteOrg.id)
+      const res = await fetch(`/api/admin/organizations/${deleteOrg.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
       setOrgs(prev => prev.filter(o => o.id !== deleteOrg.id))
       toast.success(`"${deleteOrg.name}" eliminada`)
       setDeleteOrg(null)
@@ -246,7 +249,11 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-600 flex items-center gap-1.5">
                     <Calendar size={11} />
-                    {org.createdAt ? new Date((org.createdAt as unknown as { seconds: number }).seconds * 1000).toLocaleDateString('es') : '-'}
+                    {(() => {
+                      const ts = org.createdAt as unknown as { seconds?: number; _seconds?: number }
+                      const secs = ts?._seconds ?? ts?.seconds
+                      return secs ? new Date(secs * 1000).toLocaleDateString('es') : '-'
+                    })()}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -285,7 +292,7 @@ export default function AdminPage() {
         )}
 
         {/* Modal crear organización */}
-        <Modal open={showCreateForm} onClose={() => setShowCreateForm(false)} title="Nueva organización + Owner" size="md">
+        <Modal open={showCreateForm} onClose={() => setShowCreateForm(false)} title="Nueva organización + Owner" size="md" variant="dark">
           <form onSubmit={handleCreate} className="space-y-5">
             <div className="pb-3 border-b border-gray-800">
               <p className="text-sm font-medium text-gray-400 mb-3">Organización</p>
@@ -326,7 +333,7 @@ export default function AdminPage() {
         </Modal>
 
         {/* Modal editar organización */}
-        <Modal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="sm">
+        <Modal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="sm" variant="dark">
           <form onSubmit={handleEdit} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Nombre</label>
@@ -356,21 +363,21 @@ export default function AdminPage() {
         </Modal>
 
         {/* Modal confirmar eliminación */}
-        <Modal open={!!deleteOrg} onClose={() => setDeleteOrg(null)} title="Eliminar organización" size="sm">
+        <Modal open={!!deleteOrg} onClose={() => setDeleteOrg(null)} title="Eliminar organización" size="sm" variant="dark">
           <div className="space-y-4">
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">
-                Esta acción <strong>no se puede deshacer</strong>. Se eliminará <strong>{deleteOrg?.name}</strong> permanentemente.
+            <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg">
+              <p className="text-sm text-red-300">
+                Esta acción <strong>no se puede deshacer</strong>. Se eliminará <strong className="text-red-200">{deleteOrg?.name}</strong> permanentemente.
               </p>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Escribe <strong className="text-gray-700">{deleteOrg?.name}</strong> para confirmar
+              <label className="text-xs font-medium text-gray-400 mb-1 block">
+                Escribe <strong className="text-gray-200">{deleteOrg?.name}</strong> para confirmar
               </label>
               <input
                 value={deleteConfirm}
                 onChange={e => setDeleteConfirm(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-red-400"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
                 placeholder={deleteOrg?.name}
               />
             </div>

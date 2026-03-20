@@ -22,6 +22,7 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
     name: existing?.name || '',
     email: existing?.email || '',
     phone: existing?.phone || '',
+    whatsappPhone: existing?.whatsappPhone || '',
     categoryId: existing?.categoryId || '',
     status: existing?.status || 'lead' as Client['status'],
     notes: existing?.notes || '',
@@ -43,7 +44,10 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profile?.orgId) return
+    if (!profile?.orgId) {
+      toast.error('No tienes una organización asignada. Pide al admin que te asigne.')
+      return
+    }
     setLoading(true)
     try {
       if (existing) {
@@ -59,8 +63,9 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
         toast.success('Cliente creado')
       }
       onSuccess()
-    } catch {
-      toast.error('Error al guardar')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido'
+      toast.error(`Error al guardar: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -101,6 +106,20 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
             placeholder="+1 234 567 8900"
           />
         </div>
+      </div>
+
+      {/* WhatsApp */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          WhatsApp del cliente
+          <span className="ml-1 text-xs text-gray-400 font-normal">(con código de país, ej: +52 55 1234 5678)</span>
+        </label>
+        <input
+          value={form.whatsappPhone}
+          onChange={e => set('whatsappPhone', e.target.value)}
+          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+          placeholder="+52 55 1234 5678"
+        />
       </div>
 
       {/* Categoría + Estado */}

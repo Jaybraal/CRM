@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getClients, getCategories, deleteClient, createClient } from '@/lib/firestore'
-import type { Client, Category } from '@/types'
+import { subscribeToClients, getCategories, deleteClient, createClient, getOrgUsers } from '@/lib/firestore'
+import type { Client, Category, AppUser } from '@/types'
 import Modal from '@/components/ui/Modal'
 import ClientForm from '@/components/clients/ClientForm'
 import Link from 'next/link'
-import { Plus, Search, Trash2, Eye, Phone, Mail, MessageCircle, Download, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Trash2, Eye, Phone, Mail, MessageCircle, Download, Upload, ChevronLeft, ChevronRight, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PAGE_SIZE = 12
@@ -23,29 +23,33 @@ export default function ClientsPage() {
   const { profile } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [agents, setAgents] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterAgent, setFilterAgent] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [page, setPage] = useState(1)
   const [importing, setImporting] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
 
-  const load = async () => {
+  useEffect(() => {
     if (!profile?.orgId) { setLoading(false); return }
-    const [c, cats] = await Promise.all([
-      getClients(profile.orgId, profile.role === 'agent' ? profile.uid : undefined),
-      getCategories(profile.orgId),
-    ])
-    setClients(c)
-    setCategories(cats)
-    setLoading(false)
-  }
+    getCategories(profile.orgId).then(setCategories)
+    if (profile.role !== 'agent') {
+      getOrgUsers(profile.orgId).then(users => setAgents(users.filter(u => u.role === 'agent')))
+    }
+    const unsub = subscribeToClients(
+      profile.orgId,
+      profile.role === 'agent' ? profile.uid : undefined,
+      (c) => { setClients(c); setLoading(false) }
+    )
+    return unsub
+  }, [profile])
 
-  useEffect(() => { load() }, [profile])
-  useEffect(() => { setPage(1) }, [search, filterCategory, filterStatus])
+  useEffect(() => { setPage(1) }, [search, filterCategory, filterStatus, filterAgent])
 
   const filtered = clients.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,8 +57,11 @@ export default function ClientsPage() {
       c.phone?.includes(search)
     const matchCat = !filterCategory || c.categoryId === filterCategory
     const matchStatus = !filterStatus || c.status === filterStatus
-    return matchSearch && matchCat && matchStatus
+    const matchAgent = !filterAgent || c.assignedTo === filterAgent
+    return matchSearch && matchCat && matchStatus && matchAgent
   })
+
+  const getAgentName = (uid?: string) => agents.find(a => a.uid === uid)?.displayName || ''
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -77,7 +84,6 @@ export default function ClientsPage() {
     if (!confirm('¿Eliminar este cliente?') || !profile?.orgId) return
     await deleteClient(profile.orgId, id)
     toast.success('Cliente eliminado')
-    load()
   }
 
   const getCategoryName = (id?: string) => categories.find(c => c.id === id)?.name || ''
@@ -138,7 +144,6 @@ export default function ClientsPage() {
         created++
       }
       toast.success(`${created} clientes importados`)
-      load()
     } catch {
       toast.error('Error al importar el CSV')
     } finally {
@@ -203,6 +208,13 @@ export default function ClientsPage() {
           <option value="active">Activo</option>
           <option value="inactive">Inactivo</option>
         </select>
+        {agents.length > 0 && (
+          <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)}
+            className="bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-gray-500">
+            <option value="">Todos los agentes</option>
+            {agents.map(a => <option key={a.uid} value={a.uid}>{a.displayName}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Duplicates warning */}
@@ -268,6 +280,13 @@ export default function ClientsPage() {
                   </div>
                 )}
 
+                {agents.length > 0 && client.assignedTo && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
+                    <UserCheck size={12} />
+                    <span>{getAgentName(client.assignedTo) || '—'}</span>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-3 border-t border-gray-100">
                   <button onClick={() => { setEditClient(client); setShowForm(true) }}
                     className="flex-1 flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
@@ -308,7 +327,7 @@ export default function ClientsPage() {
       <Modal open={showForm} onClose={() => { setShowForm(false); setEditClient(null) }}
         title={editClient ? 'Editar cliente' : 'Nuevo cliente'} size="lg">
         <ClientForm categories={categories} existing={editClient}
-          onSuccess={() => { setShowForm(false); setEditClient(null); load() }} />
+          onSuccess={() => { setShowForm(false); setEditClient(null) }} />
       </Modal>
     </div>
   )

@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals } from '@/lib/firestore'
+import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers } from '@/lib/firestore'
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Client, Organization, Category, Task, Deal, Message } from '@/types'
+import type { Client, Organization, Category, Task, Deal, Message, AppUser } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
-import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare } from 'lucide-react'
+import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface TimelineEvent {
@@ -30,9 +30,11 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null)
   const [org, setOrg] = useState<Organization | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [agents, setAgents] = useState<AppUser[]>([])
   const [tab, setTab] = useState<'chat' | 'info' | 'activity'>('chat')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [reassigning, setReassigning] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
 
@@ -48,10 +50,12 @@ export default function ClientDetailPage() {
       getClient(profile.orgId, id),
       getOrganization(profile.orgId),
       getCategories(profile.orgId),
-    ]).then(([c, o, cats]) => {
+      profile.role !== 'agent' ? getOrgUsers(profile.orgId) : Promise.resolve([]),
+    ]).then(([c, o, cats, users]) => {
       setClient(c)
       setOrg(o)
       setCategories(cats)
+      setAgents((users as AppUser[]).filter(u => u.role === 'agent'))
       if (c) setForm({
         name: c.name,
         email: c.email || '',
@@ -142,6 +146,21 @@ export default function ClientDetailPage() {
     }
   }
 
+  const handleReassign = async (newAgentUid: string) => {
+    if (!profile?.orgId || !client) return
+    setReassigning(true)
+    try {
+      await updateClient(profile.orgId, client.id, { assignedTo: newAgentUid })
+      setClient(prev => prev ? { ...prev, assignedTo: newAgentUid } : prev)
+      const agentName = agents.find(a => a.uid === newAgentUid)?.displayName || ''
+      toast.success(`Reasignado a ${agentName}`)
+    } catch {
+      toast.error('Error al reasignar')
+    } finally {
+      setReassigning(false)
+    }
+  }
+
   const addTag = () => {
     const t = tagInput.trim()
     if (t && !form.tags.includes(t)) {
@@ -155,7 +174,8 @@ export default function ClientDetailPage() {
   }
   if (!client) return <div className="text-center py-20 text-gray-500">Cliente no encontrado</div>
 
-  const hasWhatsApp = !!org?.settings?.whatsapp?.phoneNumberId && !!org?.settings?.whatsapp?.token
+  const hasWhatsApp = !!(org?.settings?.whatsapp?.phoneNumberId && org?.settings?.whatsapp?.token) ||
+    !!process.env.NEXT_PUBLIC_BAILEYS_ENABLED
   const categoryName = categories.find(c => c.id === client.categoryId)?.name
 
   return (
@@ -167,11 +187,11 @@ export default function ClientDetailPage() {
 
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
             <User size={22} className="text-gray-500" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-gray-900">{client.name}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{client.status}</span>
@@ -180,6 +200,25 @@ export default function ClientDetailPage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">WhatsApp ●</span>
               )}
             </div>
+            {/* Agente asignado */}
+            {profile?.role !== 'agent' && agents.length > 0 && (
+              <div className="flex items-center gap-2 mt-3">
+                <UserCheck size={14} className="text-gray-400 flex-shrink-0" />
+                <select
+                  value={client.assignedTo || ''}
+                  onChange={e => handleReassign(e.target.value)}
+                  disabled={reassigning}
+                  className="text-sm text-gray-700 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-gray-400 disabled:opacity-50"
+                >
+                  <option value="">Sin asignar</option>
+                  {agents.map(a => <option key={a.uid} value={a.uid}>{a.displayName}</option>)}
+                </select>
+                {reassigning && <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />}
+              </div>
+            )}
+            {profile?.role === 'agent' && client.assignedTo === profile.uid && (
+              <p className="text-xs text-gray-400 mt-2 flex items-center gap-1"><UserCheck size={12} /> Asignado a ti</p>
+            )}
           </div>
         </div>
       </div>

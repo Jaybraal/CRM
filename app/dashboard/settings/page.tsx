@@ -7,6 +7,7 @@ import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Organization, WhatsAppTemplate, PipelineStage } from '@/types'
 import toast from 'react-hot-toast'
+import BaileysQR from '@/components/settings/BaileysQR'
 import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
@@ -214,40 +215,49 @@ export default function SettingsPage() {
         </button>
       </form>
 
-      {/* WhatsApp */}
+      {/* WhatsApp — Baileys QR */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <MessageCircle size={20} className="text-gray-500" />
+          <div>
+            <h2 className="font-semibold text-gray-900">WhatsApp</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Escanea el QR con tu teléfono para vincular tu número</p>
+          </div>
+        </div>
+        <BaileysQR />
+      </div>
+
+      {/* WhatsApp — Meta Cloud API (opcional) */}
       <form onSubmit={handleSaveWhatsApp} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <MessageCircle size={20} className="text-gray-500" />
-            <h2 className="font-semibold text-gray-900">WhatsApp Business</h2>
+            <MessageCircle size={20} className="text-gray-400" />
+            <div>
+              <h2 className="font-semibold text-gray-900">Meta Cloud API <span className="text-xs font-normal text-gray-400 ml-1">(opcional)</span></h2>
+              <p className="text-xs text-gray-400 mt-0.5">Solo si usas la API oficial de Meta Business</p>
+            </div>
           </div>
           {waConnected && (
             <span className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-              <CheckCircle size={12} /> Conectado
+              <CheckCircle size={12} /> Configurado
             </span>
           )}
         </div>
 
         {/* Webhook URL */}
         <div>
-          <label className={labelClass}>URL del Webhook (pégala en Meta)</label>
+          <label className={labelClass}>URL del Webhook</label>
           <div className="flex gap-2">
-            <input
-              readOnly
-              value={webhookUrl}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600 select-all"
-            />
-            <button
-              type="button"
-              onClick={copyWebhook}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
-            >
+            <input readOnly value={webhookUrl}
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600 select-all" />
+            <button type="button" onClick={copyWebhook}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
               {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
               {copied ? 'Copiado' : 'Copiar'}
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-1.5">
-            Token de verificación del webhook:{' '}
+            Token de verificación:{' '}
             <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
               {process.env.NEXT_PUBLIC_WA_VERIFY_TOKEN || 'crm_webhook_2024'}
             </span>
@@ -256,33 +266,21 @@ export default function SettingsPage() {
 
         <div>
           <label className={labelClass}>Phone Number ID</label>
-          <input
-            value={waForm.phoneNumberId}
+          <input value={waForm.phoneNumberId}
             onChange={e => setWaForm(f => ({ ...f, phoneNumberId: e.target.value }))}
-            className={inputClass}
-            placeholder="123456789012345"
-          />
-          <p className="text-xs text-gray-400 mt-1">Lo encuentras en Meta → WhatsApp → Configuración de API</p>
+            className={inputClass} placeholder="123456789012345" />
         </div>
 
         <div>
-          <label className={labelClass}>Token de acceso permanente</label>
-          <input
-            type="password"
-            value={waForm.token}
+          <label className={labelClass}>Token de acceso</label>
+          <input type="password" value={waForm.token}
             onChange={e => setWaForm(f => ({ ...f, token: e.target.value }))}
-            className={inputClass}
-            placeholder="EAAxxxxxxxxx..."
-          />
-          <p className="text-xs text-gray-400 mt-1">Genera un token permanente desde Meta Business Suite</p>
+            className={inputClass} placeholder="EAAxxxxxxxxx..." />
         </div>
 
-        <button
-          type="submit"
-          disabled={savingWa || !waForm.phoneNumberId || !waForm.token}
-          className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors"
-        >
-          {savingWa ? 'Vinculando...' : waConnected ? 'Actualizar WhatsApp' : 'Vincular WhatsApp'}
+        <button type="submit" disabled={savingWa || !waForm.phoneNumberId || !waForm.token}
+          className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+          {savingWa ? 'Guardando...' : waConnected ? 'Actualizar' : 'Guardar'}
         </button>
       </form>
 
