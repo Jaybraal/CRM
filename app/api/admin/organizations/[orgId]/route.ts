@@ -3,9 +3,9 @@ export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function PATCH(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     const data = await req.json()
     await adminDb.collection('organizations').doc(orgId).update(data)
     return NextResponse.json({ ok: true })
@@ -15,9 +15,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { orgId: str
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     await adminDb.collection('organizations').doc(orgId).delete()
     return NextResponse.json({ ok: true })
   } catch (err) {
