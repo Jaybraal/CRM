@@ -1,7 +1,24 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(req: NextRequest) {
+  try {
+    const { name, ownerId, plan, settings } = await req.json()
+    const ref = await adminDb.collection('organizations').add({
+      name,
+      ownerId: ownerId ?? '',
+      plan: plan ?? 'trial',
+      settings: settings ?? {},
+      createdAt: new Date(),
+    })
+    return NextResponse.json({ id: ref.id })
+  } catch (err) {
+    console.error('Error creating org:', err)
+    return NextResponse.json({ error: 'Error al crear organización' }, { status: 500 })
+  }
+}
 
 export async function GET() {
   try {

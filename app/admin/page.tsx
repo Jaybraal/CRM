@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { createOrganization, createUserProfile, getUserProfile } from '@/lib/firestore'
 import type { Organization, OrgStats } from '@/types'
 import AuthGuard from '@/components/auth/AuthGuard'
-import Modal from '@/components/ui/Modal'
-import { Plus, Building2, Calendar, LogIn, Pencil, Trash2, Users, UserCheck, FolderKanban } from 'lucide-react'
+import { Plus, Building2, Calendar, LogIn, Pencil, Trash2, Users, UserCheck, FolderKanban, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PLAN_COLORS: Record<string, string> = {
@@ -17,6 +15,39 @@ const PLAN_COLORS: Record<string, string> = {
 
 interface OrgWithStats extends Organization {
   stats?: OrgStats
+}
+
+function DarkModal({ open, onClose, title, children, size = 'md' }: {
+  open: boolean
+  onClose: () => void
+  title: string
+  children: React.ReactNode
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  const sizeClass = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }[size]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+      <div className={`w-full ${sizeClass} rounded-xl shadow-xl border`} style={{ backgroundColor: '#111827', borderColor: '#374151' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #374151' }}>
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -60,19 +91,14 @@ export default function AdminPage() {
     if (!user) return
     setJoiningOrgId(org.id)
     try {
-      await createUserProfile(user.uid, {
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || 'Admin',
-        role: 'super_admin',
-        orgId: org.id,
+      const res = await fetch(`/api/admin/users/${user.uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: org.id }),
       })
-      const updated = await getUserProfile(user.uid)
-      if (updated?.orgId === org.id) {
-        toast.success(`Unido a "${org.name}" — recarga la página`)
-        setTimeout(() => window.location.reload(), 1500)
-      } else {
-        toast.error('No se pudo guardar. Revisa las reglas de Firestore.')
-      }
+      if (!res.ok) throw new Error('No se pudo guardar')
+      toast.success(`Unido a "${org.name}" — recarga la página`)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (err) {
       toast.error(`Error: ${err instanceof Error ? err.message : 'desconocido'}`)
     } finally {
@@ -84,16 +110,23 @@ export default function AdminPage() {
     e.preventDefault()
     setCreating(true)
     try {
-      // 1. Crear org primero con ownerId temporal — se actualizará tras crear el usuario
-      const tempOrgId = await createOrganization({
-        name: createForm.orgName,
-        ownerId: '',
-        plan: createForm.plan,
-        settings: { catalogEnabled: false, industry: createForm.industry },
+      // 1. Crear org vía Admin SDK (evita que Brave bloquee Firestore cliente)
+      const orgRes = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: createForm.orgName,
+          ownerId: '',
+          plan: createForm.plan,
+          settings: { catalogEnabled: false, industry: createForm.industry },
+        }),
       })
+      const orgData = await orgRes.json()
+      if (!orgRes.ok) throw new Error(orgData.error || 'Error al crear organización')
+      const tempOrgId = orgData.id
 
       // 2. Crear el usuario vía Admin SDK (no afecta la sesión actual)
-      const res = await fetch('/api/users/create', {
+      const userRes = await fetch('/api/users/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -104,11 +137,15 @@ export default function AdminPage() {
           orgId: tempOrgId,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al crear usuario')
+      const userData = await userRes.json()
+      if (!userRes.ok) throw new Error(userData.error || 'Error al crear usuario')
 
       // 3. Actualizar ownerId en la org con el uid real
-      await updateOrganization(tempOrgId, { ownerId: data.uid })
+      await fetch(`/api/admin/organizations/${tempOrgId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerId: userData.uid }),
+      })
 
       toast.success(`Organización "${createForm.orgName}" creada`)
       setShowCreateForm(false)
@@ -125,7 +162,7 @@ export default function AdminPage() {
 
   const openEdit = (org: Organization) => {
     setEditOrg(org)
-    setEditForm({ name: org.name, industry: org.settings.industry || '', plan: org.plan })
+    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan })
   }
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -177,6 +214,9 @@ export default function AdminPage() {
     return <div className="text-center py-20 text-gray-500">Acceso denegado</div>
   }
 
+  const inputClass = "w-full rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-gray-500"
+  const inputStyle = { backgroundColor: '#1f2937', border: '1px solid #374151' }
+
   return (
     <AuthGuard allowedRoles={['super_admin']}>
       <div className="space-y-6">
@@ -212,7 +252,7 @@ export default function AdminPage() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-white truncate">{org.name}</h3>
-                      {org.settings.industry && (
+                      {org.settings?.industry && (
                         <p className="text-xs text-gray-500 truncate">{org.settings.industry}</p>
                       )}
                     </div>
@@ -292,19 +332,17 @@ export default function AdminPage() {
         )}
 
         {/* Modal crear organización */}
-        <Modal open={showCreateForm} onClose={() => setShowCreateForm(false)} title="Nueva organización + Owner" size="md" variant="dark">
+        <DarkModal open={showCreateForm} onClose={() => setShowCreateForm(false)} title="Nueva organización + Owner" size="md">
           <form onSubmit={handleCreate} className="space-y-5">
-            <div className="pb-3 border-b border-gray-800">
+            <div className="pb-3" style={{ borderBottom: '1px solid #1f2937' }}>
               <p className="text-sm font-medium text-gray-400 mb-3">Organización</p>
               <div className="space-y-3">
                 <input required value={createForm.orgName} onChange={e => setCreateForm(f => ({ ...f, orgName: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                  placeholder="Nombre de la organización *" />
+                  className={inputClass} style={inputStyle} placeholder="Nombre de la organización *" />
                 <input value={createForm.industry} onChange={e => setCreateForm(f => ({ ...f, industry: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                  placeholder="Industria (ej: Agencia de vehículos)" />
+                  className={inputClass} style={inputStyle} placeholder="Industria (ej: Agencia de vehículos)" />
                 <select value={createForm.plan} onChange={e => setCreateForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500">
+                  className={inputClass} style={inputStyle}>
                   <option value="trial">Trial</option>
                   <option value="basic">Basic</option>
                   <option value="pro">Pro</option>
@@ -315,57 +353,53 @@ export default function AdminPage() {
               <p className="text-sm font-medium text-gray-400 mb-3">Cuenta del propietario</p>
               <div className="space-y-3">
                 <input required value={createForm.ownerName} onChange={e => setCreateForm(f => ({ ...f, ownerName: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                  placeholder="Nombre completo del owner *" />
+                  className={inputClass} style={inputStyle} placeholder="Nombre completo del owner *" />
                 <input required type="email" value={createForm.ownerEmail} onChange={e => setCreateForm(f => ({ ...f, ownerEmail: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                  placeholder="Email del owner *" />
+                  className={inputClass} style={inputStyle} placeholder="Email del owner *" />
                 <input required type="password" minLength={6} value={createForm.ownerPassword} onChange={e => setCreateForm(f => ({ ...f, ownerPassword: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                  placeholder="Contraseña temporal (mín. 6 caracteres) *" />
+                  className={inputClass} style={inputStyle} placeholder="Contraseña temporal (mín. 6 caracteres) *" />
               </div>
             </div>
             <button type="submit" disabled={creating}
-              className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+              className="w-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
               {creating ? 'Creando...' : 'Crear organización'}
             </button>
           </form>
-        </Modal>
+        </DarkModal>
 
         {/* Modal editar organización */}
-        <Modal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="sm" variant="dark">
+        <DarkModal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="sm">
           <form onSubmit={handleEdit} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Nombre</label>
               <input required value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500" />
+                className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Industria</label>
               <input value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500"
-                placeholder="Industria" />
+                className={inputClass} style={inputStyle} placeholder="Industria" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Plan</label>
               <select value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500">
+                className={inputClass} style={inputStyle}>
                 <option value="trial">Trial</option>
                 <option value="basic">Basic</option>
                 <option value="pro">Pro</option>
               </select>
             </div>
             <button type="submit" disabled={saving}
-              className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+              className="w-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
           </form>
-        </Modal>
+        </DarkModal>
 
         {/* Modal confirmar eliminación */}
-        <Modal open={!!deleteOrg} onClose={() => setDeleteOrg(null)} title="Eliminar organización" size="sm" variant="dark">
+        <DarkModal open={!!deleteOrg} onClose={() => setDeleteOrg(null)} title="Eliminar organización" size="sm">
           <div className="space-y-4">
-            <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg">
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(127,29,29,0.3)', border: '1px solid #7f1d1d' }}>
               <p className="text-sm text-red-300">
                 Esta acción <strong>no se puede deshacer</strong>. Se eliminará <strong className="text-red-200">{deleteOrg?.name}</strong> permanentemente.
               </p>
@@ -377,7 +411,8 @@ export default function AdminPage() {
               <input
                 value={deleteConfirm}
                 onChange={e => setDeleteConfirm(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
+                className={inputClass}
+                style={{ ...inputStyle, borderColor: deleteConfirm === deleteOrg?.name ? '#dc2626' : '#374151' }}
                 placeholder={deleteOrg?.name}
               />
             </div>
@@ -389,7 +424,7 @@ export default function AdminPage() {
               {deleting ? 'Eliminando...' : 'Eliminar permanentemente'}
             </button>
           </div>
-        </Modal>
+        </DarkModal>
       </div>
     </AuthGuard>
   )
