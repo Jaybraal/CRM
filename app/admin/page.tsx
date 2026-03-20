@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import {
-  getAllOrganizations, createOrganization, createUserProfile, getUserProfile,
-  updateOrganization, deleteOrganization, getOrgStats,
+  createOrganization, createUserProfile, getUserProfile,
+  updateOrganization, deleteOrganization,
 } from '@/lib/firestore'
 import type { Organization, OrgStats } from '@/types'
 import AuthGuard from '@/components/auth/AuthGuard'
@@ -45,14 +45,10 @@ export default function AdminPage() {
 
   const load = async () => {
     try {
-      const data = await getAllOrganizations()
+      const res = await fetch('/api/admin/organizations')
+      if (!res.ok) throw new Error('Error del servidor')
+      const data = await res.json()
       setOrgs(data)
-      data.forEach(async (org) => {
-        try {
-          const stats = await getOrgStats(org.id)
-          setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, stats } : o))
-        } catch { /* ignore */ }
-      })
     } catch (err) {
       console.error('Error cargando organizaciones:', err)
       toast.error('Error al cargar organizaciones')
