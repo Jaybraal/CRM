@@ -44,15 +44,21 @@ export default function AdminPage() {
   })
 
   const load = async () => {
-    const data = await getAllOrganizations()
-    setOrgs(data)
-    setLoading(false)
-    data.forEach(async (org) => {
-      try {
-        const stats = await getOrgStats(org.id)
-        setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, stats } : o))
-      } catch { /* ignore */ }
-    })
+    try {
+      const data = await getAllOrganizations()
+      setOrgs(data)
+      data.forEach(async (org) => {
+        try {
+          const stats = await getOrgStats(org.id)
+          setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, stats } : o))
+        } catch { /* ignore */ }
+      })
+    } catch (err) {
+      console.error('Error cargando organizaciones:', err)
+      toast.error('Error al cargar organizaciones')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
