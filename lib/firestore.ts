@@ -4,9 +4,32 @@ import {
   Timestamp, onSnapshot
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message } from '@/types'
+import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, OrgStats } from '@/types'
 
 // --- Organizations ---
+export async function updateOrganization(orgId: string, data: { name?: string; plan?: Organization['plan']; settings?: Partial<Organization['settings']> }) {
+  await updateDoc(doc(db, 'organizations', orgId), data)
+}
+
+export async function deleteOrganization(orgId: string) {
+  await deleteDoc(doc(db, 'organizations', orgId))
+}
+
+export async function getOrgStats(orgId: string): Promise<OrgStats> {
+  const [usersSnap, clientsSnap, dealsSnap, tasksSnap] = await Promise.all([
+    getDocs(query(collection(db, 'users'), where('orgId', '==', orgId))),
+    getDocs(collection(db, 'organizations', orgId, 'clients')),
+    getDocs(collection(db, 'organizations', orgId, 'deals')),
+    getDocs(collection(db, 'organizations', orgId, 'tasks')),
+  ])
+  return {
+    users: usersSnap.size,
+    clients: clientsSnap.size,
+    deals: dealsSnap.size,
+    tasks: tasksSnap.size,
+  }
+}
+
 export async function createOrganization(data: Omit<Organization, 'id' | 'createdAt'>) {
   const ref = await addDoc(collection(db, 'organizations'), {
     ...data,
@@ -85,6 +108,13 @@ export async function getClients(orgId: string, assignedTo?: string) {
     : query(collection(db, 'organizations', orgId, 'clients'), orderBy('createdAt', 'desc'))
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() })) as Client[]
+}
+
+export function subscribeToClients(orgId: string, assignedTo: string | undefined, cb: (clients: Client[]) => void) {
+  const q = assignedTo
+    ? query(collection(db, 'organizations', orgId, 'clients'), where('assignedTo', '==', assignedTo), orderBy('createdAt', 'desc'))
+    : query(collection(db, 'organizations', orgId, 'clients'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Client[]))
 }
 
 export async function getClient(orgId: string, clientId: string) {
@@ -281,4 +311,81 @@ export async function getClientByPhone(orgId: string, phone: string): Promise<Cl
   if (snap.empty) return null
   const d = snap.docs[0]
   return { id: d.id, ...d.data() } as Client
+}
+
+// --- Agent Goals ---
+export async function getAgentGoal(orgId: string, uid: string, month: string): Promise<AgentGoal | null> {
+  const snap = await getDoc(doc(db, 'organizations', orgId, 'goals', `${uid}_${month}`))
+  if (!snap.exists()) return null
+  return { ...snap.data() } as AgentGoal
+}
+
+export async function setAgentGoal(orgId: string, uid: string, month: string, data: Partial<AgentGoal>) {
+  await setDoc(doc(db, 'organizations', orgId, 'goals', `${uid}_${month}`), {
+    uid,
+    orgId,
+    month,
+    messagesGoal: data.messagesGoal ?? 0,
+    clientsGoal: data.clientsGoal ?? 0,
+    dealsGoal: data.dealsGoal ?? 0,
+    revenueGoal: data.revenueGoal ?? 0,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function getAllGoalsForMonth(orgId: string, month: string): Promise<AgentGoal[]> {
+  const q = query(
+    collection(db, 'organizations', orgId, 'goals'),
+    where('month', '==', month)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => d.data()) as AgentGoal[]
+}
+
+// --- Appointments ---
+export async function getAppointments(orgId: string, assignedTo?: string): Promise<Appointment[]> {
+  const q = assignedTo
+    ? query(collection(db, 'organizations', orgId, 'appointments'), where('assignedTo', '==', assignedTo), orderBy('startDate', 'asc'))
+    : query(collection(db, 'organizations', orgId, 'appointments'), orderBy('startDate', 'asc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as Appointment[]
+}
+
+export async function createAppointment(orgId: string, data: Omit<Appointment, 'id' | 'orgId' | 'createdAt'>) {
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'appointments'), {
+    ...data,
+    orgId,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateAppointment(orgId: string, appointmentId: string, data: Partial<Appointment>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'appointments', appointmentId), data)
+}
+
+export async function deleteAppointment(orgId: string, appointmentId: string) {
+  await deleteDoc(doc(db, 'organizations', orgId, 'appointments', appointmentId))
+}
+
+export async function getAgentStats(orgId: string, uid: string, month: string): Promise<{ messagesSent: number; clientsHandled: number; dealsClosed: number; revenue: number }> {
+  // Clients assigned
+  const clientsQ = query(
+    collection(db, 'organizations', orgId, 'clients'),
+    where('assignedTo', '==', uid)
+  )
+  const clientsSnap = await getDocs(clientsQ)
+  const clientsHandled = clientsSnap.size
+
+  // Deals closed this month
+  const dealsQ = query(
+    collection(db, 'organizations', orgId, 'deals'),
+    where('assignedTo', '==', uid),
+    where('stage', '==', 'closed')
+  )
+  const dealsSnap = await getDocs(dealsQ)
+  const dealsClosed = dealsSnap.size
+  const revenue = dealsSnap.docs.reduce((sum, d) => sum + (d.data().value || 0), 0)
+
+  return { messagesSent: 0, clientsHandled, dealsClosed, revenue }
 }

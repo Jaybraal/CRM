@@ -8,6 +8,8 @@ export interface AppUser {
   orgId: string | null
   createdAt: Date
   photoURL?: string
+  whatsappPhone?: string     // agent's assigned WA number (optional)
+  whatsappSessionId?: string // session ID in Baileys (defaults to uid)
 }
 
 export interface Organization {
@@ -28,6 +30,7 @@ export interface Organization {
       enabled: boolean
       message: string
     }
+    roundRobinIndex?: number
   }
 }
 
@@ -38,12 +41,23 @@ export interface WhatsAppTemplate {
   createdAt: Date
 }
 
+export type MessageType = 'text' | 'image' | 'location' | 'call'
+
+export interface MessageLocation {
+  lat: number
+  lng: number
+  name?: string
+}
+
 export interface Message {
   id: string
   orgId: string
   clientId: string
+  type?: MessageType
   text?: string
   photos: string[]
+  location?: MessageLocation
+  callDuration?: number // seconds, -1 = missed
   senderId: string
   senderName: string
   source: 'internal' | 'whatsapp'
@@ -67,6 +81,7 @@ export interface Client {
   email?: string
   phone?: string
   whatsappPhone?: string
+  whatsappJid?: string
   categoryId?: string
   tags: string[]
   photos: string[]
@@ -120,4 +135,46 @@ export interface Task {
   dueDate?: Date
   completed: boolean
   createdAt: Date
+}
+
+export interface AgentGoal {
+  uid: string
+  orgId: string
+  month: string // 'YYYY-MM'
+  messagesGoal: number
+  clientsGoal: number
+  dealsGoal: number
+  revenueGoal: number
+  updatedAt: Date
+}
+
+export interface AgentStats {
+  uid: string
+  displayName: string
+  email: string
+  messagesSent: number
+  clientsHandled: number
+  dealsClosed: number
+  revenue: number
+}
+
+export interface Appointment {
+  id: string
+  orgId: string
+  title: string
+  description?: string
+  clientId?: string
+  clientName?: string
+  assignedTo: string
+  assignedToName?: string
+  startDate: Date
+  endDate?: Date
+  createdAt: Date
+}
+
+export interface OrgStats {
+  users: number
+  clients: number
+  deals: number
+  tasks: number
 }

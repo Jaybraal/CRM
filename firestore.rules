@@ -98,6 +98,31 @@ service cloud.firestore {
         allow read: if isMember(orgId) || isSuperAdmin();
         allow create, update, delete: if isMember(orgId) || isSuperAdmin();
       }
+
+      // Plantillas de WhatsApp
+      match /whatsapp_templates/{tplId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isManager(orgId) || isSuperAdmin();
+      }
+
+      // Notificaciones
+      match /notifications/{notifId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create: if isMember(orgId) || isSuperAdmin();
+        allow delete: if isMember(orgId) || isSuperAdmin();
+      }
+
+      // Metas de agentes
+      match /goals/{goalId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow write: if isManager(orgId) || isSuperAdmin();
+      }
+
+      // Citas
+      match /appointments/{appointmentId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isMember(orgId) || isSuperAdmin();
+      }
     }
   }
 }
