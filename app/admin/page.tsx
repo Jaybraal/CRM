@@ -6,8 +6,6 @@ import {
   getAllOrganizations, createOrganization, createUserProfile, getUserProfile,
   updateOrganization, deleteOrganization, getOrgStats,
 } from '@/lib/firestore'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import type { Organization, OrgStats } from '@/types'
 import AuthGuard from '@/components/auth/AuthGuard'
 import Modal from '@/components/ui/Modal'
@@ -87,27 +85,40 @@ export default function AdminPage() {
     e.preventDefault()
     setCreating(true)
     try {
-      const cred = await createUserWithEmailAndPassword(auth, createForm.ownerEmail, createForm.ownerPassword)
-      const orgId = await createOrganization({
+      // 1. Crear org primero con ownerId temporal — se actualizará tras crear el usuario
+      const tempOrgId = await createOrganization({
         name: createForm.orgName,
-        ownerId: cred.user.uid,
+        ownerId: '',
         plan: createForm.plan,
         settings: { catalogEnabled: false, industry: createForm.industry },
       })
-      await createUserProfile(cred.user.uid, {
-        email: createForm.ownerEmail,
-        displayName: createForm.ownerName,
-        role: 'owner',
-        orgId,
+
+      // 2. Crear el usuario vía Admin SDK (no afecta la sesión actual)
+      const res = await fetch('/api/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: createForm.ownerEmail,
+          password: createForm.ownerPassword,
+          displayName: createForm.ownerName,
+          role: 'owner',
+          orgId: tempOrgId,
+        }),
       })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al crear usuario')
+
+      // 3. Actualizar ownerId en la org con el uid real
+      await updateOrganization(tempOrgId, { ownerId: data.uid })
+
       toast.success(`Organización "${createForm.orgName}" creada`)
       setShowCreateForm(false)
       setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '' })
       load()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('email-already-in-use')) toast.error('Email ya registrado')
-      else toast.error('Error al crear organización')
+      if (msg.includes('email-already-in-use') || msg.includes('ya está en uso')) toast.error('Email ya registrado')
+      else toast.error(`Error: ${msg || 'desconocido'}`)
     } finally {
       setCreating(false)
     }

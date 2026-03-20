@@ -7,7 +7,7 @@ import { db } from './firebase'
 import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, OrgStats } from '@/types'
 
 // --- Organizations ---
-export async function updateOrganization(orgId: string, data: { name?: string; plan?: Organization['plan']; settings?: Partial<Organization['settings']> }) {
+export async function updateOrganization(orgId: string, data: { name?: string; plan?: Organization['plan']; settings?: Partial<Organization['settings']>; ownerId?: string }) {
   await updateDoc(doc(db, 'organizations', orgId), data)
 }
 
