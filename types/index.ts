@@ -71,6 +71,9 @@ export interface Category {
   description?: string
   orgId: string
   createdAt: Date
+  isSystem?: boolean
+  systemKey?: string
+  autoDeleteDays?: number
 }
 
 export interface Client {
@@ -88,6 +91,7 @@ export interface Client {
   notes?: string
   status: 'lead' | 'prospect' | 'active' | 'inactive'
   pipelineStage?: string
+  movedToCategoryAt?: Date
   createdAt: Date
   updatedAt: Date
   createdBy: string

@@ -6,8 +6,13 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#111827",
-  "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.ico",
       "sizes": "48x48",

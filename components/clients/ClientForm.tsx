@@ -50,12 +50,24 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
     }
     setLoading(true)
     try {
+      const eliminados = categories.find(c => c.systemKey === 'eliminados')
+      const isMovingToEliminados = eliminados && form.categoryId === eliminados.id
+      const wasAlreadyInEliminados = existing?.categoryId === eliminados?.id
+
+      // movedToCategoryAt: solo se asigna la primera vez que entra a ELIMINADOS
+      const movedToCategoryAt = isMovingToEliminados && !wasAlreadyInEliminados
+        ? new Date()
+        : isMovingToEliminados && wasAlreadyInEliminados
+          ? (existing?.movedToCategoryAt ?? new Date())
+          : undefined
+
       if (existing) {
-        await updateClient(profile.orgId, existing.id, form)
+        await updateClient(profile.orgId, existing.id, { ...form, movedToCategoryAt })
         toast.success('Cliente actualizado')
       } else {
         await createClient(profile.orgId, {
           ...form,
+          movedToCategoryAt,
           assignedTo: profile.uid,
           createdBy: profile.uid,
           pipelineStage: 'new',

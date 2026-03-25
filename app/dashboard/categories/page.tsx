@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getCategories, createCategory, updateCategory, deleteCategory, getClientsByCategory } from '@/lib/firestore'
+import { getCategories, createCategory, updateCategory, deleteCategory, getClientsByCategory, ensureEliminadosCategory } from '@/lib/firestore'
 import type { Category } from '@/types'
 import Modal from '@/components/ui/Modal'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Trash } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16','#6366f1']
@@ -23,6 +23,7 @@ export default function CategoriesPage() {
 
   const load = async () => {
     if (!profile?.orgId) { setLoading(false); return }
+    await ensureEliminadosCategory(profile.orgId)
     const cats = await getCategories(profile.orgId)
     setCategories(cats)
     setLoading(false)
@@ -98,36 +99,58 @@ export default function CategoriesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map(cat => (
-            <div key={cat.id} className="bg-white border border-gray-200 rounded-xl p-5 flex items-center gap-4 hover:border-gray-300 hover:shadow-sm transition-all">
+          {categories.map(cat => {
+            const isEliminados = cat.isSystem && cat.systemKey === 'eliminados'
+            return (
               <div
-                className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
-                style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}
+                key={cat.id}
+                className={`bg-white border rounded-xl p-5 flex items-center gap-4 transition-all ${
+                  isEliminados
+                    ? 'border-red-200 bg-red-50/30 hover:border-red-300'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                }`}
               >
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900">{cat.name}</p>
-                {cat.description && (
-                  <p className="text-sm text-gray-400 truncate">{cat.description}</p>
+                <div
+                  className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}
+                >
+                  {isEliminados
+                    ? <Trash size={18} style={{ color: cat.color }} />
+                    : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }} />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{cat.name}</p>
+                    {isEliminados && (
+                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                        Auto-elimina en 14 días
+                      </span>
+                    )}
+                  </div>
+                  {cat.description && (
+                    <p className="text-sm text-gray-400 truncate">{cat.description}</p>
+                  )}
+                </div>
+                {!isEliminados && (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => openEdit(cat)}
+                      className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 )}
               </div>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => openEdit(cat)}
-                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={() => handleDelete(cat.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

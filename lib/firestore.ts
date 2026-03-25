@@ -101,6 +101,27 @@ export async function deleteCategory(orgId: string, categoryId: string) {
   await deleteDoc(doc(db, 'organizations', orgId, 'categories', categoryId))
 }
 
+export async function ensureEliminadosCategory(orgId: string): Promise<string> {
+  const q = query(
+    collection(db, 'organizations', orgId, 'categories'),
+    where('systemKey', '==', 'eliminados')
+  )
+  const snap = await getDocs(q)
+  if (!snap.empty) return snap.docs[0].id
+
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'categories'), {
+    name: 'ELIMINADOS',
+    color: '#ef4444',
+    description: 'Clientes eliminados automáticamente después de 14 días',
+    orgId,
+    isSystem: true,
+    systemKey: 'eliminados',
+    autoDeleteDays: 14,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
 // --- Clients ---
 export async function getClients(orgId: string, assignedTo?: string) {
   let q = assignedTo

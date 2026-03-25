@@ -1,14 +1,17 @@
 import 'dotenv/config'
 import makeWASocket, {
-  useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  initAuthCreds,
+  BufferJSON,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import qrcode from 'qrcode-terminal'
 import QRCode from 'qrcode'
 import express from 'express'
 import pino from 'pino'
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
 const CRM_URL = process.env.CRM_URL || 'http://localhost:3000'
 const ORG_ID  = process.env.ORG_ID  || ''
@@ -16,13 +19,78 @@ const PORT    = process.env.PORT    || 3001
 
 const logger = pino({ level: 'silent' })
 
-// sessions: sessionId -> { sock, qr, status }
-const sessions = new Map()
+// ── Firebase Admin ─────────────────────────────────────────────
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey:  process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  })
+}
+const db = getFirestore()
 
-const app = express()
-app.use(express.json({ limit: '50mb' }))
+// ── Firestore auth state ───────────────────────────────────────
+// Guarda creds + keys en Firestore para sobrevivir reinicios
+async function useFirestoreAuthState(sessionId) {
+  const docRef = db.collection('whatsapp_sessions').doc(sessionId)
+
+  async function readData(key) {
+    try {
+      const snap = await docRef.collection('auth').doc(key).get()
+      if (!snap.exists) return null
+      return JSON.parse(snap.data().value, BufferJSON.reviver)
+    } catch {
+      return null
+    }
+  }
+
+  async function writeData(key, value) {
+    await docRef.collection('auth').doc(key).set({
+      value: JSON.stringify(value, BufferJSON.replacer),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+  }
+
+  async function removeData(key) {
+    await docRef.collection('auth').doc(key).delete().catch(() => {})
+  }
+
+  const creds = (await readData('creds')) || initAuthCreds()
+
+  const state = {
+    creds,
+    keys: {
+      get: async (type, ids) => {
+        const data = {}
+        await Promise.all(
+          ids.map(async (id) => {
+            const val = await readData(`${type}-${id}`)
+            if (val) data[id] = val
+          })
+        )
+        return data
+      },
+      set: async (data) => {
+        await Promise.all(
+          Object.entries(data).flatMap(([type, ids]) =>
+            Object.entries(ids).map(([id, value]) =>
+              value ? writeData(`${type}-${id}`, value) : removeData(`${type}-${id}`)
+            )
+          )
+        )
+      },
+    },
+  }
+
+  const saveCreds = () => writeData('creds', state.creds)
+
+  return { state, saveCreds }
+}
 
 // ── Session management ─────────────────────────────────────────
+const sessions = new Map()
 
 async function startSession(sessionId) {
   if (sessions.has(sessionId)) {
@@ -30,8 +98,7 @@ async function startSession(sessionId) {
     if (existing.status === 'open') return existing
   }
 
-  const authFolder = `auth_info_${sessionId}`
-  const { state, saveCreds } = await useMultiFileAuthState(authFolder)
+  const { state, saveCreds } = await useFirestoreAuthState(sessionId)
   const { version } = await fetchLatestBaileysVersion()
 
   const sock = makeWASocket({
@@ -54,11 +121,10 @@ async function startSession(sessionId) {
     if (qr) {
       s.qr = await QRCode.toDataURL(qr)
       s.status = 'qr'
-      // Also print to terminal for default session
       if (sessionId === 'default') {
         console.clear()
         console.log('══════════════════════════════════════════════')
-        console.log('  📱  Escanea QR para sesión:', sessionId)
+        console.log('  Escanea QR para sesion:', sessionId)
         console.log('══════════════════════════════════════════════\n')
         qrcode.generate(qr, { small: true })
       }
@@ -67,35 +133,39 @@ async function startSession(sessionId) {
     if (connection === 'open') {
       s.status = 'open'
       s.qr = null
-      console.log(`✅ Sesión [${sessionId}] conectada`)
-      // Notify CRM
+      console.log(`Sesion [${sessionId}] conectada`)
+      await db.collection('whatsapp_sessions').doc(sessionId).set(
+        { status: 'connected', connectedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      )
       if (ORG_ID) {
-        try {
-          await fetch(`${CRM_URL}/api/whatsapp/sessions/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: ORG_ID, sessionId, status: 'connected' }),
-          }).catch(() => {})
-        } catch {}
+        fetch(`${CRM_URL}/api/whatsapp/sessions/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: ORG_ID, sessionId, status: 'connected' }),
+        }).catch(() => {})
       }
     }
 
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode
       const reconnect = code !== DisconnectReason.loggedOut
-      console.log(`❌ Sesión [${sessionId}] cerrada (código ${code})`)
+      console.log(`Sesion [${sessionId}] cerrada (codigo ${code})`)
       if (reconnect) {
         s.status = 'connecting'
         setTimeout(() => startSession(sessionId), 3000)
       } else {
         s.status = 'disconnected'
         s.sock = null
-        console.log(`Sesión [${sessionId}] cerrada permanentemente.`)
+        await db.collection('whatsapp_sessions').doc(sessionId).set(
+          { status: 'disconnected' },
+          { merge: true }
+        )
+        console.log(`Sesion [${sessionId}] cerrada permanentemente.`)
       }
     }
   })
 
-  // Handle incoming messages
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
     for (const msg of messages) {
@@ -134,38 +204,29 @@ async function startSession(sessionId) {
         text = `[Documento: ${msg.message.documentMessage.fileName || ''}]`
       }
 
-      console.log(`📨 [${sessionId}] ${fromName}: ${text || `[${msgType}]`}`)
+      console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}`)
       if (!ORG_ID) continue
 
-      try {
-        await fetch(`${CRM_URL}/api/whatsapp/baileys`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: ORG_ID, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
-        })
-      } catch (e) {
-        console.error('No se pudo reenviar al CRM:', e.message)
-      }
+      fetch(`${CRM_URL}/api/whatsapp/baileys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: ORG_ID, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
+      }).catch(e => console.error('Error reenvio al CRM:', e.message))
     }
   })
 
-  // Handle incoming calls
   sock.ev.on('call', async (calls) => {
     for (const call of calls) {
       if (call.status === 'offer') {
         const from = call.from.replace('@s.whatsapp.net', '')
-        console.log(`📞 [${sessionId}] Llamada de ${from}`)
+        console.log(`Llamada de ${from} en sesion [${sessionId}]`)
         if (ORG_ID) {
-          try {
-            await fetch(`${CRM_URL}/api/whatsapp/baileys`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orgId: ORG_ID, from, fromName: from, text: '[Llamada entrante]', type: 'call', jid: call.from, callDuration: -1, sessionId }),
-            })
-            await sock.rejectCall(call.id, call.from)
-          } catch (e) {
-            console.error('Error manejando llamada:', e.message)
-          }
+          fetch(`${CRM_URL}/api/whatsapp/baileys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: ORG_ID, from, fromName: from, text: '[Llamada entrante]', type: 'call', jid: call.from, callDuration: -1, sessionId }),
+          }).catch(() => {})
+          sock.rejectCall(call.id, call.from).catch(() => {})
         }
       }
     }
@@ -174,9 +235,29 @@ async function startSession(sessionId) {
   return session
 }
 
-// ── REST API ───────────────────────────────────────────────────
+// ── Restaurar sesiones activas al arrancar ─────────────────────
+async function restoreActiveSessions() {
+  try {
+    const snap = await db.collection('whatsapp_sessions').where('status', '==', 'connected').get()
+    if (snap.empty) {
+      console.log('No hay sesiones previas, iniciando sesion default...')
+      startSession('default')
+      return
+    }
+    console.log(`Restaurando ${snap.size} sesion(es)...`)
+    for (const doc of snap.docs) {
+      startSession(doc.id).catch(e => console.error(`Error restaurando [${doc.id}]:`, e.message))
+    }
+  } catch (e) {
+    console.error('Error leyendo sesiones de Firestore:', e.message)
+    startSession('default')
+  }
+}
 
-// List all sessions
+// ── REST API ───────────────────────────────────────────────────
+const app = express()
+app.use(express.json({ limit: '50mb' }))
+
 app.get('/sessions', (_req, res) => {
   const list = []
   for (const [id, s] of sessions) {
@@ -185,63 +266,60 @@ app.get('/sessions', (_req, res) => {
   res.json(list)
 })
 
-// Get status of a session
 app.get('/status/:sessionId?', (req, res) => {
   const sessionId = req.params.sessionId || 'default'
   const s = sessions.get(sessionId)
   res.json({ sessionId, status: s?.status || 'disconnected', connected: s?.status === 'open' })
 })
 
-// Get QR for a session
 app.get('/qr/:sessionId?', async (req, res) => {
   const sessionId = req.params.sessionId || 'default'
   const s = sessions.get(sessionId)
   if (!s) {
-    // Start session if not exists
     startSession(sessionId).catch(console.error)
     return res.json({ qr: null, status: 'connecting' })
   }
   res.json({ qr: s.qr, status: s.status })
 })
 
-// Start/connect a session
 app.post('/connect/:sessionId?', async (req, res) => {
   const sessionId = req.params.sessionId || 'default'
   try {
     const s = sessions.get(sessionId)
     if (s?.status === 'open') return res.json({ status: 'open', message: 'Ya conectado' })
     startSession(sessionId)
-    res.json({ status: 'connecting', message: 'Iniciando sesión, solicita el QR en /qr/' + sessionId })
+    res.json({ status: 'connecting', message: 'Iniciando sesion, solicita QR en /qr/' + sessionId })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
-// Disconnect a session
 app.delete('/session/:sessionId?', async (req, res) => {
   const sessionId = req.params.sessionId || 'default'
   const s = sessions.get(sessionId)
-  if (!s) return res.json({ ok: true, message: 'Sesión no existe' })
+  if (!s) return res.json({ ok: true, message: 'Sesion no existe' })
   try {
     if (s.sock) await s.sock.logout()
-    sessions.delete(sessionId)
-    // Remove auth folder
-    const { rm } = await import('fs/promises')
-    await rm(`auth_info_${sessionId}`, { recursive: true, force: true })
-    res.json({ ok: true })
+  } catch {}
+  sessions.delete(sessionId)
+  try {
+    const authSnap = await db.collection('whatsapp_sessions').doc(sessionId).collection('auth').get()
+    const batch = db.batch()
+    authSnap.docs.forEach(d => batch.delete(d.ref))
+    await batch.commit()
+    await db.collection('whatsapp_sessions').doc(sessionId).set({ status: 'disconnected' }, { merge: true })
   } catch (e) {
-    sessions.delete(sessionId)
-    res.json({ ok: true, warning: e.message })
+    console.error('Error borrando auth de Firestore:', e.message)
   }
+  res.json({ ok: true })
 })
 
-// Send text (sessionId optional, defaults to 'default')
 app.post('/send', async (req, res) => {
   const { to, text, sessionId: sid } = req.body
   const sessionId = sid || 'default'
   const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesión no conectada: ' + sessionId })
-  if (!to || !text) return res.status(400).json({ error: 'Faltan parámetros' })
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || !text) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
     await s.sock.sendMessage(jid, { text })
@@ -251,13 +329,12 @@ app.post('/send', async (req, res) => {
   }
 })
 
-// Send image
 app.post('/send-image', async (req, res) => {
   const { to, url, caption, sessionId: sid } = req.body
   const sessionId = sid || 'default'
   const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesión no conectada: ' + sessionId })
-  if (!to || !url) return res.status(400).json({ error: 'Faltan parámetros' })
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
     await s.sock.sendMessage(jid, { image: { url }, caption: caption || '' })
@@ -267,13 +344,12 @@ app.post('/send-image', async (req, res) => {
   }
 })
 
-// Send location
 app.post('/send-location', async (req, res) => {
   const { to, lat, lng, name, sessionId: sid } = req.body
   const sessionId = sid || 'default'
   const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesión no conectada: ' + sessionId })
-  if (!to || lat == null || lng == null) return res.status(400).json({ error: 'Faltan parámetros' })
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || lat == null || lng == null) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
     await s.sock.sendMessage(jid, {
@@ -285,17 +361,15 @@ app.post('/send-location', async (req, res) => {
   }
 })
 
-// Voice call — Baileys does not support outgoing calls, return info
 app.post('/call', async (_req, res) => {
-  res.status(501).json({ error: 'Llamadas salientes no soportadas por Baileys. Usa wa.me en su lugar.' })
+  res.status(501).json({ error: 'Llamadas salientes no soportadas por Baileys.' })
 })
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Baileys server en http://localhost:${PORT}`)
-  console.log(`📡 CRM: ${CRM_URL}`)
-  if (!ORG_ID) console.warn('⚠️  ORG_ID no configurado')
-  else console.log(`🏢 Org: ${ORG_ID}\n`)
+  console.log(`Baileys server en http://localhost:${PORT}`)
+  console.log(`CRM: ${CRM_URL}`)
+  if (!ORG_ID) console.warn('ORG_ID no configurado')
+  else console.log(`Org: ${ORG_ID}`)
 })
 
-// Start default session on boot
-startSession('default')
+restoreActiveSessions()
