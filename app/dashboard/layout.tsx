@@ -9,7 +9,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="flex-1 lg:ml-64 p-6 lg:p-8">
+      <main className="flex-1 lg:ml-64 pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8">
         {children}
       </main>
     </div>

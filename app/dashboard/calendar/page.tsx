@@ -163,7 +163,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Calendario</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -173,7 +173,7 @@ export default function CalendarPage() {
         </div>
         <button
           onClick={() => openNewAppt()}
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors self-start sm:self-auto"
         >
           <CalendarPlus size={16} /> Nueva cita
         </button>
@@ -202,14 +202,17 @@ export default function CalendarPage() {
           </div>
 
           <div className="grid grid-cols-7 border-b border-gray-100">
-            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
-              <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">{d}</div>
+            {[['L','Lun'], ['M','Mar'], ['X','Mié'], ['J','Jue'], ['V','Vie'], ['S','Sáb'], ['D','Dom']].map(([short, full]) => (
+              <div key={full} className="text-center text-xs font-medium text-gray-400 py-2">
+                <span className="sm:hidden">{short}</span>
+                <span className="hidden sm:inline">{full}</span>
+              </div>
             ))}
           </div>
 
           <div className="grid grid-cols-7">
             {cells.map((day, idx) => {
-              if (!day) return <div key={`empty-${idx}`} className="min-h-24 border-b border-r border-gray-100 bg-gray-50/50" />
+              if (!day) return <div key={`empty-${idx}`} className="min-h-14 sm:min-h-24 border-b border-r border-gray-100 bg-gray-50/50" />
               const dayTasks = getTasksForDay(day)
               const dayAppts = getApptsForDay(day)
               const total = dayTasks.length + dayAppts.length
@@ -223,7 +226,7 @@ export default function CalendarPage() {
                     if (total > 0) setSelectedDay(day)
                     else openNewAppt(day)
                   }}
-                  className={`min-h-24 border-b border-r border-gray-100 p-2 cursor-pointer group hover:bg-blue-50/20 transition-colors ${isWeekend ? 'bg-gray-50/30' : ''}`}
+                  className={`min-h-14 sm:min-h-24 border-b border-r border-gray-100 p-1 sm:p-2 cursor-pointer group hover:bg-blue-50/20 transition-colors ${isWeekend ? 'bg-gray-50/30' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium rounded-full ${isToday ? 'bg-gray-900 text-white' : 'text-gray-600'}`}>
