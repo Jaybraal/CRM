@@ -18,6 +18,7 @@ export interface Organization {
   ownerId: string
   plan: 'trial' | 'basic' | 'pro'
   createdAt: Date
+  accessExpiresAt?: Date | null
   settings: {
     catalogEnabled: boolean
     industry: string
