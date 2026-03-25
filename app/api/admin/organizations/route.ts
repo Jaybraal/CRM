@@ -5,13 +5,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, ownerId, plan, settings } = await req.json()
+    const { name, ownerId, plan, settings, accessExpiresAt } = await req.json()
     const ref = await adminDb.collection('organizations').add({
       name,
       ownerId: ownerId ?? '',
       plan: plan ?? 'trial',
       settings: settings ?? {},
       createdAt: new Date(),
+      ...(accessExpiresAt ? { accessExpiresAt: new Date(accessExpiresAt) } : {}),
     })
     return NextResponse.json({ id: ref.id })
   } catch (err) {

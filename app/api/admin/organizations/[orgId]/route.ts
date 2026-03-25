@@ -7,6 +7,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   try {
     const { orgId } = await params
     const data = await req.json()
+    // Convert ISO string to Date so Firestore stores it as a Timestamp
+    if (data.accessExpiresAt) {
+      data.accessExpiresAt = new Date(data.accessExpiresAt)
+    } else if (data.accessExpiresAt === null) {
+      const { FieldValue } = await import('firebase-admin/firestore')
+      data.accessExpiresAt = FieldValue.delete()
+    }
     await adminDb.collection('organizations').doc(orgId).update(data)
     return NextResponse.json({ ok: true })
   } catch (err) {

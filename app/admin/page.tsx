@@ -7,9 +7,10 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import {
   Plus, Building2, Calendar, LogIn, Pencil, Trash2,
   Users, UserCheck, FolderKanban, X, Clock, ShieldCheck,
-  AlertTriangle, CheckCircle2, Timer,
+  AlertTriangle, CheckCircle2, Timer, ArrowLeft,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ function getExpiry(org: Organization): Date | null {
   const secs = v?._seconds ?? v?.seconds
   if (secs) return new Date(secs * 1000)
   if (org.accessExpiresAt instanceof Date) return org.accessExpiresAt
+  if (typeof org.accessExpiresAt === 'string') return new Date(org.accessExpiresAt)
   return null
 }
 
@@ -448,6 +450,13 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="p-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Volver al dashboard"
+            >
+              <ArrowLeft size={18} />
+            </Link>
             <div className="p-2 rounded-xl bg-indigo-900/40 border border-indigo-800/60">
               <ShieldCheck size={20} className="text-indigo-400" />
             </div>
