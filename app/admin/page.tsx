@@ -6,11 +6,12 @@ import type { Organization, OrgStats } from '@/types'
 import AuthGuard from '@/components/auth/AuthGuard'
 import {
   Plus, Building2, Calendar, LogIn, Pencil, Trash2,
-  Users, UserCheck, FolderKanban, X, Clock, ShieldCheck,
+  Users, UserCheck, FolderKanban, X, ShieldCheck,
   AlertTriangle, CheckCircle2, Timer, ArrowLeft,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ function getExpiryStatus(org: Organization): 'indefinite' | 'active' | 'soon' | 
 function daysRemaining(org: Organization): number | null {
   const exp = getExpiry(org)
   if (!exp) return null
-  return Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  return Math.floor((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 }
 
 function addDays(days: number): Date {
@@ -136,12 +137,11 @@ function DurationPicker({ value, onChange }: { value: number; onChange: (days: n
 
 // ─── Org Card ────────────────────────────────────────────────────────────────
 
-function OrgCard({ org, onEdit, onDelete, onJoin, joining, isActive }: {
+function OrgCard({ org, onEdit, onDelete, onEnter, isActive }: {
   org: OrgWithStats
   onEdit: () => void
   onDelete: () => void
-  onJoin: () => void
-  joining: boolean
+  onEnter: () => void
   isActive: boolean
 }) {
   const status = getExpiryStatus(org)
@@ -241,18 +241,15 @@ function OrgCard({ org, onEdit, onDelete, onJoin, joining, isActive }: {
               <Trash2 size={14} />
             </button>
             <button
-              onClick={onJoin}
-              disabled={joining || isActive}
+              onClick={onEnter}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-1 ${
                 isActive
-                  ? 'bg-emerald-900/40 text-emerald-400 cursor-default'
+                  ? 'bg-emerald-900/40 text-emerald-400'
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white'
               }`}
             >
-              {joining
-                ? <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                : isActive ? <CheckCircle2 size={12} /> : <LogIn size={12} />}
-              {isActive ? 'Activa' : 'Unirme'}
+              {isActive ? <CheckCircle2 size={12} /> : <LogIn size={12} />}
+              {isActive ? 'Activa' : 'Entrar'}
             </button>
           </div>
         </div>
@@ -264,11 +261,11 @@ function OrgCard({ org, onEdit, onDelete, onJoin, joining, isActive }: {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const { isSuperAdmin, user, profile } = useAuth()
+  const { isSuperAdmin, user, profile, switchOrg } = useAuth()
+  const router = useRouter()
 
   const [orgs, setOrgs] = useState<OrgWithStats[]>([])
   const [loading, setLoading] = useState(true)
-  const [joiningOrgId, setJoiningOrgId] = useState<string | null>(null)
 
   // Create
   const [showCreate, setShowCreate] = useState(false)
@@ -305,23 +302,9 @@ export default function AdminPage() {
 
   useEffect(() => { load() }, [])
 
-  const handleJoin = async (org: Organization) => {
-    if (!user) return
-    setJoiningOrgId(org.id)
-    try {
-      const res = await fetch(`/api/admin/users/${user.uid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId: org.id }),
-      })
-      if (!res.ok) throw new Error()
-      toast.success(`Unido a "${org.name}" — recargando...`)
-      setTimeout(() => window.location.reload(), 1500)
-    } catch {
-      toast.error('No se pudo unir a la organización')
-    } finally {
-      setJoiningOrgId(null)
-    }
+  const handleEnter = (org: Organization) => {
+    switchOrg(org.id)
+    router.push('/dashboard')
   }
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -509,8 +492,7 @@ export default function AdminPage() {
                 org={org}
                 onEdit={() => openEdit(org)}
                 onDelete={() => { setDeleteOrg(org); setDeleteConfirm('') }}
-                onJoin={() => handleJoin(org)}
-                joining={joiningOrgId === org.id}
+                onEnter={() => handleEnter(org)}
                 isActive={profile?.orgId === org.id}
               />
             ))}
