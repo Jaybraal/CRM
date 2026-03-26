@@ -18,6 +18,10 @@ const PORT    = process.env.PORT    || 3001
 
 const logger = pino({ level: 'silent' })
 
+// Evitar que errores no capturados maten el proceso
+process.on('uncaughtException', err => console.error('uncaughtException:', err.message))
+process.on('unhandledRejection', err => console.error('unhandledRejection:', err?.message || err))
+
 // ── Firebase Admin ─────────────────────────────────────────────
 if (!getApps().length) {
   initializeApp({
@@ -118,6 +122,9 @@ async function startSession(sessionId, orgId) {
     logger,
     printQRInTerminal: false,
     browser: ['CRM Auto', 'Chrome', '120.0'],
+    keepAliveIntervalMs: 15000,
+    retryRequestDelayMs: 2000,
+    connectTimeoutMs: 60000,
   })
 
   const session = { sock, qr: null, status: 'connecting', orgId }
