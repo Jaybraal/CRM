@@ -6,20 +6,21 @@ import toast from 'react-hot-toast'
 
 type Status = 'connecting' | 'qr' | 'open' | 'disconnected'
 
-export default function BaileysQR() {
+export default function BaileysQR({ orgId }: { orgId: string }) {
   const [status, setStatus] = useState<Status>('connecting')
   const [qr, setQr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const sessionId = orgId || 'default'
+
   const poll = async () => {
     try {
-      const res = await fetch('/api/whatsapp/sessions/default')
+      const res = await fetch(`/api/whatsapp/sessions/${sessionId}?orgId=${sessionId}`)
       const data = await res.json()
       setStatus(data.status as Status)
       setQr(data.qr || null)
 
-      // Stop polling once connected
       if (data.status === 'open' && intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
@@ -48,7 +49,7 @@ export default function BaileysQR() {
     if (!confirm('¿Desconectar WhatsApp? Tendrás que escanear el QR de nuevo.')) return
     setLoading(true)
     try {
-      await fetch('/api/whatsapp/sessions/default', { method: 'DELETE' })
+      await fetch(`/api/whatsapp/sessions/${sessionId}`, { method: 'DELETE' })
       setStatus('disconnected')
       setQr(null)
       toast.success('WhatsApp desconectado')

@@ -224,7 +224,7 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-400 mt-0.5">Escanea el QR con tu teléfono para vincular tu número</p>
           </div>
         </div>
-        <BaileysQR />
+        <BaileysQR orgId={profile?.orgId || ''} />
       </div>
 
       {/* WhatsApp — Meta Cloud API (opcional) */}
