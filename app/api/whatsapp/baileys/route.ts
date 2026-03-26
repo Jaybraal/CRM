@@ -5,7 +5,6 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 async function getNextAgentForOrg(orgId: string): Promise<string> {
-  // Get all agents in the org
   const usersSnap = await adminDb.collection('users')
     .where('orgId', '==', orgId)
     .where('role', '==', 'agent')
@@ -14,17 +13,15 @@ async function getNextAgentForOrg(orgId: string): Promise<string> {
   if (usersSnap.empty) return ''
 
   const agents = usersSnap.docs.map(d => d.id).sort()
-
-  // Get or create round-robin index
   const orgRef = adminDb.doc(`organizations/${orgId}`)
-  const orgSnap = await orgRef.get()
-  const currentIndex = orgSnap.data()?.settings?.roundRobinIndex ?? 0
 
-  const assignedUid = agents[currentIndex % agents.length]
-  const nextIndex = (currentIndex + 1) % agents.length
-
-  // Update index atomically
-  await orgRef.update({ 'settings.roundRobinIndex': nextIndex })
+  const assignedUid = await adminDb.runTransaction(async (tx) => {
+    const orgSnap = await tx.get(orgRef)
+    const currentIndex = orgSnap.data()?.settings?.roundRobinIndex ?? 0
+    const nextIndex = (currentIndex + 1) % agents.length
+    tx.update(orgRef, { 'settings.roundRobinIndex': nextIndex })
+    return agents[currentIndex % agents.length]
+  })
 
   return assignedUid
 }
