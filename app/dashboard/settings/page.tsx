@@ -183,7 +183,7 @@ export default function SettingsPage() {
   const waConnected = !!org?.settings?.whatsapp?.phoneNumberId
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl w-full">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
         <p className="text-gray-500 text-sm mt-1">Ajustes de tu organización</p>
@@ -247,11 +247,11 @@ export default function SettingsPage() {
         {/* Webhook URL */}
         <div>
           <label className={labelClass}>URL del Webhook</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input readOnly value={webhookUrl}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600 select-all" />
+              className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600 select-all truncate" />
             <button type="button" onClick={copyWebhook}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors shrink-0">
               {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
               {copied ? 'Copiado' : 'Copiar'}
             </button>

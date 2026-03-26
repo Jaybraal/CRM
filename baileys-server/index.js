@@ -382,8 +382,7 @@ app.post('/call', async (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Baileys server en http://localhost:${PORT}`)
   console.log(`CRM: ${CRM_URL}`)
-  if (!ORG_ID) console.warn('ORG_ID no configurado')
-  else console.log(`Org: ${ORG_ID}`)
+  console.log('Modo multi-tenant: orgId por sesion')
 })
 
 restoreActiveSessions()
