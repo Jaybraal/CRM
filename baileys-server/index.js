@@ -14,7 +14,6 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
 const CRM_URL = process.env.CRM_URL || 'http://localhost:3000'
-const ORG_ID  = process.env.ORG_ID  || ''
 const PORT    = process.env.PORT    || 3001
 
 const logger = pino({ level: 'silent' })
@@ -92,10 +91,22 @@ async function useFirestoreAuthState(sessionId) {
 // ── Session management ─────────────────────────────────────────
 const sessions = new Map()
 
-async function startSession(sessionId) {
+async function startSession(sessionId, orgId) {
   if (sessions.has(sessionId)) {
     const existing = sessions.get(sessionId)
     if (existing.status === 'open') return existing
+    if (!orgId) orgId = existing.orgId
+  }
+
+  // persist orgId in Firestore so we can restore it on restart
+  if (orgId) {
+    await db.collection('whatsapp_sessions').doc(sessionId).set(
+      { orgId },
+      { merge: true }
+    )
+  } else {
+    const snap = await db.collection('whatsapp_sessions').doc(sessionId).get()
+    orgId = snap.data()?.orgId || ''
   }
 
   const { state, saveCreds } = await useFirestoreAuthState(sessionId)
@@ -109,7 +120,7 @@ async function startSession(sessionId) {
     browser: ['CRM Auto', 'Chrome', '120.0'],
   })
 
-  const session = { sock, qr: null, status: 'connecting' }
+  const session = { sock, qr: null, status: 'connecting', orgId }
   sessions.set(sessionId, session)
 
   sock.ev.on('creds.update', saveCreds)
@@ -133,16 +144,16 @@ async function startSession(sessionId) {
     if (connection === 'open') {
       s.status = 'open'
       s.qr = null
-      console.log(`Sesion [${sessionId}] conectada`)
+      console.log(`Sesion [${sessionId}] conectada (org: ${s.orgId || 'sin org'})`)
       await db.collection('whatsapp_sessions').doc(sessionId).set(
         { status: 'connected', connectedAt: FieldValue.serverTimestamp() },
         { merge: true }
       )
-      if (ORG_ID) {
+      if (s.orgId) {
         fetch(`${CRM_URL}/api/whatsapp/sessions/status`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: ORG_ID, sessionId, status: 'connected' }),
+          body: JSON.stringify({ orgId: s.orgId, sessionId, status: 'connected' }),
         }).catch(() => {})
       }
     }
@@ -205,12 +216,13 @@ async function startSession(sessionId) {
       }
 
       console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}`)
-      if (!ORG_ID) continue
+      const orgId = sessions.get(sessionId)?.orgId
+      if (!orgId) continue
 
       fetch(`${CRM_URL}/api/whatsapp/baileys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId: ORG_ID, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
+        body: JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
       }).catch(e => console.error('Error reenvio al CRM:', e.message))
     }
   })
@@ -220,11 +232,12 @@ async function startSession(sessionId) {
       if (call.status === 'offer') {
         const from = call.from.replace('@s.whatsapp.net', '')
         console.log(`Llamada de ${from} en sesion [${sessionId}]`)
-        if (ORG_ID) {
+        const orgId = sessions.get(sessionId)?.orgId
+        if (orgId) {
           fetch(`${CRM_URL}/api/whatsapp/baileys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: ORG_ID, from, fromName: from, text: '[Llamada entrante]', type: 'call', jid: call.from, callDuration: -1, sessionId }),
+            body: JSON.stringify({ orgId, from, fromName: from, text: '[Llamada entrante]', type: 'call', jid: call.from, callDuration: -1, sessionId }),
           }).catch(() => {})
           sock.rejectCall(call.id, call.from).catch(() => {})
         }
@@ -284,10 +297,11 @@ app.get('/qr/:sessionId?', async (req, res) => {
 
 app.post('/connect/:sessionId?', async (req, res) => {
   const sessionId = req.params.sessionId || 'default'
+  const orgId = req.body?.orgId || ''
   try {
     const s = sessions.get(sessionId)
     if (s?.status === 'open') return res.json({ status: 'open', message: 'Ya conectado' })
-    startSession(sessionId)
+    startSession(sessionId, orgId)
     res.json({ status: 'connecting', message: 'Iniciando sesion, solicita QR en /qr/' + sessionId })
   } catch (e) {
     res.status(500).json({ error: e.message })
