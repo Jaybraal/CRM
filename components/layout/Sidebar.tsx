@@ -12,17 +12,18 @@ import { useState } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'agent'] },
-  { href: '/dashboard/clients', label: 'Clientes', icon: Users, roles: ['super_admin', 'owner', 'manager', 'agent'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/clients', label: 'Clientes', icon: Users, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/categories', label: 'Categorías', icon: Tag, roles: ['super_admin', 'owner', 'manager'] },
-  { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'agent'] },
-  { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare, roles: ['super_admin', 'owner', 'manager', 'agent'] },
-  { href: '/dashboard/calendar', label: 'Calendario', icon: CalendarDays, roles: ['super_admin', 'owner', 'manager', 'agent'] },
+  { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/calendar', label: 'Calendario', icon: CalendarDays, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/broadcast', label: 'Difusión', icon: Send, roles: ['super_admin', 'owner', 'manager'] },
-  { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3, roles: ['super_admin', 'owner', 'manager'] },
+  { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
+  { href: '/dashboard/team', label: 'Equipo', icon: Users, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/users', label: 'Usuarios', icon: Users, roles: ['super_admin', 'owner'] },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings, roles: ['super_admin', 'owner'] },
-  { href: '/dashboard/profile', label: 'Mi perfil', icon: UserCircle, roles: ['super_admin', 'owner', 'manager', 'agent'] },
+  { href: '/dashboard/profile', label: 'Mi perfil', icon: UserCircle, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/admin', label: 'Super Admin', icon: ShieldCheck, roles: ['super_admin'] },
 ]
 

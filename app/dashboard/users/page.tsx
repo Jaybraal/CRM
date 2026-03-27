@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
   owner: 'Propietario',
   manager: 'Manager',
+  supervisor: 'Supervisor',
   agent: 'Agente',
 }
 
@@ -28,6 +29,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   super_admin: 'bg-gray-900 text-white',
   owner: 'bg-gray-800 text-white',
   manager: 'bg-gray-200 text-gray-800',
+  supervisor: 'bg-blue-100 text-blue-800',
   agent: 'bg-gray-100 text-gray-600',
 }
 
@@ -488,6 +490,7 @@ export default function UsersPage() {
             <label className={labelClass}>Rol</label>
             <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))} className={inputClass}>
               <option value="agent">Agente</option>
+              <option value="supervisor">Supervisor</option>
               <option value="manager">Manager</option>
               <option value="owner">Propietario</option>
             </select>

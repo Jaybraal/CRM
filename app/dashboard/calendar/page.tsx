@@ -395,19 +395,19 @@ export default function CalendarPage() {
                 required
                 value={apptForm.title}
                 onChange={e => setApptForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
                 placeholder="Título de la cita *"
               />
               <input
                 value={apptForm.clientName}
                 onChange={e => setApptForm(f => ({ ...f, clientName: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
                 placeholder="Cliente (opcional)"
               />
               <textarea
                 value={apptForm.description}
                 onChange={e => setApptForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500 resize-none"
                 rows={2}
                 placeholder="Descripción (opcional)"
               />
@@ -418,7 +418,7 @@ export default function CalendarPage() {
                   type="date"
                   value={apptForm.startDate}
                   onChange={e => setApptForm(f => ({ ...f, startDate: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -428,7 +428,7 @@ export default function CalendarPage() {
                     type="time"
                     value={apptForm.startTime}
                     onChange={e => setApptForm(f => ({ ...f, startTime: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
                   />
                 </div>
                 <div>
@@ -437,7 +437,7 @@ export default function CalendarPage() {
                     type="time"
                     value={apptForm.endTime}
                     onChange={e => setApptForm(f => ({ ...f, endTime: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
                   />
                 </div>
               </div>

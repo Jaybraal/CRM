@@ -16,6 +16,7 @@ interface AuthContextType {
   isSuperAdmin: boolean
   isOwner: boolean
   isManager: boolean
+  isSupervisor: boolean
   isAgent: boolean
   switchOrg: (orgId: string) => void
 }
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   isSuperAdmin: false,
   isOwner: false,
   isManager: false,
+  isSupervisor: false,
   isAgent: false,
   switchOrg: () => {},
 })
@@ -114,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isSuperAdmin: user?.uid === superAdminUid || role === 'super_admin',
       isOwner: role === 'owner' || role === 'super_admin',
       isManager: role === 'manager' || role === 'owner' || role === 'super_admin',
+      isSupervisor: role === 'supervisor' || role === 'manager' || role === 'owner' || role === 'super_admin',
       isAgent: !!role,
       switchOrg,
     }}>

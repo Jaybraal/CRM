@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'owner' | 'manager' | 'agent'
+export type UserRole = 'super_admin' | 'owner' | 'manager' | 'supervisor' | 'agent'
 
 export interface AppUser {
   uid: string
