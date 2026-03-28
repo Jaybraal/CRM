@@ -212,11 +212,18 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
   }
 
   const handleCall = async () => {
-    const phone = client.whatsappPhone || client.whatsappJid?.replace('@s.whatsapp.net', '')
-    if (!phone) { toast.error('Sin número WhatsApp'); return }
     if (!profile?.orgId) return
-    const clean = phone.replace(/[^0-9]/g, '')
-    window.open(`https://wa.me/${clean}`, '_blank')
+    // Preferir número de teléfono real (no LID) para la llamada de WhatsApp
+    const realPhone = client.phone && /^\d{7,15}$/.test(client.phone.replace(/\D/g, ''))
+      ? client.phone.replace(/\D/g, '')
+      : null
+    // El JID @s.whatsapp.net sí corresponde a un número real
+    const jidPhone = client.whatsappJid?.endsWith('@s.whatsapp.net')
+      ? client.whatsappJid.replace('@s.whatsapp.net', '')
+      : null
+    const callNumber = realPhone || jidPhone
+    if (!callNumber) { toast.error('Este contacto no tiene número de WhatsApp válido para llamar'); return }
+    window.open(`https://wa.me/${callNumber}`, '_blank')
     try {
       await sendMessage(profile.orgId, client.id, {
         type: 'call',
@@ -325,12 +332,20 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white truncate">{client.name}</p>
             <p className="text-xs text-white/70 truncate">
-              {hasWhatsApp ? (client.whatsappPhone || 'WhatsApp conectado') : 'Sin WhatsApp vinculado'}
+              {hasWhatsApp ? (() => {
+                // Mostrar número real (no LID): preferir phone, luego whatsappJid si es @s.whatsapp.net
+                const realNum = client.phone && /^\d{7,15}$/.test(client.phone.replace(/\D/g, ''))
+                  ? `+${client.phone.replace(/\D/g, '')}`
+                  : client.whatsappJid?.endsWith('@s.whatsapp.net')
+                    ? `+${client.whatsappJid.replace('@s.whatsapp.net', '')}`
+                    : null
+                return realNum || 'WhatsApp conectado'
+              })() : 'Sin WhatsApp vinculado'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {hasWhatsApp && client.whatsappPhone && (
+          {hasWhatsApp && (client.phone || client.whatsappJid?.endsWith('@s.whatsapp.net')) && (
             <button onClick={handleCall}
               className="p-2 rounded-full hover:bg-white/10 transition-colors text-white"
               title="Llamar por WhatsApp">

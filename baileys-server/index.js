@@ -195,7 +195,8 @@ async function startSession(sessionId, orgId) {
       if (jid === 'status@broadcast') continue
       if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@lid')) continue
 
-      const from     = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
+      const isLid = jid.endsWith('@lid')
+      const from  = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
       const fromName = msg.pushName || from
 
       let text = ''
@@ -233,7 +234,7 @@ async function startSession(sessionId, orgId) {
       fetch(`${CRM_URL}/api/whatsapp/baileys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
+        body: JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId }),
       }).catch(e => console.error('Error reenvio al CRM:', e.message))
     }
   })

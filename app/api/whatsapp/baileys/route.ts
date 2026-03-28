@@ -40,7 +40,7 @@ async function getNextAgentForOrg(orgId: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, from, fromName, text, type, jid, location, callDuration } = await req.json()
+    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration } = await req.json()
 
     if (!orgId || !from) return NextResponse.json({ ok: true })
 
@@ -68,11 +68,13 @@ export async function POST(req: NextRequest) {
       const assignedTo = await getNextAgentForOrg(orgId)
 
       clientName = fromName || from
+      // Si es LID, no guardar el número LID como teléfono real (no se puede llamar)
       const newRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
         name: clientName,
         whatsappPhone: from,
         whatsappJid: jid || from,
-        phone: from,
+        ...(isLid ? {} : { phone: from }),
+        isLid: !!isLid,
         orgId,
         status: 'lead',
         tags: [],
