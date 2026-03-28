@@ -153,9 +153,9 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
       setPendingFiles([])
       setPendingPreviews([])
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al enviar'
-      toast.error(msg.includes('storage') || msg.includes('unauthorized') ? 'Error subiendo foto — revisa permisos de Firebase Storage' : 'Error al enviar')
-      console.error('handleSend error:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('handleSend error:', msg)
+      toast.error(msg, { duration: 8000 })
     } finally {
       setSending(false)
     }
