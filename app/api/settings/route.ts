@@ -55,6 +55,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'save_qualification_form') {
+      const { form } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { qualificationForm: form } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

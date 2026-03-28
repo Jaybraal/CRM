@@ -5,7 +5,6 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 async function getNextAgentForOrg(orgId: string): Promise<string> {
-  // Incluir agents y supervisors en el round-robin
   const [agentsSnap, supervisorsSnap] = await Promise.all([
     adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'agent').get(),
     adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'supervisor').get(),
@@ -16,7 +15,6 @@ async function getNextAgentForOrg(orgId: string): Promise<string> {
     ...supervisorsSnap.docs.map(d => d.id),
   ].sort()
 
-  // Si no hay agentes ni supervisors, asignar al owner
   if (agents.length === 0) {
     const ownerSnap = await adminDb.collection('users')
       .where('orgId', '==', orgId)
@@ -36,6 +34,14 @@ async function getNextAgentForOrg(orgId: string): Promise<string> {
   })
 
   return assignedUid
+}
+
+async function sendBaileys(baileysUrl: string, to: string, text: string, sessionId: string) {
+  return fetch(`${baileysUrl}/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, text, sessionId }),
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -64,11 +70,8 @@ export async function POST(req: NextRequest) {
     let isNew = false
 
     if (clientsSnap.empty) {
-      // Auto-assign round-robin to next agent
       const assignedTo = await getNextAgentForOrg(orgId)
-
       clientName = fromName || from
-      // Si es LID, no guardar el número LID como teléfono real (no se puede llamar)
       const newRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
         name: clientName,
         whatsappPhone: from,
@@ -123,10 +126,7 @@ export async function POST(req: NextRequest) {
     await adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`).add(messageData)
 
     // Notification
-    const notifTitle = isNew
-      ? `Nuevo contacto: ${clientName}`
-      : `Mensaje de ${clientName}`
-
+    const notifTitle = isNew ? `Nuevo contacto: ${clientName}` : `Mensaje de ${clientName}`
     await adminDb.collection(`organizations/${orgId}/notifications`).add({
       title: notifTitle,
       body: type === 'location' ? '📍 Compartió su ubicación' : type === 'call' ? '📞 Llamada perdida' : (text?.substring(0, 100) || '[Multimedia]'),
@@ -135,17 +135,66 @@ export async function POST(req: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     })
 
-    // Auto-reply
+    // Qualification form + auto-reply
     const baileysUrl = process.env.BAILEYS_URL?.trim()
-    if (baileysUrl) {
+    if (baileysUrl && type !== 'call') {
       const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()
-      const autoReply = orgDoc.data()?.settings?.autoReply
-      if (autoReply?.enabled && autoReply?.message && type !== 'call') {
-        void fetch(`${baileysUrl}/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: jid || from, text: autoReply.message, sessionId: orgId }),
-        })
+      const orgData = orgDoc.data()
+      const qualForm = orgData?.settings?.qualificationForm
+      const autoReply = orgData?.settings?.autoReply
+
+      let qualificationHandled = false
+
+      if (qualForm?.enabled && Array.isArray(qualForm.questions) && qualForm.questions.length > 0) {
+        const questions = [...qualForm.questions].sort((a, b) => a.order - b.order)
+        const sessionRef = adminDb.doc(`organizations/${orgId}/qualification_sessions/${clientId}`)
+        const sessionSnap = await sessionRef.get()
+
+        if (sessionSnap.exists) {
+          const session = sessionSnap.data()!
+          if (session.state === 'active' && text) {
+            const currentQ = questions[session.currentQuestion]
+            const answers = { ...(session.answers || {}), [currentQ.id]: text }
+
+            // If phone question, save as real client phone
+            if (currentQ.type === 'phone') {
+              const digits = text.replace(/\D/g, '')
+              if (digits.length >= 7 && digits.length <= 15) {
+                await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).update({
+                  phone: digits,
+                  isLid: false,
+                  updatedAt: FieldValue.serverTimestamp(),
+                })
+              }
+            }
+
+            const nextIndex = session.currentQuestion + 1
+            if (nextIndex >= questions.length) {
+              await sessionRef.update({ state: 'completed', answers, completedAt: FieldValue.serverTimestamp() })
+              const completionMsg = qualForm.completionMessage || '¡Gracias! Hemos recibido tu información. En breve te atenderemos.'
+              void sendBaileys(baileysUrl, jid || from, completionMsg, orgId)
+            } else {
+              await sessionRef.update({ currentQuestion: nextIndex, answers })
+              void sendBaileys(baileysUrl, jid || from, questions[nextIndex].text, orgId)
+            }
+            qualificationHandled = true
+          }
+        } else if (isNew) {
+          await sessionRef.set({
+            clientId,
+            state: 'active',
+            currentQuestion: 0,
+            answers: {},
+            startedAt: FieldValue.serverTimestamp(),
+          })
+          void sendBaileys(baileysUrl, jid || from, questions[0].text, orgId)
+          qualificationHandled = true
+        }
+      }
+
+      // Auto-reply only if not in qualification flow
+      if (!qualificationHandled && autoReply?.enabled && autoReply?.message) {
+        void sendBaileys(baileysUrl, jid || from, autoReply.message, orgId)
       }
     }
 

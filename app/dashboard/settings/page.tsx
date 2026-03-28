@@ -5,10 +5,10 @@ import { useAuth } from '@/context/AuthContext'
 import { getOrganization, saveWhatsAppConfig, getWhatsAppTemplates } from '@/lib/firestore'
 import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Organization, WhatsAppTemplate, PipelineStage } from '@/types'
+import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
-import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench } from 'lucide-react'
+import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
@@ -30,6 +30,13 @@ export default function SettingsPage() {
   const [savingStage, setSavingStage] = useState(false)
   const [autoReply, setAutoReply] = useState({ enabled: false, message: '' })
   const [savingAutoReply, setSavingAutoReply] = useState(false)
+  const [qualForm, setQualForm] = useState<{
+    enabled: boolean
+    questions: QualificationQuestion[]
+    completionMessage: string
+  }>({ enabled: false, questions: [], completionMessage: '' })
+  const [newQuestion, setNewQuestion] = useState({ text: '', type: 'text' as QualificationQuestionType })
+  const [savingQualForm, setSavingQualForm] = useState(false)
 
   const DEFAULT_STAGES: PipelineStage[] = [
     { id: 'new', name: 'Nuevo', order: 0, color: '#6b7280' },
@@ -61,6 +68,11 @@ export default function SettingsPage() {
         setAutoReply({
           enabled: o.settings.autoReply?.enabled || false,
           message: o.settings.autoReply?.message || '',
+        })
+        setQualForm({
+          enabled: o.settings.qualificationForm?.enabled || false,
+          questions: o.settings.qualificationForm?.questions || [],
+          completionMessage: o.settings.qualificationForm?.completionMessage || '',
         })
       }
       setTemplates(tmpl)
@@ -184,6 +196,52 @@ export default function SettingsPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar', { duration: 6000 })
     } finally { setSavingAutoReply(false) }
+  }
+
+  const handleAddQuestion = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newQuestion.text.trim()) return
+    const q: QualificationQuestion = {
+      id: `q_${Date.now()}`,
+      text: newQuestion.text.trim(),
+      type: newQuestion.type,
+      order: qualForm.questions.length,
+    }
+    setQualForm(f => ({ ...f, questions: [...f.questions, q] }))
+    setNewQuestion({ text: '', type: 'text' })
+  }
+
+  const handleDeleteQuestion = (id: string) => {
+    setQualForm(f => ({
+      ...f,
+      questions: f.questions.filter(q => q.id !== id).map((q, i) => ({ ...q, order: i })),
+    }))
+  }
+
+  const handleSaveQualForm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile?.orgId) return
+    setSavingQualForm(true)
+    try {
+      await callApi({ action: 'save_qualification_form', form: qualForm })
+      toast.success('Formulario de calificación guardado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar')
+    } finally { setSavingQualForm(false) }
+  }
+
+  const questionTypeLabel: Record<QualificationQuestionType, string> = {
+    text: 'Texto libre',
+    phone: 'Teléfono',
+    yes_no: 'Sí / No',
+    number: 'Número',
+  }
+
+  const questionTypeBadge: Record<QualificationQuestionType, string> = {
+    text: 'bg-gray-100 text-gray-600',
+    phone: 'bg-green-100 text-green-700',
+    yes_no: 'bg-blue-100 text-blue-700',
+    number: 'bg-purple-100 text-purple-700',
   }
 
   const [cleaningPhones, setCleaningPhones] = useState(false)
@@ -439,6 +497,96 @@ export default function SettingsPage() {
         <button type="submit" disabled={savingAutoReply}
           className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
           {savingAutoReply ? 'Guardando...' : 'Guardar respuesta automática'}
+        </button>
+      </form>
+
+      {/* Formulario de calificación */}
+      <form onSubmit={handleSaveQualForm} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <ClipboardList size={20} className="text-gray-500" />
+          <div className="flex-1">
+            <h2 className="font-semibold text-gray-900">Formulario de calificación</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Se envía automáticamente por WhatsApp cuando un nuevo contacto escribe</p>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div
+            onClick={() => setQualForm(f => ({ ...f, enabled: !f.enabled }))}
+            className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${qualForm.enabled ? 'bg-gray-900' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${qualForm.enabled ? 'left-5' : 'left-1'}`} />
+          </div>
+          <span className="text-sm text-gray-700">{qualForm.enabled ? 'Formulario activado' : 'Formulario desactivado'}</span>
+        </label>
+
+        {/* Lista de preguntas */}
+        {qualForm.questions.length > 0 && (
+          <div className="space-y-2">
+            {qualForm.questions.map((q, i) => (
+              <div key={q.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                <GripVertical size={14} className="text-gray-300 flex-shrink-0" />
+                <span className="text-xs text-gray-400 font-mono w-4 flex-shrink-0">{i + 1}.</span>
+                <p className="flex-1 text-sm text-gray-800 truncate">{q.text}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${questionTypeBadge[q.type]}`}>
+                  {questionTypeLabel[q.type]}
+                </span>
+                <button type="button" onClick={() => handleDeleteQuestion(q.id)}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {qualForm.questions.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-3">Sin preguntas. Añade la primera abajo.</p>
+        )}
+
+        {/* Añadir pregunta */}
+        <div className="pt-2 border-t border-gray-100 space-y-2">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nueva pregunta</p>
+          <div className="flex gap-2">
+            <input
+              value={newQuestion.text}
+              onChange={e => setNewQuestion(q => ({ ...q, text: e.target.value }))}
+              placeholder="Escribe la pregunta..."
+              className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion(e) } }}
+            />
+            <select
+              value={newQuestion.type}
+              onChange={e => setNewQuestion(q => ({ ...q, type: e.target.value as QualificationQuestionType }))}
+              className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-500"
+            >
+              <option value="text">Texto libre</option>
+              <option value="phone">Teléfono</option>
+              <option value="yes_no">Sí / No</option>
+              <option value="number">Número</option>
+            </select>
+          </div>
+          <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-sm rounded-lg transition-colors">
+            <Plus size={14} /> Añadir pregunta
+          </button>
+        </div>
+
+        {/* Mensaje de cierre */}
+        <div>
+          <label className={labelClass}>Mensaje al finalizar el formulario</label>
+          <textarea
+            value={qualForm.completionMessage}
+            onChange={e => setQualForm(f => ({ ...f, completionMessage: e.target.value }))}
+            rows={2}
+            className={`${inputClass} resize-none`}
+            placeholder="Ej: ¡Gracias! En breve un agente te contactará."
+          />
+        </div>
+
+        <button type="submit" disabled={savingQualForm}
+          className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+          {savingQualForm ? 'Guardando...' : 'Guardar formulario'}
         </button>
       </form>
 

@@ -12,6 +12,15 @@ export interface AppUser {
   whatsappSessionId?: string // session ID in Baileys (defaults to uid)
 }
 
+export type QualificationQuestionType = 'text' | 'phone' | 'yes_no' | 'number'
+
+export interface QualificationQuestion {
+  id: string
+  text: string
+  type: QualificationQuestionType
+  order: number
+}
+
 export interface Organization {
   id: string
   name: string
@@ -30,6 +39,11 @@ export interface Organization {
     autoReply?: {
       enabled: boolean
       message: string
+    }
+    qualificationForm?: {
+      enabled: boolean
+      questions: QualificationQuestion[]
+      completionMessage?: string
     }
     roundRobinIndex?: number
   }
