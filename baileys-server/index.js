@@ -308,9 +308,13 @@ app.use(express.json({ limit: '50mb' }))
 app.get('/sessions', (_req, res) => {
   const list = []
   for (const [id, s] of sessions) {
-    list.push({ sessionId: id, status: s.status, hasQr: !!s.qr })
+    list.push({ sessionId: id, status: s.status, orgId: s.orgId || '', hasQr: !!s.qr })
   }
   res.json(list)
+})
+
+app.get('/debug', (_req, res) => {
+  res.json({ crmUrl: CRM_URL, port: PORT })
 })
 
 app.get('/status/:sessionId?', (req, res) => {
