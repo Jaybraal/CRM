@@ -34,15 +34,17 @@ export async function uploadMultiplePhotos(
   files: File[],
   onProgress?: (progress: number) => void
 ): Promise<string[]> {
-  const urls: string[] = []
-  for (let i = 0; i < files.length; i++) {
-    const url = await uploadPhoto(orgId, folder, files[i], (p) => {
-      const overall = ((i + p / 100) / files.length) * 100
-      onProgress?.(overall)
-    })
-    urls.push(url)
-  }
-  return urls
+  // Subir todas las fotos en paralelo
+  const progresses = new Array(files.length).fill(0)
+  return Promise.all(
+    files.map((file, i) =>
+      uploadPhoto(orgId, folder, file, (p) => {
+        progresses[i] = p
+        const overall = progresses.reduce((a, b) => a + b, 0) / files.length
+        onProgress?.(overall)
+      })
+    )
+  )
 }
 
 export async function deletePhoto(url: string) {

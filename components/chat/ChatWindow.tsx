@@ -119,13 +119,13 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
 
       if (hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
-        for (const url of photoUrls) {
-          await fetch('/api/whatsapp/send', {
+        await Promise.all(photoUrls.map(url =>
+          fetch('/api/whatsapp/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orgId: profile.orgId, to: jid, photoUrls: [url], type: 'image' }),
           })
-        }
+        ))
         if (text.trim()) {
           const waRes = await fetch('/api/whatsapp/send', {
             method: 'POST',
