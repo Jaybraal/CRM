@@ -314,7 +314,23 @@ app.get('/sessions', (_req, res) => {
 })
 
 app.get('/debug', (_req, res) => {
-  res.json({ crmUrl: CRM_URL, port: PORT })
+  const sessionList = []
+  for (const [id, s] of sessions) {
+    sessionList.push({ sessionId: id, status: s.status, orgId: s.orgId || '' })
+  }
+  res.json({ crmUrl: CRM_URL, port: PORT, sessions: sessionList })
+})
+
+// Forzar orgId en una sesión activa (para recuperación)
+app.post('/set-org/:sessionId', async (req, res) => {
+  const { sessionId } = req.params
+  const { orgId } = req.body
+  if (!orgId) return res.status(400).json({ error: 'orgId requerido' })
+  const s = sessions.get(sessionId)
+  if (!s) return res.status(404).json({ error: 'Sesion no encontrada' })
+  s.orgId = orgId
+  await db.collection('whatsapp_sessions').doc(sessionId).set({ orgId }, { merge: true })
+  res.json({ ok: true, sessionId, orgId })
 })
 
 app.get('/status/:sessionId?', (req, res) => {
@@ -338,7 +354,15 @@ app.post('/connect/:sessionId?', async (req, res) => {
   const orgId = req.body?.orgId || ''
   try {
     const s = sessions.get(sessionId)
-    if (s?.status === 'open') return res.json({ status: 'open', message: 'Ya conectado' })
+    if (s?.status === 'open') {
+      // Actualizar orgId en memoria y en Firestore aunque la sesión ya esté abierta
+      if (orgId && s.orgId !== orgId) {
+        s.orgId = orgId
+        db.collection('whatsapp_sessions').doc(sessionId).set({ orgId }, { merge: true }).catch(() => {})
+        console.log(`[${sessionId}] orgId actualizado: ${orgId}`)
+      }
+      return res.json({ status: 'open', message: 'Ya conectado' })
+    }
     startSession(sessionId, orgId)
     res.json({ status: 'connecting', message: 'Iniciando sesion, solicita QR en /qr/' + sessionId })
   } catch (e) {
