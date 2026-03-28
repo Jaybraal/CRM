@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     const baileysUrl = process.env.BAILEYS_URL?.trim()
 
     if (baileysUrl) {
-      // Send images
+      // Send images — return msgId of last image for tick tracking
+      let lastImgMsgId: string | null = null
       for (const url of photoUrls) {
         const imgRes = await fetch(`${baileysUrl}/send-image`, {
           method: 'POST',
@@ -34,6 +35,11 @@ export async function POST(req: NextRequest) {
           const err = await imgRes.json().catch(() => ({ error: 'Error desconocido' }))
           return NextResponse.json({ error: err.error || 'Error al enviar imagen' }, { status: imgRes.status })
         }
+        const imgData = await imgRes.json().catch(() => ({}))
+        if (imgData.msgId) lastImgMsgId = imgData.msgId
+      }
+      if (lastImgMsgId && photoUrls.length > 0 && !text?.trim()) {
+        return NextResponse.json({ ok: true, msgId: lastImgMsgId })
       }
 
       // Send location

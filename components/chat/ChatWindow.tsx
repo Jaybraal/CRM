@@ -119,13 +119,28 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
 
       if (hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
-        await Promise.all(photoUrls.map(url =>
-          fetch('/api/whatsapp/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, to: jid, photoUrls: [url], type: 'image' }),
-          })
-        ))
+        const { updateDoc, doc } = await import('firebase/firestore')
+        const { db } = await import('@/lib/firebase')
+        const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
+
+        // Send photos — capture msgId from last image for ticks
+        if (photoUrls.length > 0) {
+          let lastImgMsgId: string | null = null
+          for (const url of photoUrls) {
+            const imgRes = await fetch('/api/whatsapp/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orgId: profile.orgId, to: jid, photoUrls: [url], type: 'image' }),
+            })
+            const imgData = await imgRes.json().catch(() => ({}))
+            if (imgData.msgId) lastImgMsgId = imgData.msgId
+          }
+          if (lastImgMsgId && msgRef) {
+            await updateDoc(msgRef, { whatsappMsgId: lastImgMsgId, status: 'sent' })
+          }
+        }
+
+        // Send text
         if (text.trim()) {
           const waRes = await fetch('/api/whatsapp/send', {
             method: 'POST',
@@ -135,15 +150,9 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
           if (!waRes.ok) {
             toast.error('Mensaje guardado pero falló en WhatsApp', { duration: 4000 })
           } else {
-            // Guardar el msgId de Baileys en el mensaje de Firestore para rastrear ticks
             const waData = await waRes.json().catch(() => ({}))
-            if (waData.msgId && msgId) {
-              const { updateDoc, doc } = await import('firebase/firestore')
-              const { db } = await import('@/lib/firebase')
-              await updateDoc(
-                doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`),
-                { whatsappMsgId: waData.msgId, status: 'sent' }
-              )
+            if (waData.msgId && msgRef && photoUrls.length === 0) {
+              await updateDoc(msgRef, { whatsappMsgId: waData.msgId, status: 'sent' })
             }
           }
         }
@@ -217,7 +226,7 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
     // Si es contacto LID (número interno de WA), no se puede llamar via wa.me
     if (client.isLid && !client.phone) {
       toast('Para llamar a este contacto, abre WhatsApp en tu teléfono y llama desde el chat directamente.\n\nEste contacto usa privacidad de número (LID).', {
-        duration: 6000,
+        duration: 5000,
         icon: '📱',
       })
       return
