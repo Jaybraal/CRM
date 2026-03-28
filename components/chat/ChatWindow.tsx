@@ -109,7 +109,7 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
 
       const msgId = await sendMessage(profile.orgId, client.id, {
         type: photoUrls.length > 0 ? 'image' : 'text',
-        text: text.trim() || undefined,
+        text: text.trim() || '',
         photos: photoUrls,
         senderId: profile.uid,
         senderName: profile.displayName,
