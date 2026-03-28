@@ -279,6 +279,9 @@ export default function ClientsPage() {
                 <div className="space-y-1 text-sm text-gray-500 mb-3">
                   {(() => {
                     const phone = getDisplayPhone(client)
+                    if (!phone && client.isLid && !client.phone) {
+                      return <div className="flex items-center gap-1.5 text-xs text-amber-500"><Phone size={12} /><span>Número privado (LID)</span></div>
+                    }
                     return phone ? <div className="flex items-center gap-2"><Phone size={13} /><span>{phone}</span></div> : null
                   })()}
                   {client.email && <div className="flex items-center gap-2"><Mail size={13} /><span className="truncate">{client.email}</span></div>}

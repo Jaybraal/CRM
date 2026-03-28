@@ -213,6 +213,16 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
 
   const handleCall = async () => {
     if (!profile?.orgId) return
+
+    // Si es contacto LID (número interno de WA), no se puede llamar via wa.me
+    if (client.isLid && !client.phone) {
+      toast('Para llamar a este contacto, abre WhatsApp en tu teléfono y llama desde el chat directamente.\n\nEste contacto usa privacidad de número (LID).', {
+        duration: 6000,
+        icon: '📱',
+      })
+      return
+    }
+
     const callNumber = (client.phone || client.whatsappPhone)?.replace(/\D/g, '')
     if (!callNumber) { toast.error('Sin número de WhatsApp para llamar'); return }
     window.open(`https://wa.me/${callNumber}`, '_blank')
