@@ -90,6 +90,7 @@ export interface Client {
   phone?: string
   whatsappPhone?: string
   whatsappJid?: string
+  isLid?: boolean
   categoryId?: string
   tags: string[]
   photos: string[]

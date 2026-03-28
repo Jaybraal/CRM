@@ -66,12 +66,17 @@ export default function ClientsPage() {
   const getAgentName = (uid?: string) => agents.find(a => a.uid === uid)?.displayName || ''
 
   // Validate and format phone: returns "+digits" or null if not a real number
+  // Max 13 digits — LID numbers from WhatsApp are always 14+
   const formatPhone = (p?: string): string | null => {
     if (!p) return null
     const digits = p.replace(/[^\d]/g, '')
-    if (digits.length < 7 || digits.length > 15) return null
-    return p.startsWith('+') ? p : `+${digits}`
+    if (digits.length < 7 || digits.length > 13) return null
+    return `+${digits}`
   }
+
+  // Para clientes LID no mostrar whatsappPhone (no es número real)
+  const getDisplayPhone = (c: Client): string | null =>
+    formatPhone(c.phone) || (c.isLid ? null : formatPhone(c.whatsappPhone))
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -275,7 +280,7 @@ export default function ClientsPage() {
 
                 <div className="space-y-1 text-sm text-gray-500 mb-3">
                   {(() => {
-                    const phone = formatPhone(client.phone) || formatPhone(client.whatsappPhone)
+                    const phone = getDisplayPhone(client)
                     return phone ? <div className="flex items-center gap-2"><Phone size={13} /><span>{phone}</span></div> : null
                   })()}
                   {client.email && <div className="flex items-center gap-2"><Mail size={13} /><span className="truncate">{client.email}</span></div>}

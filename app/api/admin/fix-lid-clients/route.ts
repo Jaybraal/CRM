@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
       const hasLidFlag = data.isLid === true
       const hasLidPhone = isLidPhone(data.phone)
 
-      if (hasLidFlag || hasLidPhone) {
+      const hasLidWaPhone = isLidPhone(data.whatsappPhone)
+
+      if (hasLidFlag || hasLidPhone || hasLidWaPhone) {
         batch.update(doc.ref, {
           phone: FieldValue.delete(),
           isLid: true,
