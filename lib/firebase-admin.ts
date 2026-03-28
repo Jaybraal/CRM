@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getAuth } from 'firebase-admin/auth'
+import { getStorage } from 'firebase-admin/storage'
 
 function getAdminApp() {
   if (getApps().length) return getApp()
@@ -31,6 +32,12 @@ export function getAdminDb() {
 
 export function getAdminAuth() {
   return getAuth(getAdminApp())
+}
+
+export function getAdminStorage() {
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  if (!bucket) throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET no configurado')
+  return getStorage(getAdminApp()).bucket(bucket)
 }
 
 // Proxy transparente: adminDb.collection(...) etc.
