@@ -12,6 +12,7 @@ export async function GET() {
     privateKeyStart: pk.slice(0, 30),
     privateKeyEnd: pk.slice(-20),
     baileysUrl: process.env.BAILEYS_URL || 'MISSING',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'MISSING',
   })
 }
 
