@@ -140,11 +140,11 @@ export async function POST(req: NextRequest) {
     if (baileysUrl) {
       const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()
       const autoReply = orgDoc.data()?.settings?.autoReply
-      if (autoReply?.enabled && autoReply?.message) {
+      if (autoReply?.enabled && autoReply?.message && type !== 'call') {
         void fetch(`${baileysUrl}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: jid || from, text: autoReply.message }),
+          body: JSON.stringify({ to: jid || from, text: autoReply.message, sessionId: orgId }),
         })
       }
     }
