@@ -50,6 +50,8 @@ export interface MessageLocation {
   name?: string
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read'
+
 export interface Message {
   id: string
   orgId: string
@@ -62,6 +64,8 @@ export interface Message {
   senderId: string
   senderName: string
   source: 'internal' | 'whatsapp'
+  status?: MessageStatus   // solo mensajes enviados por el agente
+  whatsappMsgId?: string   // ID del mensaje en Baileys
   createdAt: Date
 }
 

@@ -1,32 +1,40 @@
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app'
-import { getFirestore, Firestore } from 'firebase-admin/firestore'
+import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
+import { getAuth } from 'firebase-admin/auth'
 
-let app: App | undefined
-let _adminDb: Firestore | undefined
+function getAdminApp() {
+  if (getApps().length) return getApp()
 
-function getAdminApp(): App {
-  if (!app || !getApps().length) {
-    app = initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID!,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    })
+  const projectId   = process.env.FIREBASE_ADMIN_PROJECT_ID
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+  const rawKey      = process.env.FIREBASE_ADMIN_PRIVATE_KEY
+
+  if (!projectId || !clientEmail || !rawKey) {
+    throw new Error(
+      `Firebase Admin SDK: variables faltantes — ` +
+      `PROJECT_ID=${!!projectId}, CLIENT_EMAIL=${!!clientEmail}, PRIVATE_KEY=${!!rawKey}`
+    )
   }
-  return getApps()[0]
+
+  // Normalizar la clave (Vercel puede guardar \n como literal o como salto real)
+  const privateKey = rawKey.replace(/\\n/g, '\n').trim()
+
+  return initializeApp({
+    credential: cert({ projectId, clientEmail, privateKey }),
+  })
 }
 
-export function getAdminDb(): Firestore {
-  if (!_adminDb) {
-    getAdminApp()
-    _adminDb = getFirestore()
-  }
-  return _adminDb
+// Pasamos la app explícitamente para evitar el error "default app does not exist"
+export function getAdminDb() {
+  return getFirestore(getAdminApp())
 }
 
-// Proxy para uso transparente: adminDb.collection(...) etc.
-export const adminDb = new Proxy({} as Firestore, {
+export function getAdminAuth() {
+  return getAuth(getAdminApp())
+}
+
+// Proxy transparente: adminDb.collection(...) etc.
+export const adminDb = new Proxy({} as ReturnType<typeof getFirestore>, {
   get(_target, prop) {
     return (getAdminDb() as unknown as Record<string | symbol, unknown>)[prop]
   },

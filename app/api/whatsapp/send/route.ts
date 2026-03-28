@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const baileysUrl = process.env.BAILEYS_URL
+    const baileysUrl = process.env.BAILEYS_URL?.trim()
 
     if (baileysUrl) {
       // Send images
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         const imgRes = await fetch(`${baileysUrl}/send-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to, url, caption: '' }),
+          body: JSON.stringify({ to, url, caption: '', sessionId: orgId }),
         })
         if (!imgRes.ok) {
           const err = await imgRes.json().catch(() => ({ error: 'Error desconocido' }))
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         const locRes = await fetch(`${baileysUrl}/send-location`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to, lat: location.lat, lng: location.lng, name: location.name }),
+          body: JSON.stringify({ to, lat: location.lat, lng: location.lng, name: location.name, sessionId: orgId }),
         })
         if (!locRes.ok) {
           const err = await locRes.json().catch(() => ({ error: 'Error desconocido' }))
@@ -65,13 +65,15 @@ export async function POST(req: NextRequest) {
         const sendRes = await fetch(`${baileysUrl}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to, text: text.trim() }),
+          body: JSON.stringify({ to, text: text.trim(), sessionId: orgId }),
         })
         if (!sendRes.ok) {
           const err = await sendRes.json().catch(() => ({ error: 'Error desconocido' }))
           console.error('Baileys send error:', err)
           return NextResponse.json({ error: err.error || 'Error al enviar por WhatsApp' }, { status: sendRes.status })
         }
+        const sendData = await sendRes.json().catch(() => ({}))
+        return NextResponse.json({ ok: true, msgId: sendData.msgId || null })
       }
 
       return NextResponse.json({ ok: true })

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getOrganization, saveWhatsAppConfig, getWhatsAppTemplates, createWhatsAppTemplate, deleteWhatsAppTemplate } from '@/lib/firestore'
+import { getOrganization, saveWhatsAppConfig, getWhatsAppTemplates } from '@/lib/firestore'
 import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Organization, WhatsAppTemplate, PipelineStage } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
-import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot } from 'lucide-react'
+import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
@@ -69,18 +69,26 @@ export default function SettingsPage() {
     .finally(() => setLoading(false))
   }, [profile])
 
+  const callApi = async (body: Record<string, unknown>) => {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId: profile?.orgId, ...body }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Error desconocido')
+    return data
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile?.orgId) return
     setSaving(true)
     try {
-      await updateDoc(doc(db, 'organizations', profile.orgId), {
-        name: form.name,
-        'settings.industry': form.industry,
-      })
+      await callApi({ action: 'save_org', name: form.name, industry: form.industry })
       toast.success('Configuración guardada')
-    } catch {
-      toast.error('Error al guardar')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setSaving(false)
     }
@@ -116,20 +124,24 @@ export default function SettingsPage() {
     if (!profile?.orgId || !newTemplate.name || !newTemplate.body) return
     setSavingTemplate(true)
     try {
-      await createWhatsAppTemplate(profile.orgId, newTemplate)
-      const updated = await getWhatsAppTemplates(profile.orgId)
-      setTemplates(updated)
+      const data = await callApi({ action: 'save_template', name: newTemplate.name, body: newTemplate.body })
+      setTemplates(prev => [...prev, { id: data.id, name: newTemplate.name, body: newTemplate.body, createdAt: new Date() }])
       setNewTemplate({ name: '', body: '' })
       toast.success('Plantilla guardada')
-    } catch { toast.error('Error al guardar') }
-    finally { setSavingTemplate(false) }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar', { duration: 6000 })
+    } finally { setSavingTemplate(false) }
   }
 
   const handleDeleteTemplate = async (id: string) => {
     if (!profile?.orgId) return
-    await deleteWhatsAppTemplate(profile.orgId, id)
-    setTemplates(prev => prev.filter(t => t.id !== id))
-    toast.success('Plantilla eliminada')
+    try {
+      await callApi({ action: 'delete_template', templateId: id })
+      setTemplates(prev => prev.filter(t => t.id !== id))
+      toast.success('Plantilla eliminada')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar')
+    }
   }
 
   const handleAddStage = async (e: React.FormEvent) => {
@@ -141,20 +153,25 @@ export default function SettingsPage() {
         ...stages,
         { id: `stage_${Date.now()}`, name: newStage.name, color: newStage.color, order: stages.length },
       ]
-      await updateDoc(doc(db, 'organizations', profile.orgId), { 'settings.pipelineStages': updated })
+      await callApi({ action: 'save_pipeline_stage', stages: updated })
       setStages(updated)
       setNewStage({ name: '', color: '#6b7280' })
       toast.success('Etapa añadida')
-    } catch { toast.error('Error al guardar') }
-    finally { setSavingStage(false) }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setSavingStage(false) }
   }
 
   const handleDeleteStage = async (id: string) => {
     if (!profile?.orgId) return
     const updated = stages.filter(s => s.id !== id)
-    await updateDoc(doc(db, 'organizations', profile.orgId), { 'settings.pipelineStages': updated })
-    setStages(updated)
-    toast.success('Etapa eliminada')
+    try {
+      await callApi({ action: 'save_pipeline_stage', stages: updated })
+      setStages(updated)
+      toast.success('Etapa eliminada')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar')
+    }
   }
 
   const handleSaveAutoReply = async (e: React.FormEvent) => {
@@ -162,12 +179,48 @@ export default function SettingsPage() {
     if (!profile?.orgId) return
     setSavingAutoReply(true)
     try {
-      await updateDoc(doc(db, 'organizations', profile.orgId), {
-        'settings.autoReply': autoReply,
-      })
+      await callApi({ action: 'save_autoreply', enabled: autoReply.enabled, message: autoReply.message })
       toast.success('Respuesta automática guardada')
-    } catch { toast.error('Error al guardar') }
-    finally { setSavingAutoReply(false) }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar', { duration: 6000 })
+    } finally { setSavingAutoReply(false) }
+  }
+
+  const [cleaningPhones, setCleaningPhones] = useState(false)
+  const [cleaningFakes, setCleaningFakes] = useState(false)
+
+  const handleFixPhones = async () => {
+    if (!profile?.orgId) return
+    setCleaningPhones(true)
+    try {
+      const res = await fetch('/api/admin/fix-phone-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: profile.orgId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`${data.fixed} registros corregidos`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    } finally { setCleaningPhones(false) }
+  }
+
+  const handleCleanFakes = async () => {
+    if (!profile?.orgId) return
+    setCleaningFakes(true)
+    try {
+      const res = await fetch('/api/admin/cleanup-fake-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: profile.orgId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`${data.deleted} clientes falsos eliminados`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    } finally { setCleaningFakes(false) }
   }
 
   const copyWebhook = () => {
@@ -402,6 +455,41 @@ export default function SettingsPage() {
           </span>
         </div>
       </div>
+
+      {/* Mantenimiento — solo owners */}
+      {profile?.role === 'owner' && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <Wrench size={20} className="text-gray-500" />
+            <div>
+              <h2 className="font-semibold text-gray-900">Mantenimiento de datos</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Herramientas para limpiar datos incorrectos</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Corregir teléfonos inválidos</p>
+                <p className="text-xs text-gray-500">Elimina campos de teléfono con texto en lugar de números</p>
+              </div>
+              <button onClick={handleFixPhones} disabled={cleaningPhones}
+                className="flex-shrink-0 px-4 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+                {cleaningPhones ? 'Procesando...' : 'Ejecutar'}
+              </button>
+            </div>
+            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Eliminar contactos falsos de WhatsApp</p>
+                <p className="text-xs text-gray-500">Elimina clientes creados por newsletters, broadcasts o JIDs inválidos</p>
+              </div>
+              <button onClick={handleCleanFakes} disabled={cleaningFakes}
+                className="flex-shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+                {cleaningFakes ? 'Procesando...' : 'Limpiar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

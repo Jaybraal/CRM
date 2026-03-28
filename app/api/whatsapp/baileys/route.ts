@@ -5,14 +5,26 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 async function getNextAgentForOrg(orgId: string): Promise<string> {
-  const usersSnap = await adminDb.collection('users')
-    .where('orgId', '==', orgId)
-    .where('role', '==', 'agent')
-    .get()
+  // Incluir agents y supervisors en el round-robin
+  const [agentsSnap, supervisorsSnap] = await Promise.all([
+    adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'agent').get(),
+    adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'supervisor').get(),
+  ])
 
-  if (usersSnap.empty) return ''
+  const agents = [
+    ...agentsSnap.docs.map(d => d.id),
+    ...supervisorsSnap.docs.map(d => d.id),
+  ].sort()
 
-  const agents = usersSnap.docs.map(d => d.id).sort()
+  // Si no hay agentes ni supervisors, asignar al owner
+  if (agents.length === 0) {
+    const ownerSnap = await adminDb.collection('users')
+      .where('orgId', '==', orgId)
+      .where('role', '==', 'owner')
+      .limit(1)
+      .get()
+    return ownerSnap.empty ? '' : ownerSnap.docs[0].id
+  }
   const orgRef = adminDb.doc(`organizations/${orgId}`)
 
   const assignedUid = await adminDb.runTransaction(async (tx) => {
@@ -122,7 +134,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Auto-reply
-    const baileysUrl = process.env.BAILEYS_URL
+    const baileysUrl = process.env.BAILEYS_URL?.trim()
     if (baileysUrl) {
       const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()
       const autoReply = orgDoc.data()?.settings?.autoReply

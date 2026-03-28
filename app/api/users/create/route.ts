@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb } from '@/lib/firebase-admin'
-import { getAuth } from 'firebase-admin/auth'
+import { adminDb, getAdminAuth } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -13,8 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
-    // Reuse the app already initialized by lib/firebase-admin
-    const adminAuth = getAuth()
+    const adminAuth = getAdminAuth()
 
     const userRecord = await adminAuth.createUser({
       email,

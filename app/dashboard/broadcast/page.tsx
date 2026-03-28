@@ -40,11 +40,12 @@ export default function BroadcastPage() {
       getCategories(profile.orgId),
       getOrganization(profile.orgId),
       getWhatsAppTemplates(profile.orgId),
-    ]).then(([c, cats, org, tmpl]) => {
+      fetch(`/api/whatsapp/status?sessionId=${profile.orgId}`).then(r => r.json()).catch(() => ({})),
+    ]).then(([c, cats, , tmpl, sessionData]) => {
       setClients(c)
       setCategories(cats)
       setTemplates(tmpl)
-      setHasWhatsApp(!!(org?.settings?.whatsapp?.phoneNumberId && org?.settings?.whatsapp?.token))
+      setHasWhatsApp(sessionData?.status === 'open')
       setLoading(false)
     })
   }, [profile?.orgId])

@@ -54,14 +54,24 @@ export default function ClientsPage() {
   const filtered = clients.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone?.includes(search)
+      c.phone?.includes(search) ||
+      c.whatsappPhone?.includes(search)
     const matchCat = !filterCategory || c.categoryId === filterCategory
     const matchStatus = !filterStatus || c.status === filterStatus
-    const matchAgent = !filterAgent || c.assignedTo === filterAgent
+    const matchAgent = !filterAgent
+      || (filterAgent === '__unassigned__' ? !c.assignedTo : c.assignedTo === filterAgent)
     return matchSearch && matchCat && matchStatus && matchAgent
   })
 
   const getAgentName = (uid?: string) => agents.find(a => a.uid === uid)?.displayName || ''
+
+  // Validate and format phone: returns "+digits" or null if not a real number
+  const formatPhone = (p?: string): string | null => {
+    if (!p) return null
+    const digits = p.replace(/[^\d]/g, '')
+    if (digits.length < 7 || digits.length > 15) return null
+    return p.startsWith('+') ? p : `+${digits}`
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -84,6 +94,14 @@ export default function ClientsPage() {
     if (!confirm('¿Eliminar este cliente?') || !profile?.orgId) return
     await deleteClient(profile.orgId, id)
     toast.success('Cliente eliminado')
+  }
+
+  const handleAssignToMe = async (clientId: string) => {
+    if (!profile?.orgId || !profile?.uid) return
+    const { updateDoc, doc } = await import('firebase/firestore')
+    const { db } = await import('@/lib/firebase')
+    await updateDoc(doc(db, `organizations/${profile.orgId}/clients/${clientId}`), { assignedTo: profile.uid })
+    toast.success('Chat asignado a ti')
   }
 
   const getCategoryName = (id?: string) => categories.find(c => c.id === id)?.name || ''
@@ -212,6 +230,7 @@ export default function ClientsPage() {
           <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)}
             className="bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-gray-500">
             <option value="">Todos los agentes</option>
+            <option value="__unassigned__">Sin asignar</option>
             {agents.map(a => <option key={a.uid} value={a.uid}>{a.displayName}</option>)}
           </select>
         )}
@@ -255,7 +274,10 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-1 text-sm text-gray-500 mb-3">
-                  {client.phone && <div className="flex items-center gap-2"><Phone size={13} /><span>{client.phone}</span></div>}
+                  {(() => {
+                    const phone = formatPhone(client.phone) || formatPhone(client.whatsappPhone)
+                    return phone ? <div className="flex items-center gap-2"><Phone size={13} /><span>{phone}</span></div> : null
+                  })()}
                   {client.email && <div className="flex items-center gap-2"><Mail size={13} /><span className="truncate">{client.email}</span></div>}
                 </div>
 
@@ -280,12 +302,25 @@ export default function ClientsPage() {
                   </div>
                 )}
 
-                {agents.length > 0 && client.assignedTo && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
                     <UserCheck size={12} />
-                    <span>{getAgentName(client.assignedTo) || '—'}</span>
+                    <span>{client.assignedTo ? (getAgentName(client.assignedTo) || 'Asignado') : 'Sin asignar'}</span>
                   </div>
-                )}
+                  {/* Botón tomar: visible para no-agentes, o agentes si no está asignado a ellos */}
+                  {profile?.role !== 'agent' && !client.assignedTo && (
+                    <button onClick={() => handleAssignToMe(client.id)}
+                      className="text-xs text-[#075E54] hover:underline font-medium">
+                      Tomar chat
+                    </button>
+                  )}
+                  {profile?.role !== 'agent' && client.assignedTo && client.assignedTo !== profile?.uid && (
+                    <button onClick={() => handleAssignToMe(client.id)}
+                      className="text-xs text-gray-400 hover:text-gray-700 hover:underline">
+                      Asignarme
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex gap-2 pt-3 border-t border-gray-100">
                   <button onClick={() => { setEditClient(client); setShowForm(true) }}

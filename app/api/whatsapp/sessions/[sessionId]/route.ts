@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const BAILEYS_URL = process.env.BAILEYS_URL || 'http://localhost:3001'
+const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3001').trim()
 
 // GET /api/whatsapp/sessions/[sessionId]?orgId=xxx - get status + QR
 export async function GET(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {

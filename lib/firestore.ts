@@ -1,7 +1,7 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   getDocs, getDoc, setDoc, query, where, orderBy, serverTimestamp,
-  Timestamp, onSnapshot
+  Timestamp, onSnapshot, limit
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, OrgStats } from '@/types'
@@ -131,10 +131,15 @@ export async function getClients(orgId: string, assignedTo?: string) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() })) as Client[]
 }
 
-export function subscribeToClients(orgId: string, assignedTo: string | undefined, cb: (clients: Client[]) => void) {
+export function subscribeToClients(
+  orgId: string,
+  assignedTo: string | undefined,
+  cb: (clients: Client[]) => void,
+  pageSize = 100
+) {
   const q = assignedTo
-    ? query(collection(db, 'organizations', orgId, 'clients'), where('assignedTo', '==', assignedTo), orderBy('createdAt', 'desc'))
-    : query(collection(db, 'organizations', orgId, 'clients'), orderBy('createdAt', 'desc'))
+    ? query(collection(db, 'organizations', orgId, 'clients'), where('assignedTo', '==', assignedTo), orderBy('createdAt', 'desc'), limit(pageSize))
+    : query(collection(db, 'organizations', orgId, 'clients'), orderBy('createdAt', 'desc'), limit(pageSize))
   return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Client[]))
 }
 

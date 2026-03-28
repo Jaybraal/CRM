@@ -1,0 +1,64 @@
+export const dynamic = 'force-dynamic'
+
+import { adminDb } from '@/lib/firebase-admin'
+import { FieldValue } from 'firebase-admin/firestore'
+import { NextRequest, NextResponse } from 'next/server'
+
+// POST /api/settings — guardar plantilla o respuesta automática
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { orgId, action } = body
+
+    if (!orgId) return NextResponse.json({ error: 'orgId requerido' }, { status: 400 })
+
+    if (action === 'save_template') {
+      const { name, body: text } = body
+      if (!name || !text) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
+      const ref = await adminDb
+        .collection(`organizations/${orgId}/whatsapp_templates`)
+        .add({ name, body: text, createdAt: FieldValue.serverTimestamp() })
+      return NextResponse.json({ ok: true, id: ref.id })
+    }
+
+    if (action === 'delete_template') {
+      const { templateId } = body
+      if (!templateId) return NextResponse.json({ error: 'templateId requerido' }, { status: 400 })
+      await adminDb.doc(`organizations/${orgId}/whatsapp_templates/${templateId}`).delete()
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'save_autoreply') {
+      const { enabled, message } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { autoReply: { enabled: !!enabled, message: message || '' } } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'save_org') {
+      const { name, industry } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { name, settings: { industry } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'save_pipeline_stage') {
+      const { stages } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { pipelineStages: stages } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
+    return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('settings API error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}

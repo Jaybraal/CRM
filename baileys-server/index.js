@@ -188,9 +188,13 @@ async function startSession(sessionId, orgId) {
     if (type !== 'notify') return
     for (const msg of messages) {
       if (msg.key.fromMe) continue
-      if (msg.key.remoteJid?.endsWith('@g.us')) continue
+      const jid = msg.key.remoteJid || ''
+      if (jid.endsWith('@g.us')) continue
+      if (jid.endsWith('@newsletter')) continue
+      if (jid.endsWith('@broadcast')) continue
+      if (jid === 'status@broadcast') continue
+      if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@lid')) continue
 
-      const jid      = msg.key.remoteJid || ''
       const from     = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
       const fromName = msg.pushName || from
 
@@ -231,6 +235,29 @@ async function startSession(sessionId, orgId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, location: locationData, sessionId }),
       }).catch(e => console.error('Error reenvio al CRM:', e.message))
+    }
+  })
+
+  // Actualizaciones de estado de mensajes enviados (ticks)
+  sock.ev.on('messages.update', async (updates) => {
+    const orgId = sessions.get(sessionId)?.orgId
+    if (!orgId) return
+    for (const update of updates) {
+      if (!update.key?.fromMe) continue // solo mensajes enviados por nosotros
+      const msgId = update.key.id
+      const statusCode = update.update?.status
+      if (!msgId || statusCode == null) continue
+
+      // Necesitamos el clientId — lo buscamos en Firestore por el JID
+      const jid = update.key.remoteJid || ''
+      const phone = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
+      if (!phone) continue
+
+      fetch(`${CRM_URL}/api/whatsapp/message-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId, phone, whatsappMsgId: msgId, statusCode }),
+      }).catch(() => {})
     }
   })
 
@@ -336,15 +363,16 @@ app.delete('/session/:sessionId?', async (req, res) => {
 })
 
 app.post('/send', async (req, res) => {
-  const { to, text, sessionId: sid } = req.body
+  const { to, text, sessionId: sid, orgId, clientId } = req.body
   const sessionId = sid || 'default'
   const s = sessions.get(sessionId)
   if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !text) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    await s.sock.sendMessage(jid, { text })
-    res.json({ ok: true })
+    const result = await s.sock.sendMessage(jid, { text })
+    const msgId = result?.key?.id || null
+    res.json({ ok: true, msgId })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -358,8 +386,9 @@ app.post('/send-image', async (req, res) => {
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    await s.sock.sendMessage(jid, { image: { url }, caption: caption || '' })
-    res.json({ ok: true })
+    const result = await s.sock.sendMessage(jid, { image: { url }, caption: caption || '' })
+    const msgId = result?.key?.id || null
+    res.json({ ok: true, msgId })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -373,10 +402,11 @@ app.post('/send-location', async (req, res) => {
   if (!to || lat == null || lng == null) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    await s.sock.sendMessage(jid, {
+    const result = await s.sock.sendMessage(jid, {
       location: { degreesLatitude: parseFloat(lat), degreesLongitude: parseFloat(lng), name: name || '' },
     })
-    res.json({ ok: true })
+    const msgId = result?.key?.id || null
+    res.json({ ok: true, msgId })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
