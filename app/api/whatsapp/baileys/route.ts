@@ -168,6 +168,15 @@ export async function POST(req: NextRequest) {
               }
             }
 
+            // If autoTag, add answer as client tag
+            if (currentQ.autoTag && text.trim()) {
+              const tagValue = text.trim().toLowerCase()
+              await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).update({
+                tags: FieldValue.arrayUnion(tagValue),
+                updatedAt: FieldValue.serverTimestamp(),
+              })
+            }
+
             const nextIndex = session.currentQuestion + 1
             if (nextIndex >= questions.length) {
               await sessionRef.update({ state: 'completed', answers, completedAt: FieldValue.serverTimestamp() })

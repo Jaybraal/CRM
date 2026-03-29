@@ -19,6 +19,7 @@ export interface QualificationQuestion {
   text: string
   type: QualificationQuestionType
   order: number
+  autoTag?: boolean  // si true, la respuesta se añade como etiqueta al cliente
 }
 
 export interface Organization {

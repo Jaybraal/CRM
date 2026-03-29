@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase'
 import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
-import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical } from 'lucide-react'
+import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
@@ -36,7 +36,7 @@ export default function SettingsPage() {
     questions: QualificationQuestion[]
     completionMessage: string
   }>({ enabled: false, questions: [], completionMessage: '' })
-  const [newQuestion, setNewQuestion] = useState({ text: '', type: 'text' as QualificationQuestionType })
+  const [newQuestion, setNewQuestion] = useState({ text: '', type: 'text' as QualificationQuestionType, autoTag: false })
   const [savingQualForm, setSavingQualForm] = useState(false)
 
   const DEFAULT_STAGES: PipelineStage[] = [
@@ -207,9 +207,10 @@ export default function SettingsPage() {
       text: newQuestion.text.trim(),
       type: newQuestion.type,
       order: qualForm.questions.length,
+      ...(newQuestion.autoTag ? { autoTag: true } : {}),
     }
     setQualForm(f => ({ ...f, questions: [...f.questions, q] }))
-    setNewQuestion({ text: '', type: 'text' })
+    setNewQuestion({ text: '', type: 'text', autoTag: false })
   }
 
   const handleDeleteQuestion = (id: string) => {
@@ -534,6 +535,11 @@ export default function SettingsPage() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${questionTypeBadge[q.type]}`}>
                   {questionTypeLabel[q.type]}
                 </span>
+                {q.autoTag && (
+                  <span title="Guardar como etiqueta" className="flex-shrink-0 text-orange-500">
+                    <Tag size={13} />
+                  </span>
+                )}
                 <button type="button" onClick={() => handleDeleteQuestion(q.id)}
                   className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0">
                   <Trash2 size={13} />
@@ -567,6 +573,17 @@ export default function SettingsPage() {
             <option value="yes_no">Sí / No</option>
             <option value="number">Número</option>
           </select>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={newQuestion.autoTag}
+              onChange={e => setNewQuestion(q => ({ ...q, autoTag: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-300 text-gray-900 cursor-pointer"
+            />
+            <span className="text-sm text-gray-700 flex items-center gap-1.5">
+              <Tag size={13} className="text-orange-500" /> Guardar respuesta como etiqueta del cliente
+            </span>
+          </label>
           <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
             className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white text-sm rounded-lg transition-colors">
             <Plus size={14} /> Añadir pregunta
