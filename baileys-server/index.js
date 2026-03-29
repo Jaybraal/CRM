@@ -231,11 +231,24 @@ async function startSession(sessionId, orgId) {
       const orgId = sessions.get(sessionId)?.orgId
       if (!orgId) continue
 
-      fetch(`${CRM_URL}/api/whatsapp/baileys`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId }),
-      }).catch(e => console.error('Error reenvio al CRM:', e.message))
+      // Retry hasta 3 veces si el CRM no responde
+      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId })
+      ;(async () => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const res = await fetch(`${CRM_URL}/api/whatsapp/baileys`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+            })
+            if (res.ok) break
+            console.warn(`CRM webhook intento ${attempt} fallido: ${res.status}`)
+          } catch (e) {
+            console.warn(`CRM webhook intento ${attempt} error: ${e.message}`)
+          }
+          if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000))
+        }
+      })()
     }
   })
 
