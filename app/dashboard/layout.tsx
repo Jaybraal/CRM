@@ -10,7 +10,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isChatsPage = pathname === '/dashboard/clients'
   return (
-    <div className="flex overflow-x-hidden" style={{ height: '100dvh' }}>
+    <div className="flex bg-gray-50 overflow-x-hidden" style={{ height: '100dvh' }}>
       <Sidebar />
       <main className={
         isChatsPage
