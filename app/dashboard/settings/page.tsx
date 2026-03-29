@@ -557,22 +557,20 @@ export default function SettingsPage() {
             className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion(e) } }}
           />
-          <div className="flex gap-2">
-            <select
-              value={newQuestion.type}
-              onChange={e => setNewQuestion(q => ({ ...q, type: e.target.value as QualificationQuestionType }))}
-              className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-500"
-            >
-              <option value="text">Texto libre</option>
-              <option value="phone">Teléfono (se guarda como número)</option>
-              <option value="yes_no">Sí / No</option>
-              <option value="number">Número</option>
-            </select>
-            <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white text-sm rounded-lg transition-colors flex-shrink-0">
-              <Plus size={14} /> Añadir
-            </button>
-          </div>
+          <select
+            value={newQuestion.type}
+            onChange={e => setNewQuestion(q => ({ ...q, type: e.target.value as QualificationQuestionType }))}
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-500"
+          >
+            <option value="text">Texto libre</option>
+            <option value="phone">Teléfono (se guarda como número)</option>
+            <option value="yes_no">Sí / No</option>
+            <option value="number">Número</option>
+          </select>
+          <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
+            className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white text-sm rounded-lg transition-colors">
+            <Plus size={14} /> Añadir pregunta
+          </button>
         </div>
 
         {/* Mensaje de cierre */}
