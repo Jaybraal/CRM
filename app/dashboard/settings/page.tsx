@@ -10,8 +10,9 @@ import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
 import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical } from 'lucide-react'
 
-const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
+const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
+const cardClass = 'bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4'
 
 export default function SettingsPage() {
   const { profile } = useAuth()
@@ -301,7 +302,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Organización */}
-      <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleSave} className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <Building2 size={20} className="text-gray-500" />
           <h2 className="font-semibold text-gray-900">Información de la organización</h2>
@@ -327,7 +328,7 @@ export default function SettingsPage() {
       </form>
 
       {/* WhatsApp — Baileys QR */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+      <div className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <MessageCircle size={20} className="text-gray-500" />
           <div>
@@ -339,7 +340,7 @@ export default function SettingsPage() {
       </div>
 
       {/* WhatsApp — Meta Cloud API (opcional) */}
-      <form onSubmit={handleSaveWhatsApp} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleSaveWhatsApp} className={cardClass}>
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <MessageCircle size={20} className="text-gray-400" />
@@ -396,7 +397,7 @@ export default function SettingsPage() {
       </form>
 
       {/* Etapas del pipeline */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <div className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <GitBranch size={20} className="text-gray-500" />
           <h2 className="font-semibold text-gray-900">Etapas del pipeline</h2>
@@ -415,21 +416,23 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-        <form onSubmit={handleAddStage} className="flex gap-2 pt-2 border-t border-gray-100">
-          <input value={newStage.name} onChange={e => setNewStage(s => ({ ...s, name: e.target.value }))}
-            className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
-            placeholder="Nombre de la etapa" />
-          <input type="color" value={newStage.color} onChange={e => setNewStage(s => ({ ...s, color: e.target.value }))}
-            className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1" />
+        <form onSubmit={handleAddStage} className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+          <div className="flex gap-2">
+            <input value={newStage.name} onChange={e => setNewStage(s => ({ ...s, name: e.target.value }))}
+              className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+              placeholder="Nombre de la etapa" />
+            <input type="color" value={newStage.color} onChange={e => setNewStage(s => ({ ...s, color: e.target.value }))}
+              className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1 flex-shrink-0" />
+          </div>
           <button type="submit" disabled={savingStage || !newStage.name}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-            <Plus size={14} /> Añadir
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+            <Plus size={14} /> Añadir etapa
           </button>
         </form>
       </div>
 
       {/* Plantillas de WhatsApp */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <div className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <MessageCircle size={20} className="text-gray-500" />
           <h2 className="font-semibold text-gray-900">Plantillas de WhatsApp</h2>
@@ -458,14 +461,14 @@ export default function SettingsPage() {
           <textarea value={newTemplate.body} onChange={e => setNewTemplate(t => ({ ...t, body: e.target.value }))}
             rows={2} className={`${inputClass} resize-none`} placeholder="Texto del mensaje..." />
           <button type="submit" disabled={savingTemplate || !newTemplate.name || !newTemplate.body}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
+            className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
             <Plus size={14} /> Guardar plantilla
           </button>
         </form>
       </div>
 
       {/* Auto-reply bot */}
-      <form onSubmit={handleSaveAutoReply} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <form onSubmit={handleSaveAutoReply} className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <Bot size={20} className="text-gray-500" />
           <div className="flex-1">
@@ -501,7 +504,7 @@ export default function SettingsPage() {
       </form>
 
       {/* Formulario de calificación */}
-      <form onSubmit={handleSaveQualForm} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <form onSubmit={handleSaveQualForm} className={cardClass}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <ClipboardList size={20} className="text-gray-500" />
           <div className="flex-1">
@@ -547,29 +550,29 @@ export default function SettingsPage() {
         {/* Añadir pregunta */}
         <div className="pt-2 border-t border-gray-100 space-y-2">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nueva pregunta</p>
+          <input
+            value={newQuestion.text}
+            onChange={e => setNewQuestion(q => ({ ...q, text: e.target.value }))}
+            placeholder="Escribe la pregunta..."
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion(e) } }}
+          />
           <div className="flex gap-2">
-            <input
-              value={newQuestion.text}
-              onChange={e => setNewQuestion(q => ({ ...q, text: e.target.value }))}
-              placeholder="Escribe la pregunta..."
-              className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion(e) } }}
-            />
             <select
               value={newQuestion.type}
               onChange={e => setNewQuestion(q => ({ ...q, type: e.target.value as QualificationQuestionType }))}
-              className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-500"
+              className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-500"
             >
               <option value="text">Texto libre</option>
-              <option value="phone">Teléfono</option>
+              <option value="phone">Teléfono (se guarda como número)</option>
               <option value="yes_no">Sí / No</option>
               <option value="number">Número</option>
             </select>
+            <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white text-sm rounded-lg transition-colors flex-shrink-0">
+              <Plus size={14} /> Añadir
+            </button>
           </div>
-          <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-sm rounded-lg transition-colors">
-            <Plus size={14} /> Añadir pregunta
-          </button>
         </div>
 
         {/* Mensaje de cierre */}
@@ -591,7 +594,7 @@ export default function SettingsPage() {
       </form>
 
       {/* Plan */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
         <h2 className="font-semibold text-gray-900 mb-3">Plan actual</h2>
         <div className="flex items-center justify-between">
           <div>
@@ -606,7 +609,7 @@ export default function SettingsPage() {
 
       {/* Mantenimiento — solo owners */}
       {profile?.role === 'owner' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        <div className={cardClass}>
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
             <Wrench size={20} className="text-gray-500" />
             <div>
