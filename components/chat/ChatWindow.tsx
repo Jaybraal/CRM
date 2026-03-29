@@ -180,7 +180,8 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         setGettingGps(false)
         toast.success('Ubicación obtenida')
       },
-      () => { toast.error('No se pudo obtener ubicación'); setGettingGps(false) }
+      () => { toast.error('No se pudo obtener ubicación'); setGettingGps(false) },
+      { timeout: 10000, maximumAge: 60000 }
     )
   }
 

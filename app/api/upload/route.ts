@@ -15,7 +15,11 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'jpg'
+    const extMap: Record<string, string> = {
+      'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+      'image/heic': 'heic', 'image/heif': 'heif', 'image/jpeg': 'jpg',
+    }
+    const ext = extMap[file.type] ?? 'jpg'
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     const path = `organizations/${orgId}/${folder}/${fileName}`
 
