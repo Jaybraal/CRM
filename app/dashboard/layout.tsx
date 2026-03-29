@@ -9,14 +9,22 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   useNotifications()
   const pathname = usePathname()
   const isChatsPage = pathname === '/dashboard/clients'
+
+  if (isChatsPage) {
+    return (
+      <div className="flex bg-gray-50" style={{ height: '100dvh' }}>
+        <Sidebar />
+        <main className="flex-1 min-w-0 lg:ml-64 pt-16 lg:pt-0 overflow-hidden flex flex-col">
+          {children}
+        </main>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex bg-gray-50 overflow-x-hidden" style={{ height: '100dvh' }}>
+    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">
       <Sidebar />
-      <main className={
-        isChatsPage
-          ? 'flex-1 min-w-0 lg:ml-64 pt-16 lg:pt-0 overflow-hidden flex flex-col'
-          : 'flex-1 min-w-0 lg:ml-64 pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8 overflow-x-hidden overflow-y-auto'
-      }>
+      <main className="flex-1 min-w-0 lg:ml-64 pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8 overflow-x-hidden">
         {children}
       </main>
     </div>
