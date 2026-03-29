@@ -37,6 +37,11 @@ export default function ClientDetailPage() {
   const [reassigning, setReassigning] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
+  const [qualSession, setQualSession] = useState<{
+    state: string
+    answers: Record<string, string>
+    currentQuestion: number
+  } | null>(null)
 
   // Formulario de edición
   const [form, setForm] = useState({
@@ -51,7 +56,8 @@ export default function ClientDetailPage() {
       getOrganization(profile.orgId),
       getCategories(profile.orgId),
       profile.role !== 'agent' ? getOrgUsers(profile.orgId) : Promise.resolve([]),
-    ]).then(([c, o, cats, users]) => {
+      getDocs(query(collection(db, 'organizations', profile.orgId, 'qualification_sessions'), orderBy('startedAt', 'desc'))),
+    ]).then(([c, o, cats, users, qualSnap]) => {
       setClient(c)
       setOrg(o)
       setCategories(cats)
@@ -66,6 +72,9 @@ export default function ClientDetailPage() {
         notes: c.notes || '',
         tags: c.tags || [],
       })
+      // Load qualification session for this client
+      const qualDoc = (qualSnap as { docs: { id: string; data: () => Record<string, unknown> }[] }).docs.find(d => d.id === id)
+      if (qualDoc) setQualSession(qualDoc.data() as { state: string; answers: Record<string, string>; currentQuestion: number })
       setLoading(false)
     })
 
@@ -320,6 +329,44 @@ export default function ClientDetailPage() {
             className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
             <Save size={16} /> {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
+        </div>
+      )}
+
+      {/* Respuestas del formulario de calificación */}
+      {tab === 'info' && qualSession && org?.settings?.qualificationForm?.questions?.length && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+              📋 Formulario de calificación
+            </h2>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+              qualSession.state === 'completed'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {qualSession.state === 'completed' ? 'Completado' : `En progreso (${qualSession.currentQuestion}/${org.settings.qualificationForm.questions.length})`}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {org.settings.qualificationForm.questions
+              .sort((a, b) => a.order - b.order)
+              .map((q, i) => {
+                const answer = qualSession.answers?.[q.id]
+                return (
+                  <div key={q.id} className={`rounded-lg p-3 ${answer ? 'bg-gray-50' : 'bg-gray-50/50 opacity-50'}`}>
+                    <p className="text-xs text-gray-500 mb-1">Pregunta {i + 1}</p>
+                    <p className="text-sm font-medium text-gray-800">{q.text}</p>
+                    {answer ? (
+                      <p className={`text-sm mt-1.5 font-semibold ${q.type === 'phone' ? 'text-green-700' : 'text-gray-900'}`}>
+                        {q.type === 'phone' ? `📱 ${answer}` : answer}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-1 italic">Sin respuesta aún</p>
+                    )}
+                  </div>
+                )
+              })}
+          </div>
         </div>
       )}
 
