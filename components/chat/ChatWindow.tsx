@@ -11,9 +11,10 @@ import toast from 'react-hot-toast'
 interface Props {
   client: Client
   hasWhatsApp: boolean
+  fitParent?: boolean
 }
 
-export default function ChatWindow({ client, hasWhatsApp }: Props) {
+export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const { profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
@@ -198,13 +199,14 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
         senderName: profile.displayName,
         source: 'internal',
       })
-      if (hasWhatsApp && client.whatsappJid) {
+      const waTarget = client.whatsappJid || client.whatsappPhone
+      if (hasWhatsApp && waTarget) {
         await fetch('/api/whatsapp/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orgId: profile.orgId,
-            to: client.whatsappJid,
+            to: waTarget,
             type: 'location',
             location: { lat, lng, name: locationName },
           }),
@@ -333,7 +335,7 @@ export default function ChatWindow({ client, hasWhatsApp }: Props) {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100dvh-130px)] sm:h-[calc(100vh-200px)] min-h-[400px] overflow-hidden rounded-xl border border-gray-200">
+    <div className={`relative flex flex-col overflow-hidden ${fitParent ? 'h-full' : 'h-[calc(100dvh-130px)] sm:h-[calc(100vh-200px)] min-h-[400px] rounded-xl border border-gray-200'}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#075E54] flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">

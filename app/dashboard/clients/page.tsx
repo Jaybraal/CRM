@@ -284,7 +284,7 @@ export default function ClientsPage() {
 
             {/* Chat messages */}
             <div className="flex-1 min-h-0 overflow-hidden">
-              <ChatWindow client={selectedClient} hasWhatsApp={hasWhatsApp} />
+              <ChatWindow client={selectedClient} hasWhatsApp={hasWhatsApp} fitParent />
             </div>
           </>
         ) : (

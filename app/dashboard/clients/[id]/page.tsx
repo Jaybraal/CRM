@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers } from '@/lib/firestore'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, getDoc, doc as firestoreDoc, orderBy, query } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Client, Organization, Category, Task, Deal, Message, AppUser } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
@@ -56,7 +56,7 @@ export default function ClientDetailPage() {
       getOrganization(profile.orgId),
       getCategories(profile.orgId),
       profile.role !== 'agent' ? getOrgUsers(profile.orgId) : Promise.resolve([]),
-      getDocs(query(collection(db, 'organizations', profile.orgId, 'qualification_sessions'), orderBy('startedAt', 'desc'))),
+      getDoc(firestoreDoc(db, 'organizations', profile.orgId, 'qualification_sessions', id)),
     ]).then(([c, o, cats, users, qualSnap]) => {
       setClient(c)
       setOrg(o)
@@ -73,8 +73,7 @@ export default function ClientDetailPage() {
         tags: c.tags || [],
       })
       // Load qualification session for this client
-      const qualDoc = (qualSnap as { docs: { id: string; data: () => Record<string, unknown> }[] }).docs.find(d => d.id === id)
-      if (qualDoc) setQualSession(qualDoc.data() as { state: string; answers: Record<string, string>; currentQuestion: number })
+      if (qualSnap.exists()) setQualSession(qualSnap.data() as { state: string; answers: Record<string, string>; currentQuestion: number })
       setLoading(false)
     })
 
