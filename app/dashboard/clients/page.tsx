@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { subscribeToClients, getCategories, createClient, getOrgUsers } from '@/lib/firestore'
-import type { Client, Category, AppUser } from '@/types'
+import { subscribeToClients, getCategories, createClient, getOrgUsers, getOrganization } from '@/lib/firestore'
+import type { Client, Category, AppUser, ClientStatus } from '@/types'
+import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import Modal from '@/components/ui/Modal'
 import ClientForm from '@/components/clients/ClientForm'
 import ChatWindow from '@/components/chat/ChatWindow'
@@ -16,14 +17,6 @@ const STATUS_COLORS: Record<string, string> = {
   prospect: '#3b82f6',
   active: '#22c55e',
   inactive: '#d1d5db',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  '': 'Todos',
-  lead: 'Lead',
-  prospect: 'Prospecto',
-  active: 'Activo',
-  inactive: 'Inactivo',
 }
 
 const AVATAR_COLORS = ['#25D366', '#128C7E', '#075E54', '#34B7F1', '#7c3aed', '#db2777', '#d97706']
@@ -55,6 +48,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [agents, setAgents] = useState<AppUser[]>([])
+  const [clientStatuses, setClientStatuses] = useState<ClientStatus[]>(DEFAULT_CLIENT_STATUSES)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -70,6 +64,9 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!profile?.orgId) { setLoading(false); return }
     getCategories(profile.orgId).then(setCategories)
+    getOrganization(profile.orgId).then(o => {
+      if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
+    })
     if (profile.role !== 'agent') {
       getOrgUsers(profile.orgId).then(users => setAgents(users.filter(u => u.role === 'agent')))
     }
@@ -187,12 +184,12 @@ export default function ClientsPage() {
 
         {/* Status filter tabs */}
         <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
-          {['', 'lead', 'prospect', 'active', 'inactive'].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)}
+          {[{ value: '', label: 'Todos' }, ...clientStatuses].map(s => (
+            <button key={s.value} onClick={() => setFilterStatus(s.value)}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
-                filterStatus === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filterStatus === s.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
-              {STATUS_LABELS[s]}
+              {s.label}
             </button>
           ))}
         </div>
@@ -230,7 +227,7 @@ export default function ClientsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-gray-900 text-sm truncate">{client.name}</span>
                     <span className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: STATUS_COLORS[client.status] || '#9ca3af' }} />
+                      style={{ backgroundColor: STATUS_COLORS[client.status] || '#9ca3af' }} title={clientStatuses.find(s => s.value === client.status)?.label || client.status} />
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
@@ -304,7 +301,7 @@ export default function ClientsPage() {
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Nuevo cliente" size="lg">
-        <ClientForm categories={categories} existing={null} onSuccess={() => setShowForm(false)} />
+        <ClientForm categories={categories} clientStatuses={clientStatuses} existing={null} onSuccess={() => setShowForm(false)} />
       </Modal>
     </div>
   )

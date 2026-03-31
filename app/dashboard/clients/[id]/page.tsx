@@ -6,7 +6,8 @@ import { useAuth } from '@/context/AuthContext'
 import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers } from '@/lib/firestore'
 import { collection, getDocs, getDoc, doc as firestoreDoc, orderBy, query, deleteField } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Client, Organization, Category, Task, Deal, Message, AppUser } from '@/types'
+import type { Client, Organization, Category, Task, Deal, Message, AppUser, ClientStatus } from '@/types'
+import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -30,6 +31,7 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null)
   const [org, setOrg] = useState<Organization | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [clientStatuses, setClientStatuses] = useState<ClientStatus[]>(DEFAULT_CLIENT_STATUSES)
   const [agents, setAgents] = useState<AppUser[]>([])
   const [tab, setTab] = useState<'chat' | 'info' | 'activity'>('chat')
   const [loading, setLoading] = useState(true)
@@ -61,6 +63,7 @@ export default function ClientDetailPage() {
       setClient(c)
       setOrg(o)
       setCategories(cats)
+      if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
       setAgents((users as AppUser[]).filter(u => u.role === 'agent'))
       if (c) setForm({
         name: c.name,
@@ -259,11 +262,10 @@ export default function ClientDetailPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Estado</label>
-              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as Client['status'] }))} className={inputClass}>
-                <option value="lead">Lead</option>
-                <option value="prospect">Prospecto</option>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
+              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={inputClass}>
+                {clientStatuses.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
               </select>
             </div>
             <div>

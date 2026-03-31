@@ -64,6 +64,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'save_client_statuses') {
+      const { statuses } = body
+      if (!Array.isArray(statuses)) return NextResponse.json({ error: 'statuses debe ser un array' }, { status: 400 })
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { clientStatuses: statuses } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

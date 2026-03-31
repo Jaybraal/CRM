@@ -5,7 +5,8 @@ import { useAuth } from '@/context/AuthContext'
 import { getOrganization, saveWhatsAppConfig, getWhatsAppTemplates } from '@/lib/firestore'
 import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType } from '@/types'
+import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType, ClientStatus } from '@/types'
+import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
 import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag } from 'lucide-react'
@@ -29,6 +30,9 @@ export default function SettingsPage() {
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [newStage, setNewStage] = useState({ name: '', color: '#6b7280' })
   const [savingStage, setSavingStage] = useState(false)
+  const [clientStatuses, setClientStatuses] = useState<ClientStatus[]>(DEFAULT_CLIENT_STATUSES)
+  const [newStatus, setNewStatus] = useState({ value: '', label: '' })
+  const [savingStatuses, setSavingStatuses] = useState(false)
   const [autoReply, setAutoReply] = useState({ enabled: false, message: '' })
   const [savingAutoReply, setSavingAutoReply] = useState(false)
   const [qualForm, setQualForm] = useState<{
@@ -66,6 +70,7 @@ export default function SettingsPage() {
           token: o.settings.whatsapp?.token || '',
         })
         setStages(o.settings.pipelineStages || DEFAULT_STAGES)
+        setClientStatuses(o.settings.clientStatuses || DEFAULT_CLIENT_STATUSES)
         setAutoReply({
           enabled: o.settings.autoReply?.enabled || false,
           message: o.settings.autoReply?.message || '',
@@ -184,6 +189,48 @@ export default function SettingsPage() {
       toast.success('Etapa eliminada')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al eliminar')
+    }
+  }
+
+  const handleAddStatus = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile?.orgId || !newStatus.label.trim()) return
+    const value = newStatus.value.trim() || newStatus.label.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+    if (clientStatuses.some(s => s.value === value)) { toast.error('Ya existe un estado con ese nombre'); return }
+    setSavingStatuses(true)
+    try {
+      const updated = [...clientStatuses, { value, label: newStatus.label.trim() }]
+      await callApi({ action: 'save_client_statuses', statuses: updated })
+      setClientStatuses(updated)
+      setNewStatus({ value: '', label: '' })
+      toast.success('Estado añadido')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setSavingStatuses(false) }
+  }
+
+  const handleDeleteStatus = async (value: string) => {
+    if (!profile?.orgId) return
+    if (clientStatuses.length <= 1) { toast.error('Debe haber al menos un estado'); return }
+    const updated = clientStatuses.filter(s => s.value !== value)
+    try {
+      await callApi({ action: 'save_client_statuses', statuses: updated })
+      setClientStatuses(updated)
+      toast.success('Estado eliminado')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar')
+    }
+  }
+
+  const handleRenameStatus = async (value: string, newLabel: string) => {
+    if (!profile?.orgId || !newLabel.trim()) return
+    const updated = clientStatuses.map(s => s.value === value ? { ...s, label: newLabel.trim() } : s)
+    try {
+      await callApi({ action: 'save_client_statuses', statuses: updated })
+      setClientStatuses(updated)
+      toast.success('Estado actualizado')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar')
     }
   }
 
@@ -428,6 +475,45 @@ export default function SettingsPage() {
           <button type="submit" disabled={savingStage || !newStage.name}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
             <Plus size={14} /> Añadir etapa
+          </button>
+        </form>
+      </div>
+
+      {/* Estados de clientes */}
+      <div className={cardClass}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <Tag size={20} className="text-gray-500" />
+          <div>
+            <h2 className="font-semibold text-gray-900">Estados de clientes</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Personaliza los estados que aparecen en el campo "Estado" de cada cliente</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {clientStatuses.map(s => (
+            <div key={s.value} className="flex items-center gap-2 py-2 px-3 bg-gray-50 rounded-lg">
+              <span className="text-xs font-mono text-gray-400 w-24 flex-shrink-0 truncate">{s.value}</span>
+              <input
+                defaultValue={s.label}
+                onBlur={e => { if (e.target.value.trim() !== s.label) handleRenameStatus(s.value, e.target.value) }}
+                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+              />
+              <button onClick={() => handleDeleteStatus(s.value)}
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <form onSubmit={handleAddStatus} className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+          <input
+            value={newStatus.label}
+            onChange={e => setNewStatus(s => ({ ...s, label: e.target.value }))}
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+            placeholder='Nombre del estado (ej: "Ganado", "En proceso"...)'
+          />
+          <button type="submit" disabled={savingStatuses || !newStatus.label.trim()}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+            <Plus size={14} /> Añadir estado
           </button>
         </form>
       </div>

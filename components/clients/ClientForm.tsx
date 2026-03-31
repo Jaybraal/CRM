@@ -4,17 +4,19 @@ import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient, updateClient } from '@/lib/firestore'
 import PhotoUploader from '@/components/ui/PhotoUploader'
-import type { Client, Category } from '@/types'
+import type { Client, Category, ClientStatus } from '@/types'
+import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import { X } from 'lucide-react'
 
 interface Props {
   categories: Category[]
+  clientStatuses?: ClientStatus[]
   existing?: Client | null
   onSuccess: () => void
 }
 
-export default function ClientForm({ categories, existing, onSuccess }: Props) {
+export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT_STATUSES, existing, onSuccess }: Props) {
   const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [tagInput, setTagInput] = useState('')
@@ -155,13 +157,12 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado</label>
           <select
             value={form.status}
-            onChange={e => set('status', e.target.value as Client['status'])}
+            onChange={e => set('status', e.target.value)}
             className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
           >
-            <option value="lead">Lead</option>
-            <option value="prospect">Prospecto</option>
-            <option value="active">Activo</option>
-            <option value="inactive">Inactivo</option>
+            {clientStatuses.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
           </select>
         </div>
       </div>

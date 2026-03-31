@@ -47,6 +47,7 @@ export interface Organization {
       completionMessage?: string
     }
     roundRobinIndex?: number
+    clientStatuses?: ClientStatus[]
   }
 }
 
@@ -96,6 +97,18 @@ export interface Category {
   autoDeleteDays?: number
 }
 
+export interface ClientStatus {
+  value: string
+  label: string
+}
+
+export const DEFAULT_CLIENT_STATUSES: ClientStatus[] = [
+  { value: 'lead', label: 'Lead' },
+  { value: 'prospect', label: 'Prospecto' },
+  { value: 'active', label: 'Activo' },
+  { value: 'inactive', label: 'Inactivo' },
+]
+
 export interface Client {
   id: string
   orgId: string
@@ -110,7 +123,7 @@ export interface Client {
   tags: string[]
   photos: string[]
   notes?: string
-  status: 'lead' | 'prospect' | 'active' | 'inactive'
+  status: string
   pipelineStage?: string
   movedToCategoryAt?: Date
   createdAt: Date
