@@ -1,5 +1,17 @@
-import { ref, deleteObject } from 'firebase/storage'
+import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { storage } from './firebase'
+
+const EXT_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
+  'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif',
+  'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
+  'video/ogg': 'ogg', 'video/mpeg': 'mp4', 'video/x-msvideo': 'avi',
+  'video/3gpp': '3gp', 'video/3gpp2': '3g2',
+}
+
+function getExt(mimeType: string): string {
+  return EXT_MAP[mimeType] ?? (mimeType.startsWith('video/') ? 'mp4' : 'jpg')
+}
 
 export async function uploadPhoto(
   orgId: string,
@@ -7,30 +19,31 @@ export async function uploadPhoto(
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> {
-  onProgress?.(10)
+  const ext = getExt(file.type)
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `organizations/${orgId}/${folder}/${fileName}`
+  const storageRef = ref(storage, path)
 
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('orgId', orgId)
-  formData.append('folder', folder)
+  return new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type })
 
-  onProgress?.(30)
-
-  const res = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData,
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        onProgress?.(pct)
+      },
+      reject,
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          resolve(url)
+        } catch (e) {
+          reject(e)
+        }
+      }
+    )
   })
-
-  onProgress?.(90)
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || `Error al subir foto (${res.status})`)
-  }
-
-  const { url } = await res.json()
-  onProgress?.(100)
-  return url
 }
 
 export async function uploadMultiplePhotos(
