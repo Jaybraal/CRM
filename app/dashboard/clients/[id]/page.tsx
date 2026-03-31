@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers } from '@/lib/firestore'
-import { collection, getDocs, getDoc, doc as firestoreDoc, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, getDoc, doc as firestoreDoc, orderBy, query, deleteField } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Client, Organization, Category, Task, Deal, Message, AppUser } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
@@ -137,12 +137,12 @@ export default function ClientDetailPage() {
     try {
       await updateClient(profile.orgId, client.id, {
         name: form.name,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        whatsappPhone: form.whatsappPhone || undefined,
+        email: form.email || deleteField() as unknown as string,
+        phone: form.phone || deleteField() as unknown as string,
+        whatsappPhone: form.whatsappPhone || deleteField() as unknown as string,
         status: form.status,
-        categoryId: form.categoryId || undefined,
-        notes: form.notes || undefined,
+        categoryId: form.categoryId || deleteField() as unknown as string,
+        notes: form.notes || deleteField() as unknown as string,
         tags: form.tags,
       })
       setClient(prev => prev ? { ...prev, ...form } : prev)

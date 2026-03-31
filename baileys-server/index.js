@@ -186,6 +186,7 @@ async function startSession(sessionId, orgId) {
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
+
     for (const msg of messages) {
       if (msg.key.fromMe) continue
       const jid = msg.key.remoteJid || ''
@@ -203,52 +204,62 @@ async function startSession(sessionId, orgId) {
       let msgType = 'text'
       let locationData = null
 
-      if (msg.message?.conversation) {
-        text = msg.message.conversation
-      } else if (msg.message?.extendedTextMessage?.text) {
-        text = msg.message.extendedTextMessage.text
-      } else if (msg.message?.imageMessage) {
-        text = msg.message.imageMessage.caption || ''
+      const m = msg.message || {}
+      if (m.conversation) {
+        text = m.conversation
+      } else if (m.extendedTextMessage?.text) {
+        text = m.extendedTextMessage.text
+      } else if (m.ephemeralMessage?.message?.extendedTextMessage?.text) {
+        text = m.ephemeralMessage.message.extendedTextMessage.text
+      } else if (m.imageMessage) {
+        text = m.imageMessage.caption || ''
         msgType = 'image'
-      } else if (msg.message?.locationMessage) {
-        msgType = 'location'
-        locationData = {
-          lat: msg.message.locationMessage.degreesLatitude,
-          lng: msg.message.locationMessage.degreesLongitude,
-          name: msg.message.locationMessage.name || '',
-        }
-      } else if (msg.message?.audioMessage) {
+      } else if (m.videoMessage) {
+        msgType = 'video'
+        text = m.videoMessage.caption || '[Video]'
+      } else if (m.audioMessage) {
         msgType = 'audio'
         text = '[Audio]'
-      } else if (msg.message?.videoMessage) {
-        msgType = 'video'
-        text = msg.message.videoMessage.caption || '[Video]'
-      } else if (msg.message?.documentMessage) {
-        text = `[Documento: ${msg.message.documentMessage.fileName || ''}]`
+      } else if (m.locationMessage) {
+        msgType = 'location'
+        locationData = {
+          lat: m.locationMessage.degreesLatitude,
+          lng: m.locationMessage.degreesLongitude,
+          name: m.locationMessage.name || '',
+        }
+      } else if (m.documentMessage) {
+        text = `[Documento: ${m.documentMessage.fileName || ''}]`
+      } else if (m.stickerMessage) {
+        text = '[Sticker]'
+      } else if (m.reactionMessage) {
+        continue // ignorar reacciones
+      } else if (m.protocolMessage) {
+        continue // ignorar mensajes de protocolo (ediciones, borrados)
       }
 
       console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}`)
       const orgId = sessions.get(sessionId)?.orgId
       if (!orgId) continue
 
-      // Retry hasta 3 veces si el CRM no responde
+      // Enviar al CRM secuencialmente con reintentos
       const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId })
-      ;(async () => {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            const res = await fetch(`${CRM_URL}/api/whatsapp/baileys`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: payload,
-            })
-            if (res.ok) break
-            console.warn(`CRM webhook intento ${attempt} fallido: ${res.status}`)
-          } catch (e) {
-            console.warn(`CRM webhook intento ${attempt} error: ${e.message}`)
-          }
-          if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000))
+      let sent = false
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          const res = await fetch(`${CRM_URL}/api/whatsapp/baileys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            signal: AbortSignal.timeout(15000),
+          })
+          if (res.ok) { sent = true; break }
+          console.warn(`CRM webhook intento ${attempt} fallido: ${res.status}`)
+        } catch (e) {
+          console.warn(`CRM webhook intento ${attempt} error: ${e.message}`)
         }
-      })()
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1500))
+      }
+      if (!sent) console.error(`Mensaje de ${fromName} perdido después de 4 intentos`)
     }
   })
 

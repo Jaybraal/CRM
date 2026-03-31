@@ -18,8 +18,11 @@ export async function POST(req: NextRequest) {
     const extMap: Record<string, string> = {
       'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
       'image/heic': 'heic', 'image/heif': 'heif', 'image/jpeg': 'jpg',
+      'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
+      'video/ogg': 'ogg', 'video/mpeg': 'mp4', 'video/x-msvideo': 'avi',
+      'video/3gpp': '3gp', 'video/3gpp2': '3g2',
     }
-    const ext = extMap[file.type] ?? 'jpg'
+    const ext = extMap[file.type] ?? (file.type.startsWith('video/') ? 'mp4' : 'jpg')
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     const path = `organizations/${orgId}/${folder}/${fileName}`
 

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Upload, X, ImageIcon } from 'lucide-react'
 import { uploadMultiplePhotos } from '@/lib/storage'
+import toast from 'react-hot-toast'
 
 interface PhotoUploaderProps {
   orgId: string
@@ -32,6 +33,9 @@ export default function PhotoUploader({
       const updated = [...photos, ...urls]
       setPhotos(updated)
       onPhotosChange(updated)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido'
+      toast.error(`Error al subir foto: ${msg}`)
     } finally {
       setUploading(false)
       setProgress(0)

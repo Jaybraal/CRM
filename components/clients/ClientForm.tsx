@@ -61,13 +61,15 @@ export default function ClientForm({ categories, existing, onSuccess }: Props) {
           ? (existing?.movedToCategoryAt ?? new Date())
           : undefined
 
+      const extraFields = movedToCategoryAt !== undefined ? { movedToCategoryAt } : {}
+
       if (existing) {
-        await updateClient(profile.orgId, existing.id, { ...form, movedToCategoryAt })
+        await updateClient(profile.orgId, existing.id, { ...form, ...extraFields })
         toast.success('Cliente actualizado')
       } else {
         await createClient(profile.orgId, {
           ...form,
-          movedToCategoryAt,
+          ...extraFields,
           assignedTo: profile.uid,
           createdBy: profile.uid,
           pipelineStage: 'new',

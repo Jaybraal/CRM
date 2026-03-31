@@ -19,7 +19,7 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  const [pendingPreviews, setPendingPreviews] = useState<string[]>([])
+  const [pendingPreviews, setPendingPreviews] = useState<{ src: string; isVideo: boolean }[]>([])
   const [sending, setSending] = useState(false)
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [templateQuery, setTemplateQuery] = useState('')
@@ -86,16 +86,26 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
     const arr = Array.from(files)
     setPendingFiles(prev => [...prev, ...arr])
     arr.forEach(f => {
-      const reader = new FileReader()
-      reader.onload = e => setPendingPreviews(prev => [...prev, e.target?.result as string])
-      reader.readAsDataURL(f)
+      const isVideo = f.type.startsWith('video/')
+      if (isVideo) {
+        const src = URL.createObjectURL(f)
+        setPendingPreviews(prev => [...prev, { src, isVideo: true }])
+      } else {
+        const reader = new FileReader()
+        reader.onload = e => setPendingPreviews(prev => [...prev, { src: e.target?.result as string, isVideo: false }])
+        reader.readAsDataURL(f)
+      }
     })
     setShowActions(false)
   }
 
   const removePending = (idx: number) => {
     setPendingFiles(prev => prev.filter((_, i) => i !== idx))
-    setPendingPreviews(prev => prev.filter((_, i) => i !== idx))
+    setPendingPreviews(prev => {
+      const p = prev[idx]
+      if (p?.isVideo) URL.revokeObjectURL(p.src)
+      return prev.filter((_, i) => i !== idx)
+    })
   }
 
   const handleSend = async () => {
@@ -161,7 +171,10 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
       setText('')
       setPendingFiles([])
-      setPendingPreviews([])
+      setPendingPreviews(prev => {
+        prev.forEach(p => { if (p.isVideo) URL.revokeObjectURL(p.src) })
+        return []
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('handleSend error:', msg)
@@ -404,16 +417,20 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       {/* Preview fotos pendientes */}
       {pendingPreviews.length > 0 && (
         <div className="px-3 py-2 flex gap-2 flex-wrap bg-white border-t border-gray-100 flex-shrink-0">
-          {pendingPreviews.map((src, i) => (
+          {pendingPreviews.map((p, i) => (
             <div key={i} className="relative w-14 h-14">
-              <img src={src} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
+              {p.isVideo ? (
+                <video src={p.src} className="w-full h-full object-cover rounded-lg border border-gray-200" muted />
+              ) : (
+                <img src={p.src} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
+              )}
               <button onClick={() => removePending(i)}
                 className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5">
                 <X size={10} />
               </button>
             </div>
           ))}
-          <p className="w-full text-xs text-gray-400 mt-0.5">{pendingPreviews.length} foto{pendingPreviews.length > 1 ? 's' : ''}</p>
+          <p className="w-full text-xs text-gray-400 mt-0.5">{pendingPreviews.length} archivo{pendingPreviews.length > 1 ? 's' : ''}</p>
         </div>
       )}
 

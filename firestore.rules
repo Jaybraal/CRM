@@ -35,7 +35,7 @@ service cloud.firestore {
     }
 
     function isMember(orgId) {
-      return inOrg(orgId) && userRole() in ['agent', 'manager', 'owner', 'super_admin'];
+      return inOrg(orgId) && userRole() in ['agent', 'supervisor', 'manager', 'owner', 'super_admin'];
     }
 
     // Perfiles de usuario
