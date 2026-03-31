@@ -58,7 +58,7 @@ export interface WhatsAppTemplate {
   createdAt: Date
 }
 
-export type MessageType = 'text' | 'image' | 'location' | 'call'
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'location' | 'call'
 
 export interface MessageLocation {
   lat: number
@@ -126,6 +126,8 @@ export interface Client {
   status: string
   pipelineStage?: string
   movedToCategoryAt?: Date
+  lastMessageAt?: Date
+  unreadCount?: number
   createdAt: Date
   updatedAt: Date
   createdBy: string

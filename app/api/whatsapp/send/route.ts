@@ -8,13 +8,15 @@ interface SendBody {
   to: string
   text?: string
   photoUrls?: string[]
+  videoUrl?: string
+  audioUrl?: string
   location?: { lat: number; lng: number; name?: string }
-  type?: 'text' | 'image' | 'location' | 'call'
+  type?: 'text' | 'image' | 'video' | 'audio' | 'location' | 'call'
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, to, text, photoUrls = [], location, type }: SendBody = await req.json()
+    const { orgId, to, text, photoUrls = [], videoUrl, audioUrl, location, type }: SendBody = await req.json()
 
     if (!orgId || !to) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
     const baileysUrl = process.env.BAILEYS_URL?.trim()
 
     if (baileysUrl) {
-      // Send images — return msgId of last image for tick tracking
+      // Send images
       let lastImgMsgId: string | null = null
       for (const url of photoUrls) {
         const imgRes = await fetch(`${baileysUrl}/send-image`, {
@@ -38,8 +40,38 @@ export async function POST(req: NextRequest) {
         const imgData = await imgRes.json().catch(() => ({}))
         if (imgData.msgId) lastImgMsgId = imgData.msgId
       }
-      if (lastImgMsgId && photoUrls.length > 0 && !text?.trim()) {
+      if (lastImgMsgId && photoUrls.length > 0 && !text?.trim() && !videoUrl && !audioUrl) {
         return NextResponse.json({ ok: true, msgId: lastImgMsgId })
+      }
+
+      // Send video
+      if (type === 'video' && videoUrl) {
+        const vidRes = await fetch(`${baileysUrl}/send-video`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, url: videoUrl, caption: text?.trim() || '', sessionId: orgId }),
+        })
+        if (!vidRes.ok) {
+          const err = await vidRes.json().catch(() => ({ error: 'Error desconocido' }))
+          return NextResponse.json({ error: err.error || 'Error al enviar video' }, { status: vidRes.status })
+        }
+        const vidData = await vidRes.json().catch(() => ({}))
+        return NextResponse.json({ ok: true, msgId: vidData.msgId || null })
+      }
+
+      // Send audio/voice note
+      if (type === 'audio' && audioUrl) {
+        const audioRes = await fetch(`${baileysUrl}/send-audio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, url: audioUrl, ptt: true, sessionId: orgId }),
+        })
+        if (!audioRes.ok) {
+          const err = await audioRes.json().catch(() => ({ error: 'Error desconocido' }))
+          return NextResponse.json({ error: err.error || 'Error al enviar audio' }, { status: audioRes.status })
+        }
+        const audioData = await audioRes.json().catch(() => ({}))
+        return NextResponse.json({ ok: true, msgId: audioData.msgId || null })
       }
 
       // Send location
@@ -116,7 +148,33 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    if (text?.trim()) {
+    if (videoUrl) {
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to,
+          type: 'video',
+          video: { link: videoUrl, caption: text?.trim() || '' },
+        }),
+      })
+    }
+
+    if (audioUrl) {
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to,
+          type: 'audio',
+          audio: { link: audioUrl },
+        }),
+      })
+    }
+
+    if (text?.trim() && !videoUrl) {
       await fetch(apiUrl, {
         method: 'POST',
         headers,

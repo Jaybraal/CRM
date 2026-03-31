@@ -41,10 +41,14 @@ service cloud.firestore {
     // Perfiles de usuario
     match /users/{userId} {
       allow read: if isAuth() && (request.auth.uid == userId || isSuperAdmin());
-      allow read: if isAuth() && userOrg() == resource.data.orgId; // ver compañeros de la misma org
+      allow read: if isAuth() && userOrg() == resource.data.orgId;
       allow create: if isAuth();
-      allow update: if isAuth() && (request.auth.uid == userId || isSuperAdmin());
-      allow delete: if isSuperAdmin();
+      allow update: if isAuth() && (
+        request.auth.uid == userId
+        || isSuperAdmin()
+        || (userRole() in ['owner', 'manager'] && userOrg() == resource.data.orgId)
+      );
+      allow delete: if isSuperAdmin() || (userRole() == 'owner' && userOrg() == resource.data.orgId);
     }
 
     // WhatsApp configs (solo lectura/escritura desde el servidor vía Admin SDK)
@@ -70,7 +74,8 @@ service cloud.firestore {
         match /messages/{msgId} {
           allow read: if isMember(orgId) || isSuperAdmin();
           allow create: if isMember(orgId) || isSuperAdmin();
-          allow update, delete: if false;
+          allow update: if isMember(orgId) || isSuperAdmin();
+          allow delete: if false;
         }
       }
 

@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getDeals, getClients, updateDeal, createDeal, deleteDeal, getOrganization } from '@/lib/firestore'
 import type { Deal, Client, PipelineStage } from '@/types'
 import Modal from '@/components/ui/Modal'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, GripVertical, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const DEFAULT_STAGES: PipelineStage[] = [
@@ -31,6 +31,8 @@ export default function PipelinePage() {
   const [dragDeal, setDragDeal] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  // Mobile move modal
+  const [moveDeal, setMoveDeal] = useState<Deal | null>(null)
 
   const load = async () => {
     if (!profile?.orgId) { setLoading(false); return }
@@ -66,6 +68,15 @@ export default function PipelinePage() {
     if (!profile?.orgId || stageId === deals.find(d => d.id === dealId)?.stage) return
     await updateDeal(profile.orgId, dealId, { stage: stageId })
     setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stage: stageId } : d))
+    toast.success('Movido')
+  }
+
+  const handleMoveToStage = async (deal: Deal, stageId: string) => {
+    if (!profile?.orgId || stageId === deal.stage) return
+    await updateDeal(profile.orgId, deal.id, { stage: stageId })
+    setDeals(prev => prev.map(d => d.id === deal.id ? { ...d, stage: stageId } : d))
+    setMoveDeal(null)
+    toast.success('Movido a ' + stages.find(s => s.id === stageId)?.name)
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -165,12 +176,22 @@ export default function PipelinePage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium text-gray-900 flex-1">{getClientName(deal.clientId)}</p>
-                        <button
-                          onClick={() => openEdit(deal)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-700 rounded transition-all"
-                        >
-                          <Pencil size={13} />
-                        </button>
+                        <div className="flex items-center gap-0.5">
+                          {/* Mobile: move button */}
+                          <button
+                            onClick={() => setMoveDeal(deal)}
+                            className="sm:hidden p-1 text-gray-400 hover:text-gray-700 rounded transition-all"
+                            title="Mover a otra etapa"
+                          >
+                            <ArrowRight size={13} />
+                          </button>
+                          <button
+                            onClick={() => openEdit(deal)}
+                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-700 rounded transition-all"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        </div>
                       </div>
                       {deal.value !== undefined && (
                         <p className="text-xs font-semibold text-gray-700 mt-1">${deal.value.toLocaleString()}</p>
@@ -184,6 +205,34 @@ export default function PipelinePage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Mobile move stage modal */}
+      {moveDeal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setMoveDeal(null)}>
+          <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Mover a etapa</h3>
+              <p className="text-xs text-gray-500 mt-0.5">{getClientName(moveDeal.clientId)}</p>
+            </div>
+            <div className="p-2">
+              {stages.map(stage => (
+                <button
+                  key={stage.id}
+                  onClick={() => handleMoveToStage(moveDeal, stage.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    moveDeal.stage === stage.id ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-50 text-gray-800'
+                  }`}
+                  disabled={moveDeal.stage === stage.id}
+                >
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
+                  <span className="text-sm font-medium flex-1">{stage.name}</span>
+                  {moveDeal.stage === stage.id && <span className="text-xs text-gray-400">Actual</span>}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates } from '@/lib/firestore'
-import { uploadMultiplePhotos } from '@/lib/storage'
+import { uploadMultiplePhotos, uploadPhoto } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { updateDoc, doc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 interface Props {
   client: Client
@@ -29,13 +31,31 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const [locationName, setLocationName] = useState('')
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [gettingGps, setGettingGps] = useState(false)
+
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [playingAudio, setPlayingAudio] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
+
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (!profile?.orgId) return
-    const unsub = subscribeToMessages(profile.orgId, client.id, setMessages)
+    const unsub = subscribeToMessages(profile.orgId, client.id, (msgs) => {
+      setMessages(msgs)
+      // Mark unread count as 0 when viewing messages
+      if (msgs.length > 0) {
+        updateDoc(doc(db, `organizations/${profile.orgId}/clients/${client.id}`), { unreadCount: 0 }).catch(() => {})
+      }
+    })
     getWhatsAppTemplates(profile.orgId).then(setTemplates)
     return unsub
   }, [profile?.orgId, client.id])
@@ -52,13 +72,20 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
   }, [text])
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl)
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current)
+    }
+  }, [])
+
   const filteredTemplates = templates.filter(t =>
     templateQuery === '' || t.name.toLowerCase().includes(templateQuery.toLowerCase())
   )
 
   const handleTextChange = (val: string) => {
     setText(val)
-    // Detect "/" at start of message or after space to trigger templates
     const slashMatch = val.match(/(^|\s)\/(\S*)$/)
     if (slashMatch) {
       setTemplateQuery(slashMatch[2])
@@ -70,7 +97,6 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   }
 
   const applyTemplate = (t: WhatsAppTemplate) => {
-    // Replace the /query part with the template body
     const newText = text.replace(/(^|\s)\/\S*$/, (match) => {
       const prefix = match.startsWith('/') ? '' : match.charAt(0)
       return prefix + t.body
@@ -108,20 +134,80 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
     })
   }
 
-  const handleSend = async () => {
-    if (!text.trim() && pendingFiles.length === 0) return
-    if (!profile?.orgId) return
-    setSending(true)
+  // --- Voice recording ---
+  const startRecording = async () => {
     try {
-      let photoUrls: string[] = []
-      if (pendingFiles.length > 0) {
-        photoUrls = await uploadMultiplePhotos(profile.orgId, `chat/${client.id}`, pendingFiles)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' })
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
 
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        setAudioBlob(blob)
+        const url = URL.createObjectURL(blob)
+        setAudioUrl(url)
+        stream.getTracks().forEach(t => t.stop())
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      recordTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+    } catch {
+      toast.error('No se pudo acceder al micrófono')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    setIsRecording(false)
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current)
+      recordTimerRef.current = null
+    }
+  }
+
+  const cancelRecording = () => {
+    stopRecording()
+    setAudioBlob(null)
+    if (audioUrl) URL.revokeObjectURL(audioUrl)
+    setAudioUrl(null)
+    setRecordingTime(0)
+  }
+
+  const togglePlayback = () => {
+    if (!audioUrl) return
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new Audio(audioUrl)
+      audioPlayerRef.current.onended = () => setPlayingAudio(false)
+    }
+    if (playingAudio) {
+      audioPlayerRef.current.pause()
+      setPlayingAudio(false)
+    } else {
+      audioPlayerRef.current.play()
+      setPlayingAudio(true)
+    }
+  }
+
+  const sendVoiceNote = async () => {
+    if (!audioBlob || !profile?.orgId) return
+    setSending(true)
+    try {
+      const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' })
+      const audioFileUrl = await uploadPhoto(profile.orgId, `chat/${client.id}`, file)
+
       const msgId = await sendMessage(profile.orgId, client.id, {
-        type: photoUrls.length > 0 ? 'image' : 'text',
-        text: text.trim() || '',
-        photos: photoUrls,
+        type: 'audio',
+        text: '🎤 Nota de voz',
+        photos: [audioFileUrl],
         senderId: profile.uid,
         senderName: profile.displayName,
         source: 'internal',
@@ -130,24 +216,86 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
       if (hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
-        const { updateDoc, doc } = await import('firebase/firestore')
-        const { db } = await import('@/lib/firebase')
         const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
+        const waRes = await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: profile.orgId, to: jid, audioUrl: audioFileUrl, type: 'audio' }),
+        })
+        if (waRes.ok) {
+          const waData = await waRes.json().catch(() => ({}))
+          if (waData.msgId && msgRef) {
+            await updateDoc(msgRef, { whatsappMsgId: waData.msgId, status: 'sent' })
+          }
+        } else {
+          if (msgRef) await updateDoc(msgRef, { status: 'sent' })
+          toast.error('Audio guardado pero falló en WhatsApp', { duration: 4000 })
+        }
+      }
 
-        // Send photos — capture msgId from last image for ticks
+      cancelRecording()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error(msg, { duration: 8000 })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const formatRecordTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  const handleSend = async () => {
+    if (!text.trim() && pendingFiles.length === 0) return
+    if (!profile?.orgId) return
+    setSending(true)
+    try {
+      let photoUrls: string[] = []
+      const hasVideos = pendingFiles.some(f => f.type.startsWith('video/'))
+
+      if (pendingFiles.length > 0) {
+        photoUrls = await uploadMultiplePhotos(profile.orgId, `chat/${client.id}`, pendingFiles)
+      }
+
+      const msgType = hasVideos ? 'video' : photoUrls.length > 0 ? 'image' : 'text'
+
+      const msgId = await sendMessage(profile.orgId, client.id, {
+        type: msgType,
+        text: text.trim() || '',
+        photos: photoUrls,
+        senderId: profile.uid,
+        senderName: profile.displayName,
+        source: 'internal',
+        status: 'sending',
+      })
+
+      const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
+
+      if (hasWhatsApp && client.whatsappPhone) {
+        const jid = client.whatsappJid || client.whatsappPhone
+
+        // Send files (images and videos)
         if (photoUrls.length > 0) {
-          let lastImgMsgId: string | null = null
-          for (const url of photoUrls) {
-            const imgRes = await fetch('/api/whatsapp/send', {
+          let lastMsgId: string | null = null
+          for (let i = 0; i < photoUrls.length; i++) {
+            const url = photoUrls[i]
+            const isVideo = pendingFiles[i]?.type?.startsWith('video/')
+            const endpoint = isVideo ? 'send-video' : 'send-image'
+            const res = await fetch('/api/whatsapp/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orgId: profile.orgId, to: jid, photoUrls: [url], type: 'image' }),
+              body: JSON.stringify({
+                orgId: profile.orgId,
+                to: jid,
+                photoUrls: isVideo ? undefined : [url],
+                videoUrl: isVideo ? url : undefined,
+                type: isVideo ? 'video' : 'image',
+              }),
             })
-            const imgData = await imgRes.json().catch(() => ({}))
-            if (imgData.msgId) lastImgMsgId = imgData.msgId
+            const data = await res.json().catch(() => ({}))
+            if (data.msgId) lastMsgId = data.msgId
           }
-          if (lastImgMsgId && msgRef) {
-            await updateDoc(msgRef, { whatsappMsgId: lastImgMsgId, status: 'sent' })
+          if (lastMsgId && msgRef) {
+            await updateDoc(msgRef, { whatsappMsgId: lastMsgId, status: 'sent' })
           }
         }
 
@@ -167,6 +315,14 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
             }
           }
         }
+
+        // If no WA response updated status, mark as sent anyway
+        if (msgRef && photoUrls.length === 0 && !text.trim()) {
+          await updateDoc(msgRef, { status: 'sent' }).catch(() => {})
+        }
+      } else {
+        // No WhatsApp — mark as sent immediately (internal message)
+        if (msgRef) await updateDoc(msgRef, { status: 'sent' }).catch(() => {})
       }
 
       setText('')
@@ -238,8 +394,6 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
   const handleCall = async () => {
     if (!profile?.orgId) return
-
-    // Si es contacto LID (número interno de WA), no se puede llamar via wa.me
     if (client.isLid && !client.phone) {
       toast('Para llamar a este contacto, abre WhatsApp en tu teléfono y llama desde el chat directamente.\n\nEste contacto usa privacidad de número (LID).', {
         duration: 5000,
@@ -247,7 +401,6 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       })
       return
     }
-
     const callNumber = (client.phone || client.whatsappPhone)?.replace(/\D/g, '')
     if (!callNumber) { toast.error('Sin número de WhatsApp para llamar'); return }
     window.open(`https://wa.me/${callNumber}`, '_blank')
@@ -274,7 +427,7 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
   const MessageTicks = ({ status }: { status?: string }) => {
     if (!status || status === 'sending') {
-      return <span className="text-[10px] text-gray-400 ml-0.5">⏱</span>
+      return <span className="text-[10px] text-gray-400 ml-0.5 animate-pulse">●</span>
     }
     if (status === 'sent') {
       return <span className="text-[10px] text-gray-400 ml-0.5">✓</span>
@@ -287,6 +440,8 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
     }
     return null
   }
+
+  const isAudioUrl = (url: string) => /\.(webm|ogg|mp3|m4a|aac|wav|opus)(\?|$)/i.test(url)
 
   const renderMessage = (msg: Message) => {
     const isMe = msg.source === 'internal'
@@ -325,13 +480,32 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       )
     }
 
+    // Audio/voice message
+    if (msg.type === 'audio' || (msg.photos?.length === 1 && isAudioUrl(msg.photos[0]))) {
+      return (
+        <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+          <div className="flex items-center gap-2 py-1">
+            <Mic size={16} className="text-green-600 flex-shrink-0" />
+            <audio src={msg.photos?.[0]} controls className="h-8 flex-1 min-w-0" style={{ maxWidth: '240px' }} />
+          </div>
+          {msg.text && msg.text !== '🎤 Nota de voz' && <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-wrap mt-1">{msg.text}</p>}
+          <div className="flex items-center justify-end gap-0.5 mt-1">
+            <span className="text-[10px] text-gray-400">{formatTime(msg.createdAt as Date)}</span>
+            {isMe && <MessageTicks status={msg.status} />}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
         {msg.photos?.length > 0 && (
           <div className={`grid gap-1 mb-1.5 ${msg.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {msg.photos.map((url, i) =>
-              /\.(mp4|mov|webm|ogg)(\?|$)/i.test(url) ? (
+              /\.(mp4|mov|webm|ogg|3gp)(\?|$)/i.test(url) && !isAudioUrl(url) ? (
                 <video key={i} src={url} controls className="rounded-lg max-h-48 w-full" />
+              ) : isAudioUrl(url) ? (
+                <audio key={i} src={url} controls className="w-full" />
               ) : (
                 <img key={i} src={url} alt="" className="rounded-lg object-cover max-h-48 w-full cursor-pointer"
                   onClick={() => window.open(url, '_blank')} />
@@ -434,7 +608,7 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         </div>
       )}
 
-      {/* Popup plantillas (activado por "/") */}
+      {/* Popup plantillas */}
       {showTemplates && (
         <div className="absolute bottom-[72px] left-0 right-0 mx-3 bg-white border border-gray-200 rounded-2xl shadow-2xl z-20 overflow-hidden max-h-56 flex flex-col">
           <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
@@ -471,8 +645,6 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
               <button onClick={() => { setShowLocationModal(false); setLocationCoords(null); setLocationName('') }}
                 className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
             </div>
-
-            {/* Paso 1: obtener GPS */}
             <button onClick={handleGetGps} disabled={gettingGps}
               className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-colors ${
                 locationCoords
@@ -482,25 +654,14 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
               {gettingGps
                 ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Obteniendo ubicación...</>
                 : locationCoords
-                  ? <><Navigation size={16} /> ✓ Ubicación obtenida — toca para actualizar</>
+                  ? <><Navigation size={16} /> ✓ Ubicación obtenida</>
                   : <><Navigation size={16} /> Usar mi ubicación GPS</>
               }
             </button>
-
-            {locationCoords && (
-              <p className="text-xs text-gray-500 text-center -mt-2">
-                {locationCoords.lat.toFixed(5)}, {locationCoords.lng.toFixed(5)}
-              </p>
-            )}
-
-            {/* Paso 2: nombre opcional */}
-            <input
-              value={locationName}
-              onChange={e => setLocationName(e.target.value)}
-              placeholder="Nombre del lugar (opcional, ej: Oficina central)"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#075E54]"
-            />
-
+            {locationCoords && <p className="text-xs text-gray-500 text-center -mt-2">{locationCoords.lat.toFixed(5)}, {locationCoords.lng.toFixed(5)}</p>}
+            <input value={locationName} onChange={e => setLocationName(e.target.value)}
+              placeholder="Nombre del lugar (opcional)"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#075E54]" />
             <button onClick={handleSendLocation} disabled={sending || !locationCoords}
               className="w-full bg-[#075E54] hover:bg-[#064d45] disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-colors">
               {sending ? 'Enviando...' : 'Enviar ubicación'}
@@ -509,13 +670,13 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         </div>
       )}
 
-      {/* Menú acciones (adjuntar/ubicación) */}
+      {/* Menú acciones */}
       {showActions && (
         <div className="absolute bottom-[72px] left-3 bg-white rounded-2xl shadow-xl border border-gray-200 z-10 overflow-hidden">
           <button type="button" onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm text-gray-700">
             <Paperclip size={18} className="text-[#075E54]" />
-            Adjuntar fotos
+            Adjuntar archivos
           </button>
           <button type="button" onClick={() => { setShowLocationModal(true); setShowActions(false) }}
             className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm text-gray-700 border-t border-gray-100">
@@ -530,37 +691,79 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         <input ref={fileInputRef} type="file" multiple accept="image/*,video/*"
           className="hidden" onChange={e => handleFiles(e.target.files)} />
 
-        {/* Botón + para acciones */}
-        <button type="button"
-          onClick={() => setShowActions(v => !v)}
-          className={`p-2.5 rounded-full transition-colors flex-shrink-0 ${showActions ? 'bg-[#075E54] text-white' : 'text-gray-500 hover:bg-gray-200'}`}
-          title="Más opciones">
-          <Plus size={20} className={showActions ? 'rotate-45 transition-transform' : 'transition-transform'} />
-        </button>
+        {/* Voice recording UI */}
+        {isRecording || audioBlob ? (
+          <div className="flex items-center gap-2 flex-1 bg-white rounded-2xl px-3 py-2 shadow-sm">
+            {isRecording ? (
+              <>
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-sm text-red-600 font-medium flex-1">{formatRecordTime(recordingTime)}</span>
+                <button onClick={cancelRecording} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                  <X size={18} />
+                </button>
+                <button onClick={stopRecording} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600">
+                  <Square size={14} />
+                </button>
+              </>
+            ) : audioBlob ? (
+              <>
+                <button onClick={togglePlayback} className="p-1.5 text-[#075E54] hover:bg-gray-100 rounded-full">
+                  {playingAudio ? <Pause size={18} /> : <Play size={18} />}
+                </button>
+                <span className="text-sm text-gray-600 flex-1">{formatRecordTime(recordingTime)}</span>
+                <button onClick={cancelRecording} className="p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100">
+                  <X size={18} />
+                </button>
+                <button onClick={sendVoiceNote} disabled={sending}
+                  className="p-2 bg-[#075E54] text-white rounded-full hover:bg-[#064d45] disabled:opacity-40">
+                  {sending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={14} />}
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            {/* Botón + para acciones */}
+            <button type="button"
+              onClick={() => setShowActions(v => !v)}
+              className={`p-2.5 rounded-full transition-colors flex-shrink-0 ${showActions ? 'bg-[#075E54] text-white' : 'text-gray-500 hover:bg-gray-200'}`}
+              title="Más opciones">
+              <Plus size={20} className={showActions ? 'rotate-45 transition-transform' : 'transition-transform'} />
+            </button>
 
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={e => handleTextChange(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Escape') { setShowTemplates(false); setShowActions(false) }
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-          }}
-          rows={1}
-          placeholder="Escribe un mensaje"
-          className="flex-1 bg-white border-0 rounded-2xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none shadow-sm"
-          style={{ maxHeight: '120px', overflowY: 'auto' }}
-        />
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={e => handleTextChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setShowTemplates(false); setShowActions(false) }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+              }}
+              rows={1}
+              placeholder="Escribe un mensaje"
+              className="flex-1 bg-white border-0 rounded-2xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none shadow-sm"
+              style={{ maxHeight: '120px', overflowY: 'auto' }}
+            />
 
-        {/* Enviar */}
-        <button onClick={handleSend}
-          disabled={sending || (!text.trim() && pendingFiles.length === 0)}
-          className="p-2.5 bg-[#075E54] hover:bg-[#064d45] disabled:opacity-40 text-white rounded-full transition-colors flex-shrink-0 shadow-sm">
-          {sending
-            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <Send size={16} />}
-        </button>
+            {/* Mic or Send */}
+            {!text.trim() && pendingFiles.length === 0 ? (
+              <button onClick={startRecording}
+                className="p-2.5 text-gray-500 hover:text-[#075E54] hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
+                title="Grabar nota de voz">
+                <Mic size={20} />
+              </button>
+            ) : (
+              <button onClick={handleSend}
+                disabled={sending}
+                className="p-2.5 bg-[#075E54] hover:bg-[#064d45] disabled:opacity-40 text-white rounded-full transition-colors flex-shrink-0 shadow-sm">
+                {sending
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Send size={16} />}
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

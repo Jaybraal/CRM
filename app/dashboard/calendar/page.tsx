@@ -384,9 +384,9 @@ export default function CalendarPage() {
 
       {/* Modal nueva cita */}
       {showApptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md bg-white rounded-xl shadow-xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40" onClick={() => setShowApptModal(false)}>
+          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold text-gray-900">Nueva cita</h2>
               <button onClick={() => setShowApptModal(false)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
             </div>

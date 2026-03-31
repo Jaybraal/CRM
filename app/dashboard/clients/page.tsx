@@ -226,8 +226,15 @@ export default function ClientsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-gray-900 text-sm truncate">{client.name}</span>
-                    <span className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: STATUS_COLORS[client.status] || '#9ca3af' }} title={clientStatuses.find(s => s.value === client.status)?.label || client.status} />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {(client.unreadCount ?? 0) > 0 && (
+                        <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                          {client.unreadCount! > 99 ? '99+' : client.unreadCount}
+                        </span>
+                      )}
+                      <span className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: STATUS_COLORS[client.status] || '#9ca3af' }} title={clientStatuses.find(s => s.value === client.status)?.label || client.status} />
+                    </div>
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}

@@ -116,6 +116,12 @@ export async function POST(req: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     })
 
+    // Incrementar contador de no leídos y actualizar timestamp
+    await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).update({
+      unreadCount: FieldValue.increment(1),
+      lastMessageAt: FieldValue.serverTimestamp(),
+    }).catch(() => {})
+
     // Escribir notificación para push en el dashboard
     await adminDb.collection(`organizations/${orgId}/notifications`).add({
       title: `Nuevo mensaje de ${clientName}`,
