@@ -31,7 +31,7 @@ service cloud.firestore {
     }
 
     function isManager(orgId) {
-      return inOrg(orgId) && userRole() in ['manager', 'owner', 'super_admin'];
+      return inOrg(orgId) && userRole() in ['supervisor', 'manager', 'owner', 'super_admin'];
     }
 
     function isMember(orgId) {
@@ -122,6 +122,12 @@ service cloud.firestore {
       match /appointments/{appointmentId} {
         allow read: if isMember(orgId) || isSuperAdmin();
         allow create, update, delete: if isMember(orgId) || isSuperAdmin();
+      }
+
+      // Sesiones del formulario de calificación
+      match /qualification_sessions/{sessionId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow write: if false; // Solo escritura desde servidor (Admin SDK)
       }
     }
   }

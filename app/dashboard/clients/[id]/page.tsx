@@ -56,7 +56,7 @@ export default function ClientDetailPage() {
       getOrganization(profile.orgId),
       getCategories(profile.orgId),
       profile.role !== 'agent' ? getOrgUsers(profile.orgId) : Promise.resolve([]),
-      getDoc(firestoreDoc(db, 'organizations', profile.orgId, 'qualification_sessions', id)),
+      getDoc(firestoreDoc(db, 'organizations', profile.orgId, 'qualification_sessions', id)).catch(() => null),
     ]).then(([c, o, cats, users, qualSnap]) => {
       setClient(c)
       setOrg(o)
@@ -72,10 +72,11 @@ export default function ClientDetailPage() {
         notes: c.notes || '',
         tags: c.tags || [],
       })
-      // Load qualification session for this client
-      if (qualSnap.exists()) setQualSession(qualSnap.data() as { state: string; answers: Record<string, string>; currentQuestion: number })
+      if (qualSnap && 'exists' in qualSnap && qualSnap.exists()) {
+        setQualSession(qualSnap.data() as { state: string; answers: Record<string, string>; currentQuestion: number })
+      }
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
 
     // Load timeline data
     const loadTimeline = async () => {
