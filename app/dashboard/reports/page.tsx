@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getClients, getDeals, getTasks, getOrgUsers } from '@/lib/firestore'
 import type { Client, Deal, Task, AppUser } from '@/types'
 import { TrendingUp, Users, CheckSquare, DollarSign, Target, BarChart3 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface MonthlyRevenue { month: string; value: number }
 interface StageConversion { stage: string; count: number; value: number; color: string }
@@ -48,7 +49,7 @@ export default function ReportsPage() {
       setTasks(t)
       setUsers(u)
     })
-    .catch(e => console.error('Error cargando reportes:', e))
+    .catch(e => { console.error('Error cargando reportes:', e); toast.error('Error al cargar reportes') })
     .finally(() => setLoading(false))
   }, [profile])
 

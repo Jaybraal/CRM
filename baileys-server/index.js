@@ -255,7 +255,16 @@ async function startSession(sessionId, orgId) {
           name: m.locationMessage.name || '',
         }
       } else if (m.documentMessage) {
-        text = `[Documento: ${m.documentMessage.fileName || ''}]`
+        msgType = 'document'
+        text = m.documentMessage.fileName || 'archivo'
+        try {
+          const stream = await downloadContentFromMessage(m.documentMessage, 'document')
+          const chunks = []
+          for await (const chunk of stream) chunks.push(chunk)
+          const buf = Buffer.concat(chunks)
+          mediaBase64 = buf.toString('base64')
+          mediaMime = m.documentMessage.mimetype || 'application/octet-stream'
+        } catch (e) { console.warn('Error descargando documento:', e.message) }
       } else if (m.stickerMessage) {
         text = '[Sticker]'
       } else if (m.reactionMessage) {

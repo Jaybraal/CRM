@@ -58,7 +58,7 @@ export interface WhatsAppTemplate {
   createdAt: Date
 }
 
-export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'location' | 'call'
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'location' | 'call' | 'document'
 
 export interface MessageLocation {
   lat: number

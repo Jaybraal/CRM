@@ -56,6 +56,7 @@ export default function ClientsPage() {
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(50)
   const importRef = useRef<HTMLInputElement>(null)
 
   const hasWhatsApp = process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true'
@@ -77,6 +78,10 @@ export default function ClientsPage() {
     )
     return unsub
   }, [profile])
+
+  // Reset visible count when filter changes
+  const handleFilterChange = (val: string) => { setFilterStatus(val); setVisibleCount(50) }
+  const handleSearchChange = (val: string) => { setSearch(val); setVisibleCount(50) }
 
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
@@ -175,7 +180,7 @@ export default function ClientsPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => handleSearchChange(e.target.value)}
               placeholder="Buscar contacto..."
               className="w-full pl-8 pr-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-gray-200 transition-colors"
             />
@@ -185,7 +190,7 @@ export default function ClientsPage() {
         {/* Status filter tabs */}
         <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
           {[{ value: '', label: 'Todos' }, ...clientStatuses].map(s => (
-            <button key={s.value} onClick={() => setFilterStatus(s.value)}
+            <button key={s.value} onClick={() => handleFilterChange(s.value)}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
                 filterStatus === s.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
@@ -205,7 +210,7 @@ export default function ClientsPage() {
               {search ? 'Sin resultados' : 'No hay contactos'}
             </div>
           ) : (
-            filtered.map(client => (
+            filtered.slice(0, visibleCount).map(client => (
               <button
                 key={client.id}
                 onClick={() => handleSelectClient(client)}
@@ -259,6 +264,13 @@ export default function ClientsPage() {
           )}
         </div>
 
+        {filtered.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount(v => v + 50)}
+            className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100">
+            Ver más ({filtered.length - visibleCount} restantes)
+          </button>
+        )}
         <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
       </div>
 

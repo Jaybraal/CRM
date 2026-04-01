@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { subscribeToMessages, sendMessage, getWhatsAppTemplates } from '@/lib/firestore'
+import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward } from 'lucide-react'
+import type { Client as ClientType } from '@/types'
 import toast from 'react-hot-toast'
 import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -28,6 +29,9 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const [showTemplates, setShowTemplates] = useState(false)
   const [showActions, setShowActions] = useState(false)
   const [showLocationModal, setShowLocationModal] = useState(false)
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
+  const [forwardSearch, setForwardSearch] = useState('')
+  const [allClients, setAllClients] = useState<ClientType[]>([])
   const [locationName, setLocationName] = useState('')
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [gettingGps, setGettingGps] = useState(false)
@@ -57,6 +61,7 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       }
     })
     getWhatsAppTemplates(profile.orgId).then(setTemplates)
+    getClients(profile.orgId).then(setAllClients)
     return unsub
   }, [profile?.orgId, client.id])
 
@@ -421,6 +426,25 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
     } catch { /* ignore */ }
   }
 
+  const handleForward = async (targetClient: ClientType) => {
+    if (!forwardMsg || !profile?.orgId) return
+    try {
+      await sendMessage(profile.orgId, targetClient.id, {
+        type: forwardMsg.type || 'text',
+        text: forwardMsg.text,
+        photos: forwardMsg.photos || [],
+        location: forwardMsg.location,
+        senderId: profile.uid,
+        senderName: profile.displayName,
+        source: 'internal',
+        status: 'sent',
+      })
+      toast.success(`Reenviado a ${targetClient.name}`)
+      setForwardMsg(null)
+      setForwardSearch('')
+    } catch { toast.error('Error al reenviar') }
+  }
+
   const formatTime = (date: Date | { seconds: number } | undefined) => {
     if (!date) return ''
     const d = date instanceof Date ? date : new Date((date as { seconds: number }).seconds * 1000)
@@ -501,8 +525,36 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       )
     }
 
+    // Document message
+    if (msg.type === 'document' && msg.photos?.length === 1) {
+      return (
+        <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[300px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+          <a href={msg.photos[0]} target="_blank" rel="noopener noreferrer" download={msg.text || 'archivo'}
+            className="flex items-center gap-2 py-1 hover:opacity-80 transition-opacity">
+            <div className={`p-2 rounded-lg ${isMe ? 'bg-green-300/40' : 'bg-gray-100'}`}>
+              <FileText size={18} className="text-gray-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">{msg.text || 'Documento'}</p>
+              <p className="text-xs text-blue-500 flex items-center gap-1"><Download size={10} /> Descargar</p>
+            </div>
+          </a>
+          <div className="flex items-center justify-end gap-0.5 mt-1">
+            <span className="text-[10px] text-gray-400">{formatTime(msg.createdAt as Date)}</span>
+            {isMe && <MessageTicks status={msg.status} />}
+          </div>
+        </div>
+      )
+    }
+
     return (
-      <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+      <div className={`group relative rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+        <button
+          onClick={() => setForwardMsg(msg)}
+          className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-gray-200 rounded-full p-1 shadow-sm"
+          title="Reenviar">
+          <Forward size={12} className="text-gray-500" />
+        </button>
         {msg.photos?.length > 0 && (
           <div className={`grid gap-1 mb-1.5 ${msg.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {msg.photos.map((url, i) =>
@@ -769,6 +821,44 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
           </>
         )}
       </div>
+
+      {/* Modal reenviar mensaje */}
+      {forwardMsg && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => { setForwardMsg(null); setForwardSearch('') }}>
+          <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Reenviar a...</h3>
+              <input
+                autoFocus
+                value={forwardSearch}
+                onChange={e => setForwardSearch(e.target.value)}
+                placeholder="Buscar contacto..."
+                className="mt-2 w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none"
+              />
+            </div>
+            <div className="max-h-72 overflow-y-auto p-2">
+              {allClients
+                .filter(c => c.id !== client.id && (!forwardSearch || c.name.toLowerCase().includes(forwardSearch.toLowerCase())))
+                .slice(0, 20)
+                .map(c => (
+                  <button key={c.id} onClick={() => handleForward(c)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-left transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
+                      {c.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{c.phone || c.whatsappPhone || ''}</p>
+                    </div>
+                  </button>
+                ))}
+              {allClients.filter(c => c.id !== client.id && (!forwardSearch || c.name.toLowerCase().includes(forwardSearch.toLowerCase()))).length === 0 && (
+                <p className="text-center text-sm text-gray-400 py-6">Sin contactos</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

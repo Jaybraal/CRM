@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb, getAdminStorage } from '@/lib/firebase-admin'
+import { adminDb, getAdminStorage, sendFCMToOrg } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -145,36 +145,43 @@ export async function POST(req: NextRequest) {
     }
 
     // Upload media if provided
-    if (mediaBase64 && mediaMime && (type === 'image' || type === 'video' || type === 'audio')) {
+    if (mediaBase64 && mediaMime && (type === 'image' || type === 'video' || type === 'audio' || type === 'document')) {
       try {
         const mediaUrl = await uploadMediaToStorage(orgId, clientId, mediaBase64, mediaMime)
         messageData.photos = [mediaUrl]
         if (type === 'image') messageData.text = text || ''
         if (type === 'video') messageData.text = text || ''
         if (type === 'audio') messageData.text = '🎤 Nota de voz'
+        if (type === 'document') messageData.text = text || 'archivo'
       } catch (e) {
         console.error('Error uploading media:', e)
         if (type === 'image') messageData.text = text || '[Imagen - error al cargar]'
         if (type === 'video') messageData.text = text || '[Video - error al cargar]'
         if (type === 'audio') messageData.text = '[Audio - error al cargar]'
+        if (type === 'document') messageData.text = `[Documento: ${text || 'archivo'}]`
       }
     } else {
       if (type === 'image') messageData.text = text || '[Imagen]'
       if (type === 'video') messageData.text = text || '[Video]'
       if (type === 'audio') messageData.text = messageData.text || '[Audio]'
+      if (type === 'document') messageData.text = `[Documento: ${text || 'archivo'}]`
     }
 
     await adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`).add(messageData)
 
     // Notification
     const notifTitle = isNew ? `Nuevo contacto: ${clientName}` : `Mensaje de ${clientName}`
+    const notifBody = type === 'location' ? '📍 Compartió su ubicación' : type === 'call' ? '📞 Llamada perdida' : (text?.substring(0, 100) || '[Multimedia]')
+    const notifUrl = `/dashboard/clients/${clientId}`
     await adminDb.collection(`organizations/${orgId}/notifications`).add({
       title: notifTitle,
-      body: type === 'location' ? '📍 Compartió su ubicación' : type === 'call' ? '📞 Llamada perdida' : (text?.substring(0, 100) || '[Multimedia]'),
+      body: notifBody,
       clientId,
-      url: `/dashboard/clients/${clientId}`,
+      url: notifUrl,
       createdAt: FieldValue.serverTimestamp(),
     })
+    // FCM push to all org members (works even when browser is closed)
+    void sendFCMToOrg(orgId, notifTitle, notifBody, notifUrl)
 
     // Qualification form + auto-reply
     const baileysUrl = process.env.BAILEYS_URL?.trim()

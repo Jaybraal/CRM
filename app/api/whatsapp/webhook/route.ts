@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb, getAdminStorage } from '@/lib/firebase-admin'
+import { adminDb, getAdminStorage, sendFCMToOrg } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -191,13 +191,17 @@ export async function POST(req: NextRequest) {
     }).catch(() => {})
 
     // Escribir notificación para push en el dashboard
+    const notifTitle = `Nuevo mensaje de ${clientName}`
+    const notifBody = text ? text.substring(0, 100) : 'Mensaje multimedia'
+    const notifUrl = `/dashboard/clients/${clientId}`
     await adminDb.collection(`organizations/${orgId}/notifications`).add({
-      title: `Nuevo mensaje de ${clientName}`,
-      body: text ? text.substring(0, 100) : 'Mensaje multimedia',
+      title: notifTitle,
+      body: notifBody,
       clientId,
-      url: `/dashboard/clients/${clientId}`,
+      url: notifUrl,
       createdAt: FieldValue.serverTimestamp(),
     })
+    void sendFCMToOrg(orgId, notifTitle, notifBody, notifUrl)
 
     // Auto-reply bot
     const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()

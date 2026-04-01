@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getCategories, createCategory, updateCategory, deleteCategory, getClientsByCategory, ensureEliminadosCategory } from '@/lib/firestore'
 import type { Category } from '@/types'
@@ -21,15 +21,17 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState({ name: '', color: '#3b82f6', description: '' })
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!profile?.orgId) { setLoading(false); return }
-    await ensureEliminadosCategory(profile.orgId)
-    const cats = await getCategories(profile.orgId)
-    setCategories(cats)
+    try {
+      await ensureEliminadosCategory(profile.orgId)
+      const cats = await getCategories(profile.orgId)
+      setCategories(cats)
+    } catch (e) { console.error('Error cargando categorías:', e) }
     setLoading(false)
-  }
+  }, [profile?.orgId])
 
-  useEffect(() => { load() }, [profile])
+  useEffect(() => { load() }, [load])
 
   const openCreate = () => {
     setEditing(null)

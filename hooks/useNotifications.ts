@@ -2,14 +2,12 @@
 
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import type { Message } from '@/types'
+import { collection, query, where, onSnapshot, orderBy, limit, doc, setDoc } from 'firebase/firestore'
+import { db, getFirebaseMessaging } from '@/lib/firebase'
 
 export function useNotifications() {
   const { profile } = useAuth()
-  const lastSeenRef = useRef<Date>(new Date())
-  const permissionRef = useRef<NotificationPermission>('default')
+  const tokenRegisteredRef = useRef(false)
 
   useEffect(() => {
     // Register service worker
@@ -19,33 +17,48 @@ export function useNotifications() {
 
     // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(p => {
-        permissionRef.current = p
-      })
-    } else if ('Notification' in window) {
-      permissionRef.current = Notification.permission
+      Notification.requestPermission()
     }
   }, [])
 
+  // Register FCM token when we have a profile
+  useEffect(() => {
+    if (!profile?.uid || tokenRegisteredRef.current) return
+    const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    if (!vapidKey) return // FCM push requires VAPID key in env vars
+
+    const registerToken = async () => {
+      try {
+        const permission = await Notification.requestPermission()
+        if (permission !== 'granted') return
+
+        const messaging = await getFirebaseMessaging()
+        if (!messaging) return
+
+        const { getToken } = await import('firebase/messaging')
+        const token = await getToken(messaging, { vapidKey })
+        if (!token) return
+
+        tokenRegisteredRef.current = true
+        // Store token in Firestore under user doc so backend can send push
+        await setDoc(
+          doc(db, 'fcm_tokens', profile.uid),
+          { token, uid: profile.uid, orgId: profile.orgId, updatedAt: new Date() },
+          { merge: true }
+        )
+      } catch (e) {
+        console.warn('FCM token registration failed:', e)
+      }
+    }
+
+    registerToken()
+  }, [profile?.uid])
+
+  // Firestore-based in-app notifications (works when tab is open/hidden)
   useEffect(() => {
     if (!profile?.orgId) return
 
-    // Listen to all new messages across all clients in this org
-    // We query the collectionGroup for messages
-    const q = query(
-      collection(db, 'organizations', profile.orgId, 'clients'),
-    )
-
-    // For now we listen to each client's messages via a collectionGroup workaround
-    // We track the start time and only notify for messages after that
     const startTime = new Date()
-
-    // Listen to recent messages (last 1 minute, source=whatsapp)
-    // We can't easily do collectionGroup without indexes, so we rely on
-    // a simple polling approach by reading client list periodically
-    // Instead, use an activity feed document that the webhook updates
-
-    // Actually, we'll just show a document-level listener on a special notifications collection
     const notifQuery = query(
       collection(db, 'organizations', profile.orgId, 'notifications'),
       where('createdAt', '>', startTime),
@@ -57,11 +70,19 @@ export function useNotifications() {
       snap.docChanges().forEach(change => {
         if (change.type !== 'added') return
         const data = change.doc.data()
+        // Show browser notification if tab is hidden
         if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
-          new Notification(data.title || '1CRM', {
-            body: data.body || 'Nuevo mensaje de WhatsApp',
+          const n = new Notification(data.title || '1CRM', {
+            body: data.body || 'Nuevo mensaje',
             icon: '/favicon.ico',
+            tag: change.doc.id,
+            data: { url: data.url || '/dashboard/clients' },
           })
+          n.onclick = () => {
+            window.focus()
+            if (data.url) window.location.href = data.url
+            n.close()
+          }
         }
       })
     })
