@@ -12,7 +12,8 @@ export function useNotifications() {
   useEffect(() => {
     // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
+      // /api/sw serves the SW with Firebase config injected (env vars)
+      navigator.serviceWorker.register('/api/sw', { scope: '/' }).catch(() => {})
     }
 
     // Request notification permission
@@ -36,7 +37,8 @@ export function useNotifications() {
         if (!messaging) return
 
         const { getToken } = await import('firebase/messaging')
-        const token = await getToken(messaging, { vapidKey })
+        const swReg = await navigator.serviceWorker.getRegistration('/') || undefined
+        const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg })
         if (!token) return
 
         tokenRegisteredRef.current = true
