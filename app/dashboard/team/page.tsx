@@ -53,13 +53,15 @@ export default function TeamPage() {
     const goals = await getAllGoalsForMonth(profile.orgId, month)
     const goalsMap = Object.fromEntries(goals.map(g => [g.uid, g]))
 
-    const rowsData: AgentRow[] = await Promise.all(
-      agents.map(async user => {
-        const stats = await getAgentStats(profile.orgId!, user.uid, month)
-        return { user, goal: goalsMap[user.uid] ?? null, stats }
-      })
-    )
-    setRows(rowsData)
+    try {
+      const rowsData: AgentRow[] = await Promise.all(
+        agents.map(async user => {
+          const stats = await getAgentStats(profile.orgId!, user.uid, month)
+          return { user, goal: goalsMap[user.uid] ?? null, stats }
+        })
+      )
+      setRows(rowsData)
+    } catch (e) { console.error('Error cargando equipo:', e) }
     setLoading(false)
   }
 

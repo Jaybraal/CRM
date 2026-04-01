@@ -22,11 +22,14 @@ export default function TasksPage() {
 
   const load = async () => {
     if (!profile?.orgId) { setLoading(false); return }
-    const [t, c] = await Promise.all([
-      getTasks(profile.orgId, profile.role === 'agent' ? profile.uid : undefined),
-      getClients(profile.orgId),
-    ])
-    setTasks(t); setClients(c); setLoading(false)
+    try {
+      const [t, c] = await Promise.all([
+        getTasks(profile.orgId, profile.role === 'agent' ? profile.uid : undefined),
+        getClients(profile.orgId),
+      ])
+      setTasks(t); setClients(c)
+    } catch (e) { console.error('Error cargando tareas:', e) }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [profile])

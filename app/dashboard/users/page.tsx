@@ -100,19 +100,21 @@ export default function UsersPage() {
     const goals = await getAllGoalsForMonth(profile.orgId, month)
     const goalsMap = Object.fromEntries(goals.map(g => [g.uid, g]))
 
-    const rowsData: UserRow[] = await Promise.all(
-      users.map(async user => {
-        const stats = await getAgentStats(profile.orgId!, user.uid, month)
-        return {
-          user,
-          goal: goalsMap[user.uid] ?? null,
-          stats,
-          session: null,
-          expanded: false,
-        }
-      })
-    )
-    setRows(rowsData)
+    try {
+      const rowsData: UserRow[] = await Promise.all(
+        users.map(async user => {
+          const stats = await getAgentStats(profile.orgId!, user.uid, month)
+          return {
+            user,
+            goal: goalsMap[user.uid] ?? null,
+            stats,
+            session: null,
+            expanded: false,
+          }
+        })
+      )
+      setRows(rowsData)
+    } catch (e) { console.error('Error cargando usuarios:', e) }
     setLoading(false)
   }, [profile?.orgId, month])
 

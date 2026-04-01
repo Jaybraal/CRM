@@ -46,8 +46,7 @@ export default function BroadcastPage() {
       setCategories(cats)
       setTemplates(tmpl)
       setHasWhatsApp(sessionData?.status === 'open')
-      setLoading(false)
-    })
+    }).catch((e) => console.error('Error cargando broadcast:', e)).finally(() => setLoading(false))
   }, [profile?.orgId])
 
   const filtered = clients.filter(c => {

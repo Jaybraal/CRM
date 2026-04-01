@@ -91,10 +91,13 @@ export default function ClientDetailPage() {
         return new Date(d as string)
       }
 
-      const [tasksData, dealsData] = await Promise.all([
-        getTasks(profile.orgId),
-        getDeals(profile.orgId),
-      ])
+      let tasksData, dealsData
+      try {
+        [tasksData, dealsData] = await Promise.all([
+          getTasks(profile.orgId),
+          getDeals(profile.orgId),
+        ])
+      } catch (e) { console.error('Error cargando timeline:', e); return }
 
       const messagesSnap = await getDocs(
         query(collection(db, 'organizations', profile.orgId, 'clients', id, 'messages'), orderBy('createdAt', 'desc'))
