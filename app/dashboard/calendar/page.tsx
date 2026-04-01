@@ -112,14 +112,13 @@ export default function CalendarPage() {
     setSaving(true)
     try {
       const [h, m] = apptForm.startTime.split(':').map(Number)
-      const startDate = new Date(apptForm.startDate)
-      startDate.setHours(h, m, 0, 0)
+      const [yyyy, mm, dd] = apptForm.startDate.split('-').map(Number)
+      const startDate = new Date(yyyy, mm - 1, dd, h, m, 0, 0)
 
       let endDate: Date | undefined
       if (apptForm.endTime) {
         const [eh, em] = apptForm.endTime.split(':').map(Number)
-        endDate = new Date(apptForm.startDate)
-        endDate.setHours(eh, em, 0, 0)
+        endDate = new Date(yyyy, mm - 1, dd, eh, em, 0, 0)
       }
 
       await createAppointment(profile.orgId, {

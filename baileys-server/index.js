@@ -4,6 +4,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   initAuthCreds,
   BufferJSON,
+  downloadContentFromMessage,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import qrcode from 'qrcode-terminal'
@@ -203,6 +204,8 @@ async function startSession(sessionId, orgId) {
       let text = ''
       let msgType = 'text'
       let locationData = null
+      let mediaBase64 = null
+      let mediaMime = null
 
       const m = msg.message || {}
       if (m.conversation) {
@@ -214,12 +217,36 @@ async function startSession(sessionId, orgId) {
       } else if (m.imageMessage) {
         text = m.imageMessage.caption || ''
         msgType = 'image'
+        try {
+          const stream = await downloadContentFromMessage(m.imageMessage, 'image')
+          const chunks = []
+          for await (const chunk of stream) chunks.push(chunk)
+          const buf = Buffer.concat(chunks)
+          mediaBase64 = buf.toString('base64')
+          mediaMime = m.imageMessage.mimetype || 'image/jpeg'
+        } catch (e) { console.warn('Error descargando imagen:', e.message) }
       } else if (m.videoMessage) {
         msgType = 'video'
-        text = m.videoMessage.caption || '[Video]'
+        text = m.videoMessage.caption || ''
+        try {
+          const stream = await downloadContentFromMessage(m.videoMessage, 'video')
+          const chunks = []
+          for await (const chunk of stream) chunks.push(chunk)
+          const buf = Buffer.concat(chunks)
+          mediaBase64 = buf.toString('base64')
+          mediaMime = m.videoMessage.mimetype || 'video/mp4'
+        } catch (e) { console.warn('Error descargando video:', e.message) }
       } else if (m.audioMessage) {
         msgType = 'audio'
-        text = '[Audio]'
+        text = ''
+        try {
+          const stream = await downloadContentFromMessage(m.audioMessage, 'audio')
+          const chunks = []
+          for await (const chunk of stream) chunks.push(chunk)
+          const buf = Buffer.concat(chunks)
+          mediaBase64 = buf.toString('base64')
+          mediaMime = m.audioMessage.mimetype || 'audio/ogg'
+        } catch (e) { console.warn('Error descargando audio:', e.message) }
       } else if (m.locationMessage) {
         msgType = 'location'
         locationData = {
@@ -237,12 +264,12 @@ async function startSession(sessionId, orgId) {
         continue // ignorar mensajes de protocolo (ediciones, borrados)
       }
 
-      console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}`)
+      console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}${mediaBase64 ? ' [+media]' : ''}`)
       const orgId = sessions.get(sessionId)?.orgId
       if (!orgId) continue
 
       // Enviar al CRM secuencialmente con reintentos
-      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId })
+      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId, mediaBase64, mediaMime })
       let sent = false
       for (let attempt = 1; attempt <= 4; attempt++) {
         try {

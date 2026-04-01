@@ -1,8 +1,53 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb } from '@/lib/firebase-admin'
+import { adminDb, getAdminStorage } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
+
+async function downloadMetaMedia(mediaId: string, token: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  try {
+    // Step 1: Get the media URL
+    const metaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!metaRes.ok) return null
+    const { url, mime_type } = await metaRes.json()
+
+    // Step 2: Download the actual file
+    const fileRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!fileRes.ok) return null
+    const buffer = Buffer.from(await fileRes.arrayBuffer())
+    return { buffer, mimeType: mime_type || 'application/octet-stream' }
+  } catch (e) {
+    console.error('Error downloading Meta media:', e)
+    return null
+  }
+}
+
+async function uploadToStorage(orgId: string, clientId: string, buffer: Buffer, mimeType: string): Promise<string> {
+  const extMap: Record<string, string> = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+    'video/mp4': 'mp4', 'video/3gpp': '3gp',
+    'audio/ogg': 'ogg', 'audio/ogg; codecs=opus': 'ogg', 'audio/mpeg': 'mp3', 'audio/aac': 'aac',
+  }
+  const ext = extMap[mimeType] || (mimeType.startsWith('video/') ? 'mp4' : mimeType.startsWith('audio/') ? 'ogg' : 'jpg')
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `organizations/${orgId}/chat/${clientId}/${fileName}`
+
+  const downloadToken = crypto.randomUUID()
+  const bucket = getAdminStorage()
+
+  await bucket.file(path).save(buffer, {
+    metadata: {
+      contentType: mimeType,
+      metadata: { firebaseStorageDownloadTokens: downloadToken },
+    },
+  })
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`
+}
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'crm_webhook_2024'
 
@@ -42,7 +87,7 @@ export async function POST(req: NextRequest) {
     if (!configSnap.exists) {
       return NextResponse.json({ ok: true })
     }
-    const { orgId } = configSnap.data() as { orgId: string; token: string }
+    const { orgId, token: waToken } = configSnap.data() as { orgId: string; token: string }
 
     // Buscar cliente por whatsappPhone
     const clientsSnap = await adminDb
@@ -82,23 +127,45 @@ export async function POST(req: NextRequest) {
     // Extraer contenido del mensaje
     let text: string | undefined
     const photos: string[] = []
+    let detectedType: string = msgType
 
     if (msgType === 'text') {
       text = message.text?.body
     } else if (msgType === 'image') {
-      // La URL pública de la imagen viene en message.image.url o hay que descargarla
-      // Meta provee la media_id, se necesita llamar a la API para obtener la URL
+      detectedType = 'image'
+      text = message.image?.caption || ''
       const mediaId = message.image?.id
-      if (mediaId) {
-        photos.push(`https://graph.facebook.com/v19.0/${mediaId}`) // placeholder - se resuelve con el token
+      if (mediaId && waToken) {
+        const media = await downloadMetaMedia(mediaId, waToken)
+        if (media) {
+          const url = await uploadToStorage(orgId, clientId, media.buffer, media.mimeType)
+          photos.push(url)
+        }
       }
-      text = message.image?.caption
+    } else if (msgType === 'video') {
+      detectedType = 'video'
+      text = message.video?.caption || ''
+      const mediaId = message.video?.id
+      if (mediaId && waToken) {
+        const media = await downloadMetaMedia(mediaId, waToken)
+        if (media) {
+          const url = await uploadToStorage(orgId, clientId, media.buffer, media.mimeType)
+          photos.push(url)
+        }
+      }
+    } else if (msgType === 'audio' || msgType === 'voice') {
+      detectedType = 'audio'
+      text = '🎤 Nota de voz'
+      const mediaId = (message.audio || message.voice)?.id
+      if (mediaId && waToken) {
+        const media = await downloadMetaMedia(mediaId, waToken)
+        if (media) {
+          const url = await uploadToStorage(orgId, clientId, media.buffer, media.mimeType)
+          photos.push(url)
+        }
+      }
     } else if (msgType === 'document') {
       text = `[Documento: ${message.document?.filename || 'archivo'}]`
-    } else if (msgType === 'audio' || msgType === 'voice') {
-      text = '[Mensaje de voz]'
-    } else if (msgType === 'video') {
-      text = '[Video]'
     } else if (msgType === 'location') {
       const loc = message.location
       text = `[Ubicación: ${loc?.latitude}, ${loc?.longitude}]`
@@ -108,6 +175,7 @@ export async function POST(req: NextRequest) {
     await adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`).add({
       orgId,
       clientId,
+      type: detectedType,
       text,
       photos,
       senderId: fromPhone,
@@ -136,7 +204,7 @@ export async function POST(req: NextRequest) {
     const orgData = orgDoc.data()
     const autoReply = orgData?.settings?.autoReply
     if (autoReply?.enabled && autoReply?.message) {
-      const { orgId: _o, token: orgToken } = configSnap.data() as { orgId: string; token: string }
+      const orgToken = waToken
       void fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: {

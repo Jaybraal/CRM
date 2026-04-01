@@ -378,11 +378,12 @@ export async function getAppointments(orgId: string, assignedTo?: string): Promi
 }
 
 export async function createAppointment(orgId: string, data: Omit<Appointment, 'id' | 'orgId' | 'createdAt'>) {
-  const ref = await addDoc(collection(db, 'organizations', orgId, 'appointments'), {
-    ...data,
-    orgId,
-    createdAt: serverTimestamp(),
-  })
+  // Remove undefined values to avoid Firestore errors
+  const clean: Record<string, unknown> = { orgId, createdAt: serverTimestamp() }
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined) clean[k] = v
+  }
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'appointments'), clean)
   return ref.id
 }
 

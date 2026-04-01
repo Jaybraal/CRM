@@ -1,8 +1,33 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb } from '@/lib/firebase-admin'
+import { adminDb, getAdminStorage } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
+
+async function uploadMediaToStorage(orgId: string, clientId: string, base64: string, mimeType: string): Promise<string> {
+  const extMap: Record<string, string> = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+    'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
+    'audio/ogg': 'ogg', 'audio/opus': 'opus', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a',
+    'audio/ogg; codecs=opus': 'ogg',
+  }
+  const ext = extMap[mimeType] || (mimeType.startsWith('video/') ? 'mp4' : mimeType.startsWith('audio/') ? 'ogg' : 'jpg')
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `organizations/${orgId}/chat/${clientId}/${fileName}`
+
+  const buffer = Buffer.from(base64, 'base64')
+  const downloadToken = crypto.randomUUID()
+  const bucket = getAdminStorage()
+
+  await bucket.file(path).save(buffer, {
+    metadata: {
+      contentType: mimeType,
+      metadata: { firebaseStorageDownloadTokens: downloadToken },
+    },
+  })
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`
+}
 
 async function getNextAgentForOrg(orgId: string): Promise<string> {
   const [agentsSnap, supervisorsSnap] = await Promise.all([
@@ -46,7 +71,7 @@ async function sendBaileys(baileysUrl: string, to: string, text: string, session
 
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration } = await req.json()
+    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration, mediaBase64, mediaMime } = await req.json()
 
     if (!orgId || !from) return NextResponse.json({ ok: true })
 
@@ -119,8 +144,24 @@ export async function POST(req: NextRequest) {
       messageData.text = callDuration === -1 ? '📞 Llamada perdida' : `📞 Llamada (${callDuration}s)`
     }
 
-    if (type === 'image') {
-      messageData.text = text || '[Imagen recibida]'
+    // Upload media if provided
+    if (mediaBase64 && mediaMime && (type === 'image' || type === 'video' || type === 'audio')) {
+      try {
+        const mediaUrl = await uploadMediaToStorage(orgId, clientId, mediaBase64, mediaMime)
+        messageData.photos = [mediaUrl]
+        if (type === 'image') messageData.text = text || ''
+        if (type === 'video') messageData.text = text || ''
+        if (type === 'audio') messageData.text = '🎤 Nota de voz'
+      } catch (e) {
+        console.error('Error uploading media:', e)
+        if (type === 'image') messageData.text = text || '[Imagen - error al cargar]'
+        if (type === 'video') messageData.text = text || '[Video - error al cargar]'
+        if (type === 'audio') messageData.text = '[Audio - error al cargar]'
+      }
+    } else {
+      if (type === 'image') messageData.text = text || '[Imagen]'
+      if (type === 'video') messageData.text = text || '[Video]'
+      if (type === 'audio') messageData.text = messageData.text || '[Audio]'
     }
 
     await adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`).add(messageData)

@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
       'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
       'video/ogg': 'ogg', 'video/mpeg': 'mp4', 'video/x-msvideo': 'avi',
       'video/3gpp': '3gp', 'video/3gpp2': '3g2',
+      'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3',
+      'audio/mp4': 'm4a', 'audio/aac': 'aac', 'audio/wav': 'wav',
+      'audio/opus': 'opus',
     }
     const ext = extMap[file.type] ?? (file.type.startsWith('video/') ? 'mp4' : 'jpg')
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`

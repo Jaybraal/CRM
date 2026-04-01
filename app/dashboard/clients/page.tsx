@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { subscribeToClients, getCategories, createClient, getOrgUsers, getOrganization } from '@/lib/firestore'
+import { subscribeToClients, getCategories, createClient, getOrgUsers, getOrganization, updateClient } from '@/lib/firestore'
 import type { Client, Category, AppUser, ClientStatus } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import Modal from '@/components/ui/Modal'
@@ -68,7 +68,7 @@ export default function ClientsPage() {
       if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
     })
     if (profile.role !== 'agent') {
-      getOrgUsers(profile.orgId).then(users => setAgents(users.filter(u => u.role === 'agent')))
+      getOrgUsers(profile.orgId).then(setAgents)
     }
     const unsub = subscribeToClients(
       profile.orgId,
@@ -239,6 +239,11 @@ export default function ClientsPage() {
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
                   </p>
+                  {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
+                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                      {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
+                    </p>
+                  )}
                   {client.tags?.length > 0 && (
                     <div className="flex gap-1 mt-1 overflow-hidden">
                       {client.tags.slice(0, 3).map(tag => (
@@ -273,7 +278,26 @@ export default function ClientsPage() {
               </button>
               <Avatar name={selectedClient.name} size={38} />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm leading-tight">{selectedClient.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{selectedClient.name}</p>
+                  <select
+                    value={selectedClient.status}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value
+                      if (!profile?.orgId) return
+                      try {
+                        await updateClient(profile.orgId, selectedClient.id, { status: newStatus })
+                        setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
+                      } catch { toast.error('Error al cambiar estado') }
+                    }}
+                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-gray-600 focus:outline-none focus:border-gray-400 cursor-pointer"
+                    style={{ maxWidth: '100px' }}
+                  >
+                    {clientStatuses.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <p className="text-xs text-gray-500 leading-tight mt-0.5">
                   {getDisplayPhone(selectedClient) || (selectedClient.isLid ? 'Número privado' : 'Sin teléfono')}
                 </p>

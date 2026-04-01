@@ -326,6 +326,10 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
       }
 
       setText('')
+      if (textareaRef.current) {
+        textareaRef.current.value = ''
+        textareaRef.current.style.height = 'auto'
+      }
       setPendingFiles([])
       setPendingPreviews(prev => {
         prev.forEach(p => { if (p.isVideo) URL.revokeObjectURL(p.src) })
