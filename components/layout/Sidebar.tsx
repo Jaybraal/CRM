@@ -6,9 +6,9 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X, UserCircle,
-  Send, BarChart3, CalendarDays
+  Send, BarChart3, CalendarDays, Inbox
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
 
 type NavItem = {
@@ -28,6 +28,7 @@ function WIcon({ size = 18 }: { size?: number }) {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/inbox', label: 'Inbox', icon: Inbox, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/clients', label: 'Clientes', icon: WIcon, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/categories', label: 'Categorías', icon: Tag, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
@@ -46,6 +47,21 @@ export default function Sidebar() {
   const pathname = usePathname()
   const { profile, signOut } = useAuth()
   const [open, setOpen] = useState(false)
+  const [waConnected, setWaConnected] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!profile?.orgId) return
+    const check = async () => {
+      try {
+        const res = await fetch(`/api/whatsapp/sessions/${profile.orgId}?orgId=${profile.orgId}`)
+        const data = await res.json()
+        setWaConnected(data.status === 'open')
+      } catch { setWaConnected(false) }
+    }
+    check()
+    const interval = setInterval(check, 30000)
+    return () => clearInterval(interval)
+  }, [profile?.orgId])
 
   const visible = navItems.filter(item =>
     profile?.role && item.roles.includes(profile.role)
@@ -55,9 +71,15 @@ export default function Sidebar() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-          1CRM
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">1CRM</h1>
+          {waConnected !== null && (
+            <div className="flex items-center gap-1.5" title={waConnected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}>
+              <span className={`w-2 h-2 rounded-full ${waConnected ? 'bg-green-500' : 'bg-red-400'}`} />
+              <span className="text-[10px] text-gray-400">{waConnected ? 'WA' : 'WA ✗'}</span>
+            </div>
+          )}
+        </div>
         <p className="text-xs text-gray-500 mt-1 truncate">{profile?.displayName}</p>
         <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">
           {profile?.role?.replace('_', ' ')}

@@ -74,7 +74,21 @@ export default function ClientsPage() {
     const unsub = subscribeToClients(
       profile.orgId,
       profile.role === 'agent' ? profile.uid : undefined,
-      (c) => { setClients(c); setLoading(false) }
+      (c) => {
+        const getTime = (v: unknown) => {
+          if (!v) return 0
+          if (v instanceof Date) return v.getTime()
+          if (typeof v === 'object' && v !== null && 'seconds' in v) return (v as { seconds: number }).seconds * 1000
+          return 0
+        }
+        const sorted = [...c].sort((a, b) => {
+          const aTime = getTime(a.lastMessageAt) || getTime(a.createdAt)
+          const bTime = getTime(b.lastMessageAt) || getTime(b.createdAt)
+          return bTime - aTime
+        })
+        setClients(sorted)
+        setLoading(false)
+      }
     )
     return unsub
   }, [profile])
@@ -89,9 +103,25 @@ export default function ClientsPage() {
       c.phone?.includes(search) ||
       c.whatsappPhone?.includes(search) ||
       c.email?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = !filterStatus || c.status === filterStatus
+    const matchStatus = !filterStatus
+      ? true
+      : filterStatus === '__unread__'
+        ? (c.unreadCount ?? 0) > 0
+        : c.status === filterStatus
     return matchSearch && matchStatus
   })
+
+  const formatLastTime = (v: unknown): string => {
+    if (!v) return ''
+    const d = v instanceof Date ? v : new Date((v as { seconds: number }).seconds * 1000)
+    const now = new Date()
+    const diff = now.getTime() - d.getTime()
+    if (diff < 60000) return 'ahora'
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
+    if (diff < 86400000) return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+    if (diff < 604800000) return d.toLocaleDateString('es', { weekday: 'short' })
+    return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit' })
+  }
 
   const getCategoryColor = (id?: string) => categories.find(c => c.id === id)?.color || '#6b7280'
 
@@ -189,7 +219,7 @@ export default function ClientsPage() {
 
         {/* Status filter tabs */}
         <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
-          {[{ value: '', label: 'Todos' }, ...clientStatuses].map(s => (
+          {[{ value: '', label: 'Todos' }, { value: '__unread__', label: '● No leídos' }, ...clientStatuses].map(s => (
             <button key={s.value} onClick={() => handleFilterChange(s.value)}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
                 filterStatus === s.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -230,15 +260,15 @@ export default function ClientsPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-gray-900 text-sm truncate">{client.name}</span>
+                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-gray-900' : 'text-gray-700'}`}>{client.name}</span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {(client.unreadCount ?? 0) > 0 && (
+                      {(client.unreadCount ?? 0) > 0 ? (
                         <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                           {client.unreadCount! > 99 ? '99+' : client.unreadCount}
                         </span>
-                      )}
-                      <span className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: STATUS_COLORS[client.status] || '#9ca3af' }} title={clientStatuses.find(s => s.value === client.status)?.label || client.status} />
+                      ) : client.lastMessageAt ? (
+                        <span className="text-[10px] text-gray-400">{formatLastTime(client.lastMessageAt)}</span>
+                      ) : null}
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">

@@ -82,6 +82,13 @@ export interface Message {
   source: 'internal' | 'whatsapp'
   status?: MessageStatus   // solo mensajes enviados por el agente
   whatsappMsgId?: string   // ID del mensaje en Baileys
+  isNote?: boolean         // nota interna, no se envía por WA
+  replyTo?: {
+    id: string
+    text?: string
+    senderName: string
+    type?: MessageType
+  }
   createdAt: Date
 }
 

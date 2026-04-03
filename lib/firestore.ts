@@ -276,14 +276,20 @@ export async function sendMessage(
 export function subscribeToMessages(
   orgId: string,
   clientId: string,
-  callback: (msgs: Message[]) => void
+  callback: (msgs: Message[]) => void,
+  onError?: (error: Error) => void
 ) {
   const q = query(
     collection(db, 'organizations', orgId, 'clients', clientId, 'messages'),
     orderBy('createdAt', 'asc')
   )
-  return onSnapshot(q, snap =>
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Message[])
+  return onSnapshot(
+    q,
+    snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Message[]),
+    (error) => {
+      console.error('[Chat] Error en listener de mensajes:', error.code, error.message)
+      onError?.(error)
+    }
   )
 }
 

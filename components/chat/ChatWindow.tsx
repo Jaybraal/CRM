@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown } from 'lucide-react'
 import type { Client as ClientType } from '@/types'
 import toast from 'react-hot-toast'
 import { updateDoc, doc } from 'firebase/firestore'
@@ -35,6 +35,11 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const [locationName, setLocationName] = useState('')
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [gettingGps, setGettingGps] = useState(false)
+  const [listenerError, setListenerError] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+  const [replyToMsg, setReplyToMsg] = useState<Message | null>(null)
+  const [noteMode, setNoteMode] = useState(false)
 
   // Voice recording
   const [isRecording, setIsRecording] = useState(false)
@@ -53,16 +58,40 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
   useEffect(() => {
     if (!profile?.orgId) return
-    const unsub = subscribeToMessages(profile.orgId, client.id, (msgs) => {
-      setMessages(msgs)
-      // Mark unread count as 0 when viewing messages
-      if (msgs.length > 0) {
-        updateDoc(doc(db, `organizations/${profile.orgId}/clients/${client.id}`), { unreadCount: 0 }).catch(() => {})
-      }
-    })
+    let unsub: (() => void) | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+    const orgId = profile.orgId
+    const subscribe = () => {
+      unsub = subscribeToMessages(
+        orgId,
+        client.id,
+        (msgs) => {
+          setMessages(msgs)
+          setListenerError(false)
+          if (msgs.length > 0) {
+            updateDoc(doc(db, `organizations/${orgId}/clients/${client.id}`), { unreadCount: 0 }).catch(() => {})
+          }
+        },
+        (error) => {
+          setListenerError(true)
+          console.error('[Chat] Listener caído, reconectando en 5s...', (error as { code?: string }).code ?? error.message)
+          reconnectTimer = setTimeout(() => {
+            if (unsub) unsub()
+            subscribe()
+          }, 5000)
+        }
+      )
+    }
+
+    subscribe()
     getWhatsAppTemplates(profile.orgId).then(setTemplates)
     getClients(profile.orgId).then(setAllClients)
-    return unsub
+
+    return () => {
+      if (unsub) unsub()
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+    }
   }, [profile?.orgId, client.id])
 
   useEffect(() => {
@@ -88,6 +117,39 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const filteredTemplates = templates.filter(t =>
     templateQuery === '' || t.name.toLowerCase().includes(templateQuery.toLowerCase())
   )
+
+  const displayMessages = searchQuery
+    ? messages.filter(m => m.text?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : messages
+
+  const exportToPDF = () => {
+    const getTime = (v: unknown) => {
+      if (!v) return ''
+      const d = v instanceof Date ? v : new Date((v as { seconds: number }).seconds * 1000)
+      return d.toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    }
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chat - ${client.name}</title>
+<style>body{font-family:sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#111}
+h1{font-size:16px;color:#075E54}p.sub{color:#888;font-size:11px}hr{border:none;border-top:1px solid #eee;margin:12px 0}
+.wrap{display:flex;margin:4px 0}.wrap.me{justify-content:flex-end}
+.msg{padding:8px 12px;border-radius:12px;max-width:65%;font-size:13px}
+.me .msg{background:#DCF8C6}.them .msg{background:#f0f0f0}
+.note .msg{background:#FFF9C4;border-left:3px solid #F59E0B;font-style:italic}
+.lbl{font-size:10px;color:#888;margin-bottom:2px}.time{font-size:10px;color:#aaa;margin-top:3px;text-align:right}
+@media print{body{padding:10px}}</style></head><body>
+<h1>Chat con ${client.name}</h1>
+<p class="sub">Exportado ${new Date().toLocaleString('es')}</p><hr/>
+${messages.map(m => {
+  const isMe = m.source === 'internal'
+  const isNote = m.isNote
+  const cls = isNote ? 'note' : isMe ? 'me' : ''
+  const label = isNote ? '📝 Nota interna' : isMe ? m.senderName : client.name
+  const content = m.type === 'image' ? '[📷 Imagen]' : m.type === 'video' ? '[🎥 Video]' : m.type === 'audio' ? '[🎤 Audio]' : m.type === 'location' ? '[📍 Ubicación]' : (m.text || '')
+  return `<div class="wrap ${cls}"><div><div class="lbl">${label}</div><div class="msg">${content.replace(/</g, '&lt;')}<div class="time">${getTime(m.createdAt)}</div></div></div></div>`
+}).join('')}</body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 300) }
+  }
 
   const handleTextChange = (val: string) => {
     setText(val)
@@ -271,11 +333,13 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         senderName: profile.displayName,
         source: 'internal',
         status: 'sending',
+        isNote: noteMode || undefined,
+        replyTo: replyToMsg ? { id: replyToMsg.id, text: replyToMsg.text, senderName: replyToMsg.senderName, type: replyToMsg.type } : undefined,
       })
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
-      if (hasWhatsApp && client.whatsappPhone) {
+      if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
 
         // Send files (images and videos)
@@ -340,6 +404,8 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         prev.forEach(p => { if (p.isVideo) URL.revokeObjectURL(p.src) })
         return []
       })
+      setNoteMode(false)
+      setReplyToMsg(null)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('handleSend error:', msg)
@@ -474,6 +540,28 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
   const renderMessage = (msg: Message) => {
     const isMe = msg.source === 'internal'
 
+    // Nota interna
+    if (msg.isNote) {
+      return (
+        <div className="rounded-xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] bg-amber-50 border border-amber-200 shadow-sm">
+          <div className="flex items-center gap-1 mb-1">
+            <StickyNote size={11} className="text-amber-500" />
+            <span className="text-[10px] text-amber-600 font-semibold">Nota interna · {msg.senderName}</span>
+          </div>
+          <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.text}</p>
+          <span className="text-[10px] text-gray-400 block text-right mt-1">{formatTime(msg.createdAt as Date)}</span>
+        </div>
+      )
+    }
+
+    // Bloque de reply (cita) que aparece dentro del mensaje
+    const ReplyBlock = msg.replyTo ? (
+      <div className={`rounded-lg px-2 py-1.5 mb-1.5 text-xs border-l-2 ${isMe ? 'bg-[#c5e8b0] border-green-500' : 'bg-gray-100 border-gray-400'}`}>
+        <p className="font-semibold text-gray-700">{msg.replyTo.senderName}</p>
+        <p className="text-gray-500 truncate">{msg.replyTo.text || `[${msg.replyTo.type || 'media'}]`}</p>
+      </div>
+    ) : null
+
     if (msg.type === 'location' && msg.location) {
       const { lat, lng, name } = msg.location
       const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`
@@ -549,12 +637,17 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
 
     return (
       <div className={`group relative rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
-        <button
-          onClick={() => setForwardMsg(msg)}
-          className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-gray-200 rounded-full p-1 shadow-sm"
-          title="Reenviar">
-          <Forward size={12} className="text-gray-500" />
-        </button>
+        <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+          <button onClick={() => setReplyToMsg(msg)}
+            className="bg-white border border-gray-200 rounded-full p-1 shadow-sm" title="Responder">
+            <Reply size={12} className="text-gray-500" />
+          </button>
+          <button onClick={() => setForwardMsg(msg)}
+            className="bg-white border border-gray-200 rounded-full p-1 shadow-sm" title="Reenviar">
+            <Forward size={12} className="text-gray-500" />
+          </button>
+        </div>
+        {ReplyBlock}
         {msg.photos?.length > 0 && (
           <div className={`grid gap-1 mb-1.5 ${msg.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {msg.photos.map((url, i) =>
@@ -598,6 +691,14 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={() => { setShowSearch(v => !v); setSearchQuery('') }}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Buscar en chat">
+            <Search size={17} />
+          </button>
+          <button onClick={exportToPDF}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Exportar chat PDF">
+            <Printer size={17} />
+          </button>
           {hasWhatsApp && (client.phone || client.whatsappPhone) && (
             <button onClick={handleCall}
               className="p-2 rounded-full hover:bg-white/10 transition-colors text-white"
@@ -608,10 +709,37 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
         </div>
       </div>
 
+      {/* Barra de búsqueda */}
+      {showSearch && (
+        <div className="bg-white border-b border-gray-200 px-3 py-2 flex items-center gap-2 flex-shrink-0">
+          <Search size={14} className="text-gray-400 flex-shrink-0" />
+          <input
+            autoFocus
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar en esta conversación..."
+            className="flex-1 text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+          />
+          {searchQuery && (
+            <span className="text-xs text-gray-400">{displayMessages.length} resultado{displayMessages.length !== 1 ? 's' : ''}</span>
+          )}
+          <button onClick={() => { setShowSearch(false); setSearchQuery('') }} className="text-gray-400 hover:text-gray-700">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Hint plantillas */}
       {templates.length > 0 && (
         <div className="bg-[#075E54]/10 px-4 py-1.5 flex items-center gap-2 flex-shrink-0 border-b border-[#075E54]/10">
           <span className="text-[11px] text-[#075E54] font-medium">Escribe <kbd className="bg-white/80 border border-[#075E54]/20 rounded px-1 font-mono">/</kbd> para respuestas rápidas</span>
+        </div>
+      )}
+
+      {/* Banner error de conexión */}
+      {listenerError && (
+        <div className="bg-red-500 text-white text-xs text-center px-4 py-1.5 flex-shrink-0">
+          Sin conexión en tiempo real · Reconectando...
         </div>
       )}
 
@@ -628,12 +756,12 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
             )}
           </div>
         )}
-        {messages.map(msg => {
+        {displayMessages.map(msg => {
           const isMe = msg.source === 'internal'
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-0.5`}>
-                {!isMe && (
+                {!isMe && !msg.isNote && (
                   <span className="text-[10px] text-gray-500 px-1">{client.name}</span>
                 )}
                 {renderMessage(msg)}
@@ -739,11 +867,39 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
             <MapPin size={18} className="text-[#075E54]" />
             Enviar ubicación
           </button>
+          <button type="button" onClick={() => { setNoteMode(v => !v); setShowActions(false) }}
+            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-amber-50 active:bg-amber-100 transition-colors text-sm text-amber-700 border-t border-gray-100">
+            <StickyNote size={18} className="text-amber-500" />
+            Nota interna
+          </button>
+        </div>
+      )}
+
+      {/* Banner reply */}
+      {replyToMsg && (
+        <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 flex items-center gap-3 flex-shrink-0">
+          <Reply size={14} className="text-[#075E54] flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-[#075E54]">{replyToMsg.senderName}</p>
+            <p className="text-xs text-gray-500 truncate">{replyToMsg.text || `[${replyToMsg.type || 'media'}]`}</p>
+          </div>
+          <button onClick={() => setReplyToMsg(null)} className="text-gray-400 hover:text-gray-700">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Banner modo nota */}
+      {noteMode && (
+        <div className="bg-amber-50 border-t border-amber-200 px-4 py-1.5 flex items-center gap-2 flex-shrink-0">
+          <StickyNote size={13} className="text-amber-500" />
+          <span className="text-xs text-amber-700 font-medium flex-1">Modo nota interna · no se enviará por WhatsApp</span>
+          <button onClick={() => setNoteMode(false)} className="text-amber-400 hover:text-amber-700"><X size={13} /></button>
         </div>
       )}
 
       {/* Barra de input */}
-      <div className="bg-[#F0F2F5] px-2 py-2 flex items-end gap-2 border-t border-gray-200 flex-shrink-0">
+      <div className={`px-2 py-2 flex items-end gap-2 border-t border-gray-200 flex-shrink-0 ${noteMode ? 'bg-amber-50' : 'bg-[#F0F2F5]'}`}>
         <input ref={fileInputRef} type="file" multiple accept="image/*,video/*"
           className="hidden" onChange={e => handleFiles(e.target.files)} />
 
