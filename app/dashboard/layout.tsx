@@ -8,9 +8,9 @@ import { usePathname } from 'next/navigation'
 function DashboardInner({ children }: { children: React.ReactNode }) {
   useNotifications()
   const pathname = usePathname()
-  const isChatsPage = pathname === '/dashboard/clients'
+  const isFullHeightPage = pathname === '/dashboard/clients' || pathname === '/dashboard/inbox'
 
-  if (isChatsPage) {
+  if (isFullHeightPage) {
     return (
       <div className="flex bg-gray-50" style={{ height: '100dvh' }}>
         <Sidebar />
