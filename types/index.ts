@@ -134,6 +134,7 @@ export interface Client {
   pipelineStage?: string
   movedToCategoryAt?: Date
   lastMessageAt?: Date
+  lastMessage?: string
   unreadCount?: number
   createdAt: Date
   updatedAt: Date

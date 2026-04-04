@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { subscribeToClients, getOrganization } from '@/lib/firestore'
-import type { Client } from '@/types'
+import { subscribeToClients, getOrganization, getCategories, getOrgUsers } from '@/lib/firestore'
+import type { Client, Category, AppUser } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
-import { Inbox, Search } from 'lucide-react'
+import Link from 'next/link'
+import { Inbox, Search, ArrowLeft, User } from 'lucide-react'
 
 const AVATAR_COLORS = ['#25D366', '#128C7E', '#075E54', '#34B7F1', '#7c3aed', '#db2777', '#d97706']
 
@@ -31,27 +32,43 @@ function formatLastTime(v: unknown): string {
   return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit' })
 }
 
+function formatPhone(p?: string): string | null {
+  if (!p) return null
+  const digits = p.replace(/[^\d]/g, '')
+  if (digits.length < 7) return null
+  return `+${digits}`
+}
+
 export default function InboxPage() {
   const { profile } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [agents, setAgents] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [hasWhatsApp, setHasWhatsApp] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'unread'>('unread')
+  const [filter, setFilter] = useState<'unread' | 'all'>('unread')
 
   useEffect(() => {
     if (!profile?.orgId) { setLoading(false); return }
+
     getOrganization(profile.orgId).then(org => {
       setHasWhatsApp(!!(org?.settings?.whatsapp?.phoneNumberId || process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true'))
     })
+    getCategories(profile.orgId).then(setCategories)
+    if (profile.role !== 'agent') {
+      getOrgUsers(profile.orgId).then(setAgents)
+    }
+
     const getTime = (v: unknown) => {
       if (!v) return 0
       if (v instanceof Date) return v.getTime()
       if (typeof v === 'object' && v !== null && 'seconds' in v) return (v as { seconds: number }).seconds * 1000
       return 0
     }
+
     const unsub = subscribeToClients(
       profile.orgId,
       profile.role === 'agent' ? profile.uid : undefined,
@@ -66,19 +83,24 @@ export default function InboxPage() {
   }, [profile])
 
   const filtered = clients.filter(c => {
-    const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search ||
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone?.includes(search) ||
+      c.whatsappPhone?.includes(search)
     const matchFilter = filter === 'all' || (c.unreadCount ?? 0) > 0
     return matchSearch && matchFilter
   })
 
   const selectedClient = clients.find(c => c.id === selectedId) || null
   const totalUnread = clients.reduce((s, c) => s + (c.unreadCount ?? 0), 0)
+  const getCategoryColor = (id?: string) => categories.find(c => c.id === id)?.color || '#6b7280'
 
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
 
-      {/* Lista de chats */}
+      {/* ── Panel izquierdo ─────────────────────────────── */}
       <div className={`flex-col w-full lg:w-80 xl:w-96 bg-white border-r border-gray-200 flex-shrink-0 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-2">
@@ -108,7 +130,7 @@ export default function InboxPage() {
         {/* Filtros */}
         <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100">
           {[{ value: 'unread', label: '● No leídos' }, { value: 'all', label: 'Todos' }].map(f => (
-            <button key={f.value} onClick={() => setFilter(f.value as 'all' | 'unread')}
+            <button key={f.value} onClick={() => setFilter(f.value as 'unread' | 'all')}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
@@ -137,10 +159,19 @@ export default function InboxPage() {
                 onClick={() => { setSelectedId(client.id); setShowMobileChat(true) }}
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-50 text-left ${selectedId === client.id ? 'bg-[#f0f2f5]' : ''}`}
               >
-                <Avatar name={client.name} size={46} />
+                {/* Avatar con dot de categoría */}
+                <div className="relative">
+                  <Avatar name={client.name} size={46} />
+                  {client.categoryId && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                      style={{ backgroundColor: getCategoryColor(client.categoryId) }} />
+                  )}
+                </div>
+
+                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
                       {client.name}
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -153,11 +184,17 @@ export default function InboxPage() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">
-                    {client.phone || client.whatsappPhone ? `+${(client.phone || client.whatsappPhone)!.replace(/\D/g, '')}` : 'Sin teléfono'}
+
+                  {/* Preview del último mensaje */}
+                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                    {client.lastMessage || formatPhone(client.phone) || formatPhone(client.whatsappPhone) || 'Sin teléfono'}
                   </p>
-                  {client.lastMessageAt && (client.unreadCount ?? 0) > 0 && (
-                    <p className="text-[10px] text-gray-400 mt-0.5">{formatLastTime(client.lastMessageAt)}</p>
+
+                  {/* Agente asignado */}
+                  {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
+                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                      {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
+                    </p>
                   )}
                 </div>
               </button>
@@ -166,20 +203,39 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {/* Chat */}
-      <div className={`flex-1 min-w-0 ${showMobileChat ? 'flex' : 'hidden lg:flex'} flex-col`}>
+      {/* ── Panel derecho: chat ────────────────────────── */}
+      <div className={`flex-col flex-1 min-w-0 min-h-0 ${showMobileChat ? 'flex' : 'hidden lg:flex'}`}>
         {selectedClient ? (
           <>
-            <div className="lg:hidden flex items-center px-4 py-2 bg-white border-b border-gray-200">
-              <button onClick={() => setShowMobileChat(false)} className="text-sm text-gray-500 hover:text-gray-900 mr-3">
-                ← Volver
+            {/* Header del chat */}
+            <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+              <button
+                onClick={() => setShowMobileChat(false)}
+                className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+                <ArrowLeft size={20} />
               </button>
+              <Avatar name={selectedClient.name} size={38} />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{selectedClient.name}</p>
+                <p className="text-xs text-gray-500 leading-tight mt-0.5">
+                  {formatPhone(selectedClient.phone) || formatPhone(selectedClient.whatsappPhone) || (selectedClient.isLid ? 'Número privado' : 'Sin teléfono')}
+                </p>
+              </div>
+              <Link
+                href={`/dashboard/clients/${selectedClient.id}`}
+                className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+                title="Ver perfil completo">
+                <User size={18} />
+              </Link>
             </div>
-            <ChatWindow client={selectedClient} hasWhatsApp={hasWhatsApp} fitParent />
+
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ChatWindow client={selectedClient} hasWhatsApp={hasWhatsApp} fitParent />
+            </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <Inbox size={40} className="text-gray-200" />
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center bg-[#f0f2f5]">
+            <Inbox size={40} className="text-gray-300" />
             <p className="text-sm text-gray-400">Selecciona una conversación</p>
           </div>
         )}
