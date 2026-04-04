@@ -234,7 +234,7 @@ export default function InboxPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center bg-[#f0f2f5]">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center bg-[#f0f2f5]">
             <Inbox size={40} className="text-gray-300" />
             <p className="text-sm text-gray-400">Selecciona una conversación</p>
           </div>
