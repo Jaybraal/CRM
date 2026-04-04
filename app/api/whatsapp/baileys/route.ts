@@ -172,6 +172,14 @@ export async function POST(req: NextRequest) {
     // Notification
     const notifTitle = isNew ? `Nuevo contacto: ${clientName}` : `Mensaje de ${clientName}`
     const notifBody = type === 'location' ? '📍 Compartió su ubicación' : type === 'call' ? '📞 Llamada perdida' : (text?.substring(0, 100) || '[Multimedia]')
+
+    // Actualizar cliente con lastMessageAt y unreadCount para Inbox y reordenamiento
+    await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).update({
+      lastMessageAt: FieldValue.serverTimestamp(),
+      lastMessage: notifBody,
+      unreadCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
     const notifUrl = `/dashboard/clients/${clientId}`
     await adminDb.collection(`organizations/${orgId}/notifications`).add({
       title: notifTitle,

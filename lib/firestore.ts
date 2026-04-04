@@ -270,6 +270,20 @@ export async function sendMessage(
     collection(db, 'organizations', orgId, 'clients', clientId, 'messages'),
     { ...data, orgId, clientId, photos: data.photos || [], createdAt: serverTimestamp() }
   )
+  // Actualizar cliente con timestamp del último mensaje para reordenamiento en tiempo real
+  const lastMessage = data.isNote ? undefined : (
+    data.text ||
+    (data.type === 'image' ? '📷 Imagen' :
+     data.type === 'audio' ? '🎤 Audio' :
+     data.type === 'video' ? '🎬 Video' : '📎 Archivo')
+  )
+  if (!data.isNote) {
+    await updateDoc(doc(db, 'organizations', orgId, 'clients', clientId), {
+      lastMessageAt: serverTimestamp(),
+      lastMessage,
+      updatedAt: serverTimestamp(),
+    })
+  }
   return ref.id
 }
 
