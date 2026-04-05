@@ -477,7 +477,7 @@ export default function AdminPage() {
 
   return (
     <AuthGuard allowedRoles={['super_admin']}>
-      <div className="space-y-6">
+      <div className="min-h-screen bg-gray-950 p-6 space-y-6">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">

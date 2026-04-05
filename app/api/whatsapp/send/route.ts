@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
     const metaToken = tokenData ? safeDecrypt(tokenData.wa_token_enc as string) : ''
     const hasMetaConfig = !!(metaPhoneNumberId && metaToken)
 
+    console.log('[send] orgId:', orgId, '| tokenSnap exists:', tokenSnap.exists, '| hasMetaConfig:', hasMetaConfig, '| phoneIdLen:', metaPhoneNumberId.length, '| tokenLen:', metaToken.length)
+
     const baileysUrl = process.env.BAILEYS_URL?.trim()
 
     // ── Meta Cloud API (si tiene tokens configurados) ──────────────────────
