@@ -357,7 +357,7 @@ export default function AdminPage() {
 
       // Guardar tokens encriptados si se proporcionaron
       if (createForm.waToken || createForm.igToken) {
-        await fetch(`/api/admin/tokens/${orgData.id}`, {
+        const tokenRes = await fetch(`/api/admin/tokens/${orgData.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
           body: JSON.stringify({
@@ -367,6 +367,10 @@ export default function AdminPage() {
             updatedBy: user?.uid,
           }),
         })
+        if (!tokenRes.ok) {
+          const tokenErr = await tokenRes.json().catch(() => ({}))
+          throw new Error(tokenErr.error || 'Error al guardar tokens')
+        }
       }
 
       toast.success(`"${createForm.orgName}" creada`)
@@ -426,7 +430,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error()
 
       // Guardar tokens siempre (aunque estén vacíos, para borrarlos si se limpiaron)
-      await fetch(`/api/admin/tokens/${editOrg.id}`, {
+      const tokenRes = await fetch(`/api/admin/tokens/${editOrg.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
         body: JSON.stringify({
@@ -436,6 +440,10 @@ export default function AdminPage() {
           updatedBy: user?.uid,
         }),
       })
+      if (!tokenRes.ok) {
+        const tokenErr = await tokenRes.json().catch(() => ({}))
+        throw new Error(tokenErr.error || 'Error al guardar tokens')
+      }
 
       toast.success('Organización actualizada')
       setEditOrg(null)
