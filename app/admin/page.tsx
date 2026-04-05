@@ -7,7 +7,7 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import {
   Plus, Building2, Calendar, LogIn, Pencil, Trash2,
   Users, UserCheck, FolderKanban, X, ShieldCheck,
-  AlertTriangle, CheckCircle2, Timer, ArrowLeft,
+  AlertTriangle, CheckCircle2, Timer, ArrowLeft, KeyRound,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -274,13 +274,16 @@ export default function AdminPage() {
     orgName: '', industry: '', plan: 'trial' as Organization['plan'],
     ownerName: '', ownerEmail: '', ownerPassword: '',
     durationDays: 30,
+    waPhoneNumberId: '', waToken: '', igToken: '',
   })
 
   // Edit
   const [editOrg, setEditOrg] = useState<Organization | null>(null)
   const [editForm, setEditForm] = useState({
     name: '', industry: '', plan: 'trial' as Organization['plan'], durationDays: 0,
+    waPhoneNumberId: '', waToken: '', igToken: '',
   })
+  const [loadingTokens, setLoadingTokens] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Delete
@@ -347,9 +350,23 @@ export default function AdminPage() {
         body: JSON.stringify({ ownerId: userData.uid }),
       })
 
+      // Guardar tokens encriptados si se proporcionaron
+      if (createForm.waToken || createForm.igToken) {
+        await fetch(`/api/admin/tokens/${orgData.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
+          body: JSON.stringify({
+            wa_phone_number_id: createForm.waPhoneNumberId,
+            wa_token: createForm.waToken,
+            ig_token: createForm.igToken,
+            updatedBy: user?.uid,
+          }),
+        })
+      }
+
       toast.success(`"${createForm.orgName}" creada`)
       setShowCreate(false)
-      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30 })
+      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30, waPhoneNumberId: '', waToken: '', igToken: '' })
       load()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
@@ -360,7 +377,7 @@ export default function AdminPage() {
     }
   }
 
-  const openEdit = (org: Organization) => {
+  const openEdit = async (org: Organization) => {
     const exp = getExpiry(org)
     let durationDays = 0
     if (exp) {
@@ -368,7 +385,21 @@ export default function AdminPage() {
       durationDays = Math.max(1, days)
     }
     setEditOrg(org)
-    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays })
+    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays, waPhoneNumberId: '', waToken: '', igToken: '' })
+
+    // Cargar tokens existentes
+    setLoadingTokens(true)
+    try {
+      const res = await fetch(`/api/admin/tokens/${org.id}`, {
+        headers: { 'x-user-uid': user?.uid || '' },
+      })
+      if (res.ok) {
+        const tokens = await res.json()
+        setEditForm(f => ({ ...f, waPhoneNumberId: tokens.wa_phone_number_id || '', waToken: tokens.wa_token || '', igToken: tokens.ig_token || '' }))
+      }
+    } finally {
+      setLoadingTokens(false)
+    }
   }
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -388,6 +419,19 @@ export default function AdminPage() {
         }),
       })
       if (!res.ok) throw new Error()
+
+      // Guardar tokens siempre (aunque estén vacíos, para borrarlos si se limpiaron)
+      await fetch(`/api/admin/tokens/${editOrg.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
+        body: JSON.stringify({
+          wa_phone_number_id: editForm.waPhoneNumberId,
+          wa_token: editForm.waToken,
+          ig_token: editForm.igToken,
+          updatedBy: user?.uid,
+        }),
+      })
+
       toast.success('Organización actualizada')
       setEditOrg(null)
       load()
@@ -525,6 +569,25 @@ export default function AdminPage() {
               <input required type="password" minLength={6} value={createForm.ownerPassword} onChange={e => setCreateForm(f => ({ ...f, ownerPassword: e.target.value }))}
                 className={inputCls} placeholder="Contraseña temporal (mín. 6 caracteres) *" />
             </div>
+            <div className="space-y-3 pt-4 border-t border-gray-800">
+              <div className="flex items-center gap-2">
+                <KeyRound size={14} className="text-indigo-400" />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tokens (opcional)</p>
+              </div>
+              <p className="text-xs text-gray-600">Se guardan encriptados con AES-256-GCM. Pueden configurarse ahora o editarse después.</p>
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-500 font-medium">WhatsApp (Meta Cloud API)</p>
+                <input value={createForm.waPhoneNumberId} onChange={e => setCreateForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
+                  className={inputCls} placeholder="Phone Number ID" />
+                <input type="password" value={createForm.waToken} onChange={e => setCreateForm(f => ({ ...f, waToken: e.target.value }))}
+                  className={inputCls} placeholder="Token de acceso" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-500 font-medium">Instagram</p>
+                <input type="password" value={createForm.igToken} onChange={e => setCreateForm(f => ({ ...f, igToken: e.target.value }))}
+                  className={inputCls} placeholder="Token de acceso IG" />
+              </div>
+            </div>
             <button type="submit" disabled={creating}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors">
               {creating ? 'Creando...' : 'Crear organización'}
@@ -533,7 +596,7 @@ export default function AdminPage() {
         </DarkModal>
 
         {/* Modal: Editar */}
-        <DarkModal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="sm">
+        <DarkModal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="md">
           <form onSubmit={handleEdit} className="space-y-4">
             <div>
               <label className={labelCls}>Nombre</label>
@@ -555,6 +618,28 @@ export default function AdminPage() {
               </select>
             </div>
             <DurationPicker value={editForm.durationDays} onChange={days => setEditForm(f => ({ ...f, durationDays: days }))} />
+
+            {/* Tokens */}
+            <div className="space-y-3 pt-3 border-t border-gray-800">
+              <div className="flex items-center gap-2">
+                <KeyRound size={14} className="text-indigo-400" />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tokens de integración</p>
+                {loadingTokens && <div className="w-3 h-3 border-2 border-gray-600 border-t-indigo-400 rounded-full animate-spin ml-auto" />}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-500 font-medium">WhatsApp (Meta Cloud API)</p>
+                <input value={editForm.waPhoneNumberId} onChange={e => setEditForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
+                  className={inputCls} placeholder="Phone Number ID" />
+                <input type="password" value={editForm.waToken} onChange={e => setEditForm(f => ({ ...f, waToken: e.target.value }))}
+                  className={inputCls} placeholder="Token de acceso" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-500 font-medium">Instagram</p>
+                <input type="password" value={editForm.igToken} onChange={e => setEditForm(f => ({ ...f, igToken: e.target.value }))}
+                  className={inputCls} placeholder="Token de acceso IG" />
+              </div>
+            </div>
+
             <button type="submit" disabled={saving}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors">
               {saving ? 'Guardando...' : 'Guardar cambios'}

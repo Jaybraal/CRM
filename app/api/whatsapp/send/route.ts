@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
+import { safeDecrypt } from '@/lib/encrypt'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface SendBody {
@@ -117,18 +118,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    // Meta Cloud API fallback
-    const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
-    if (!orgSnap.exists) return NextResponse.json({ error: 'Org no encontrada' }, { status: 404 })
+    // Meta Cloud API fallback — leer tokens encriptados desde org_tokens
+    const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
+    if (!tokenSnap.exists) return NextResponse.json({ error: 'WhatsApp no configurado' }, { status: 400 })
 
-    const orgData = orgSnap.data() as { settings: { whatsapp?: { phoneNumberId: string; token: string } } }
-    const waConfig = orgData.settings?.whatsapp
+    const tokenData = tokenSnap.data()!
+    const phoneNumberId = safeDecrypt(tokenData.wa_phone_number_id_enc as string)
+    const token = safeDecrypt(tokenData.wa_token_enc as string)
 
-    if (!waConfig?.phoneNumberId || !waConfig?.token) {
+    if (!phoneNumberId || !token) {
       return NextResponse.json({ error: 'WhatsApp no configurado' }, { status: 400 })
     }
-
-    const { phoneNumberId, token } = waConfig
     const apiUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
     const headers = {
       'Content-Type': 'application/json',

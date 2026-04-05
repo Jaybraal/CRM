@@ -276,7 +276,7 @@ ${messages.map(m => {
         text: '🎤 Nota de voz',
         photos: [audioFileUrl],
         senderId: profile.uid,
-        senderName: profile.displayName,
+        senderName: profile.displayName ?? '',
         source: 'internal',
         status: 'sending',
       })
@@ -325,17 +325,19 @@ ${messages.map(m => {
 
       const msgType = hasVideos ? 'video' : photoUrls.length > 0 ? 'image' : 'text'
 
-      const msgId = await sendMessage(profile.orgId, client.id, {
+      const msgPayload: Parameters<typeof sendMessage>[2] = {
         type: msgType,
         text: text.trim() || '',
         photos: photoUrls,
         senderId: profile.uid,
-        senderName: profile.displayName,
+        senderName: profile.displayName ?? '',
         source: 'internal',
         status: 'sending',
-        isNote: noteMode || undefined,
-        replyTo: replyToMsg ? { id: replyToMsg.id, text: replyToMsg.text, senderName: replyToMsg.senderName, type: replyToMsg.type } : undefined,
-      })
+      }
+      if (noteMode) msgPayload.isNote = true
+      if (replyToMsg) msgPayload.replyTo = { id: replyToMsg.id, text: replyToMsg.text, senderName: replyToMsg.senderName, type: replyToMsg.type }
+
+      const msgId = await sendMessage(profile.orgId, client.id, msgPayload)
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
@@ -441,7 +443,7 @@ ${messages.map(m => {
         photos: [],
         location: { lat, lng, name: locationName },
         senderId: profile.uid,
-        senderName: profile.displayName,
+        senderName: profile.displayName ?? '',
         source: 'internal',
       })
       const waTarget = client.whatsappJid || client.whatsappPhone
@@ -486,7 +488,7 @@ ${messages.map(m => {
         photos: [],
         callDuration: 0,
         senderId: profile.uid,
-        senderName: profile.displayName,
+        senderName: profile.displayName ?? '',
         source: 'internal',
       })
     } catch { /* ignore */ }
@@ -501,7 +503,7 @@ ${messages.map(m => {
         photos: forwardMsg.photos || [],
         location: forwardMsg.location,
         senderId: profile.uid,
-        senderName: profile.displayName,
+        senderName: profile.displayName ?? '',
         source: 'internal',
         status: 'sent',
       })

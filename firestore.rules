@@ -56,6 +56,11 @@ service cloud.firestore {
       allow read, write: if isOwner(phoneNumberId) || isSuperAdmin();
     }
 
+    // Tokens encriptados de organizaciones (WS / IG) — SOLO Admin SDK
+    match /org_tokens/{orgId} {
+      allow read, write: if false;
+    }
+
     // Organizaciones
     match /organizations/{orgId} {
       allow read: if isMember(orgId) || isSuperAdmin();

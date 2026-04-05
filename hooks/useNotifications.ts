@@ -24,7 +24,7 @@ export function useNotifications() {
 
   // Register FCM token when we have a profile
   useEffect(() => {
-    if (!profile?.uid || tokenRegisteredRef.current) return
+    if (!profile?.uid || !profile?.orgId || tokenRegisteredRef.current) return
     const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
     if (!vapidKey) return // FCM push requires VAPID key in env vars
 

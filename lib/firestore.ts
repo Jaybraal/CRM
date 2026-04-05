@@ -266,9 +266,11 @@ export async function sendMessage(
   clientId: string,
   data: Omit<Message, 'id' | 'orgId' | 'clientId' | 'createdAt'>
 ) {
+  const raw = { ...data, orgId, clientId, photos: data.photos || [], createdAt: serverTimestamp() }
+  const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
   const ref = await addDoc(
     collection(db, 'organizations', orgId, 'clients', clientId, 'messages'),
-    { ...data, orgId, clientId, photos: data.photos || [], createdAt: serverTimestamp() }
+    payload
   )
   // Actualizar cliente con timestamp del último mensaje para reordenamiento en tiempo real
   const lastMessage = data.isNote ? undefined : (

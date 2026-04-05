@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X, UserCircle,
-  Send, BarChart3, CalendarDays, Inbox
+  Send, BarChart3, CalendarDays
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
@@ -28,7 +28,6 @@ function WIcon({ size = 18 }: { size?: number }) {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-  { href: '/dashboard/inbox', label: 'Inbox', icon: Inbox, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/clients', label: 'Clientes', icon: WIcon, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/categories', label: 'Categorías', icon: Tag, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },

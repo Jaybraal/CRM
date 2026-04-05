@@ -48,11 +48,13 @@ async function getNextAgentForOrg(orgId: string): Promise<string> {
       .get()
     return ownerSnap.empty ? '' : ownerSnap.docs[0].id
   }
+
   const orgRef = adminDb.doc(`organizations/${orgId}`)
 
   const assignedUid = await adminDb.runTransaction(async (tx) => {
     const orgSnap = await tx.get(orgRef)
-    const currentIndex = orgSnap.data()?.settings?.roundRobinIndex ?? 0
+    const settings = orgSnap.data()?.settings || {}
+    const currentIndex = settings.roundRobinIndex ?? 0
     const nextIndex = (currentIndex + 1) % agents.length
     tx.update(orgRef, { 'settings.roundRobinIndex': nextIndex })
     return agents[currentIndex % agents.length]
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
     } else {
       const clientDoc = clientsSnap.docs[0]
       clientId = clientDoc.id
-      clientName = (clientDoc.data() as { name: string }).name
+      clientName = (clientDoc.data() as { name?: string }).name || clientDoc.id
     }
 
     // Build message document

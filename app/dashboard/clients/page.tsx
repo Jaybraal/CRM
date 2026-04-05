@@ -59,14 +59,18 @@ export default function ClientsPage() {
   const [visibleCount, setVisibleCount] = useState(50)
   const importRef = useRef<HTMLInputElement>(null)
 
-  const hasWhatsApp = process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true'
+  const [hasWhatsApp, setHasWhatsApp] = useState(process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true')
   const selectedClient = clients.find(c => c.id === selectedId) || null
+  const totalUnread = clients.reduce((s, c) => s + (c.unreadCount ?? 0), 0)
 
   useEffect(() => {
     if (!profile?.orgId) { setLoading(false); return }
     getCategories(profile.orgId).then(setCategories)
     getOrganization(profile.orgId).then(o => {
       if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
+      if (o?.settings?.whatsapp?.phoneNumberId || process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
+        setHasWhatsApp(true)
+      }
     })
     if (profile.role !== 'agent') {
       getOrgUsers(profile.orgId).then(setAgents)
@@ -186,7 +190,14 @@ export default function ClientsPage() {
       `}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <h1 className="font-bold text-gray-900 text-base">Chats</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-bold text-gray-900 text-base">Chats</h1>
+            {totalUnread > 0 && (
+              <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-0.5">
             <button onClick={() => importRef.current?.click()} disabled={importing}
               title="Importar CSV"
@@ -271,22 +282,20 @@ export default function ClientsPage() {
                       ) : null}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">
-                    {getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
+                  {/* Preview último mensaje (estilo inbox) */}
+                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                    {client.lastMessage || getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
                   </p>
-                  {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
+                  {/* Teléfono secundario solo si hay lastMessage */}
+                  {client.lastMessage && (
                     <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                      {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
+                      {getDisplayPhone(client) || (client.isLid ? 'Número privado' : '')}
                     </p>
                   )}
-                  {client.tags?.length > 0 && (
-                    <div className="flex gap-1 mt-1 overflow-hidden">
-                      {client.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full leading-none">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                  {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
+                    <p className="text-[10px] text-gray-400 truncate">
+                      {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
+                    </p>
                   )}
                 </div>
               </button>

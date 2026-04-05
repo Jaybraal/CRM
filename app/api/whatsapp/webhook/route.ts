@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb, getAdminStorage, sendFCMToOrg } from '@/lib/firebase-admin'
+import { safeDecrypt } from '@/lib/encrypt'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -51,6 +52,31 @@ async function uploadToStorage(orgId: string, clientId: string, buffer: Buffer, 
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'crm_webhook_2024'
 
+async function getNextAgentForOrg(orgId: string): Promise<string> {
+  const [agentsSnap, supervisorsSnap] = await Promise.all([
+    adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'agent').get(),
+    adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'supervisor').get(),
+  ])
+  const agents = [
+    ...agentsSnap.docs.map(d => d.id),
+    ...supervisorsSnap.docs.map(d => d.id),
+  ].sort()
+  if (agents.length === 0) {
+    const ownerSnap = await adminDb.collection('users')
+      .where('orgId', '==', orgId).where('role', '==', 'owner').limit(1).get()
+    return ownerSnap.empty ? '' : ownerSnap.docs[0].id
+  }
+  const orgRef = adminDb.doc(`organizations/${orgId}`)
+  return adminDb.runTransaction(async (tx) => {
+    const orgSnap = await tx.get(orgRef)
+    const settings = orgSnap.data()?.settings || {}
+    const currentIndex = settings.roundRobinIndex ?? 0
+    const nextIndex = (currentIndex + 1) % agents.length
+    tx.update(orgRef, { 'settings.roundRobinIndex': nextIndex })
+    return agents[currentIndex % agents.length]
+  })
+}
+
 // GET — Meta verifica el webhook
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -87,7 +113,12 @@ export async function POST(req: NextRequest) {
     if (!configSnap.exists) {
       return NextResponse.json({ ok: true })
     }
-    const { orgId, token: waToken } = configSnap.data() as { orgId: string; token: string }
+    const { orgId } = configSnap.data() as { orgId: string }
+
+    // Leer token encriptado desde org_tokens (seguro - solo Admin SDK)
+    const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
+    const tokenData = tokenSnap.data() || {}
+    const waToken = safeDecrypt(tokenData.wa_token_enc as string)
 
     // Buscar cliente por whatsappPhone
     const clientsSnap = await adminDb
@@ -103,6 +134,7 @@ export async function POST(req: NextRequest) {
       // Crear cliente automático si no existe
       const contact = value.contacts?.[0]
       clientName = contact?.profile?.name || fromPhone
+      const assignedTo = await getNextAgentForOrg(orgId)
       const newClientRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
         name: clientName,
         whatsappPhone: fromPhone,
@@ -112,7 +144,7 @@ export async function POST(req: NextRequest) {
         tags: [],
         photos: [],
         pipelineStage: 'new',
-        assignedTo: '',
+        assignedTo,
         createdBy: 'whatsapp',
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -176,18 +208,21 @@ export async function POST(req: NextRequest) {
       orgId,
       clientId,
       type: detectedType,
-      text,
+      text: text || '',
       photos,
       senderId: fromPhone,
-      senderName: clientName,
+      senderName: clientName || fromPhone,
       source: 'whatsapp',
       createdAt: FieldValue.serverTimestamp(),
     })
 
     // Incrementar contador de no leídos y actualizar timestamp
+    const lastMessagePreview = text ? text.substring(0, 100) : '[Multimedia]'
     await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).update({
       unreadCount: FieldValue.increment(1),
       lastMessageAt: FieldValue.serverTimestamp(),
+      lastMessage: lastMessagePreview,
+      updatedAt: FieldValue.serverTimestamp(),
     }).catch(() => {})
 
     // Escribir notificación para push en el dashboard

@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getOrganization, saveWhatsAppConfig, getWhatsAppTemplates } from '@/lib/firestore'
-import { updateDoc, doc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { getOrganization, getWhatsAppTemplates } from '@/lib/firestore'
 import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType, ClientStatus } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
@@ -20,10 +18,8 @@ export default function SettingsPage() {
   const [org, setOrg] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [savingWa, setSavingWa] = useState(false)
   const [copied, setCopied] = useState(false)
   const [form, setForm] = useState({ name: '', industry: '' })
-  const [waForm, setWaForm] = useState({ phoneNumberId: '', token: '' })
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [newTemplate, setNewTemplate] = useState({ name: '', body: '' })
   const [savingTemplate, setSavingTemplate] = useState(false)
@@ -65,10 +61,6 @@ export default function SettingsPage() {
       if (o) {
         setOrg(o)
         setForm({ name: o.name, industry: o.settings.industry })
-        setWaForm({
-          phoneNumberId: o.settings.whatsapp?.phoneNumberId || '',
-          token: o.settings.whatsapp?.token || '',
-        })
         setStages(o.settings.pipelineStages || DEFAULT_STAGES)
         setClientStatuses(o.settings.clientStatuses || DEFAULT_CLIENT_STATUSES)
         setAutoReply({
@@ -109,31 +101,6 @@ export default function SettingsPage() {
       toast.error(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const handleSaveWhatsApp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!profile?.orgId || !waForm.phoneNumberId || !waForm.token) return
-    setSavingWa(true)
-    try {
-      await updateDoc(doc(db, 'organizations', profile.orgId), {
-        'settings.whatsapp.phoneNumberId': waForm.phoneNumberId.trim(),
-        'settings.whatsapp.token': waForm.token.trim(),
-      })
-      await saveWhatsAppConfig(waForm.phoneNumberId.trim(), profile.orgId, waForm.token.trim())
-      setOrg(prev => prev ? {
-        ...prev,
-        settings: {
-          ...prev.settings,
-          whatsapp: { phoneNumberId: waForm.phoneNumberId.trim(), token: waForm.token.trim() }
-        }
-      } : prev)
-      toast.success('WhatsApp vinculado correctamente')
-    } catch {
-      toast.error('Error al guardar')
-    } finally {
-      setSavingWa(false)
     }
   }
 
@@ -340,7 +307,7 @@ export default function SettingsPage() {
     return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" /></div>
   }
 
-  const waConnected = !!org?.settings?.whatsapp?.phoneNumberId
+
 
   return (
     <div className="space-y-4 w-full max-w-2xl">
@@ -387,24 +354,15 @@ export default function SettingsPage() {
         <BaileysQR orgId={profile?.orgId || ''} />
       </div>
 
-      {/* WhatsApp — Meta Cloud API (opcional) */}
-      <form onSubmit={handleSaveWhatsApp} className={cardClass}>
-        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <MessageCircle size={20} className="text-gray-400" />
-            <div>
-              <h2 className="font-semibold text-gray-900">Meta Cloud API <span className="text-xs font-normal text-gray-400 ml-1">(opcional)</span></h2>
-              <p className="text-xs text-gray-400 mt-0.5">Solo si usas la API oficial de Meta Business</p>
-            </div>
+      {/* WhatsApp — Meta Cloud API (solo info del webhook) */}
+      <div className={cardClass}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <MessageCircle size={20} className="text-gray-400" />
+          <div>
+            <h2 className="font-semibold text-gray-900">Meta Cloud API</h2>
+            <p className="text-xs text-gray-400 mt-0.5">URL de webhook para configurar en Meta Business</p>
           </div>
-          {waConnected && (
-            <span className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-              <CheckCircle size={12} /> Configurado
-            </span>
-          )}
         </div>
-
-        {/* Webhook URL */}
         <div>
           <label className={labelClass}>URL del Webhook</label>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -423,26 +381,10 @@ export default function SettingsPage() {
             </span>
           </p>
         </div>
-
-        <div>
-          <label className={labelClass}>Phone Number ID</label>
-          <input value={waForm.phoneNumberId}
-            onChange={e => setWaForm(f => ({ ...f, phoneNumberId: e.target.value }))}
-            className={inputClass} placeholder="123456789012345" />
-        </div>
-
-        <div>
-          <label className={labelClass}>Token de acceso</label>
-          <input type="password" value={waForm.token}
-            onChange={e => setWaForm(f => ({ ...f, token: e.target.value }))}
-            className={inputClass} placeholder="EAAxxxxxxxxx..." />
-        </div>
-
-        <button type="submit" disabled={savingWa || !waForm.phoneNumberId || !waForm.token}
-          className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
-          {savingWa ? 'Guardando...' : waConnected ? 'Actualizar' : 'Guardar'}
-        </button>
-      </form>
+        <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+          Los tokens de acceso son gestionados por el administrador del sistema por razones de seguridad.
+        </p>
+      </div>
 
       {/* Etapas del pipeline */}
       <div className={cardClass}>
