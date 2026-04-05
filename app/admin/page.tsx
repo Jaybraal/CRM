@@ -64,6 +64,9 @@ const STATUS_CONFIG = {
   expired:    { label: 'Vencido',    color: 'text-red-400',     bg: 'bg-red-900/30',      bar: 'bg-red-500',     icon: Timer },
 }
 
+// Fix autofill override (Safari/Chrome sobreescriben bg con blanco)
+const autofillFix = '[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_rgb(31,41,55)] [&:-webkit-autofill]:[--webkit-text-fill-color:white]'
+
 const PLAN_LABELS: Record<string, string> = { trial: 'Trial', basic: 'Basic', pro: 'Pro' }
 const PLAN_COLORS: Record<string, string> = {
   trial: 'bg-gray-700 text-gray-300',
@@ -90,15 +93,17 @@ function DarkModal({ open, onClose, title, children, size = 'md' }: {
   const sizeClass = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }[size]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 bg-black/70 overflow-y-auto">
-      <div className={`w-full ${sizeClass} rounded-2xl shadow-2xl border border-gray-700/80 bg-gray-900`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className={`w-full ${sizeClass} rounded-2xl shadow-2xl border border-gray-700/80 bg-gray-900 flex flex-col max-h-[90vh]`}>
+        {/* Header fijo */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
           <h2 className="text-base font-semibold text-white">{title}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors">
             <X size={18} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        {/* Contenido scrollable */}
+        <div className="p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   )
@@ -467,7 +472,7 @@ export default function AdminPage() {
   const soon = orgs.filter(o => getExpiryStatus(o) === 'soon').length
   const active = orgs.filter(o => ['active', 'indefinite'].includes(getExpiryStatus(o))).length
 
-  const inputCls = "w-full rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-800 border border-gray-700 placeholder-gray-500"
+  const inputCls = `w-full rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-800 border border-gray-700 placeholder-gray-500 ${autofillFix}`
   const labelCls = "text-xs font-medium text-gray-400 mb-1.5 block"
 
   return (
@@ -545,12 +550,12 @@ export default function AdminPage() {
 
         {/* Modal: Crear */}
         <DarkModal open={showCreate} onClose={() => setShowCreate(false)} title="Nueva organización" size="md">
-          <form onSubmit={handleCreate} className="space-y-5">
+          <form onSubmit={handleCreate} className="space-y-5" autoComplete="off">
             <div className="space-y-3 pb-4 border-b border-gray-800">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organización</p>
-              <input required value={createForm.orgName} onChange={e => setCreateForm(f => ({ ...f, orgName: e.target.value }))}
+              <input required autoComplete="off" value={createForm.orgName} onChange={e => setCreateForm(f => ({ ...f, orgName: e.target.value }))}
                 className={inputCls} placeholder="Nombre de la organización *" />
-              <input value={createForm.industry} onChange={e => setCreateForm(f => ({ ...f, industry: e.target.value }))}
+              <input autoComplete="off" value={createForm.industry} onChange={e => setCreateForm(f => ({ ...f, industry: e.target.value }))}
                 className={inputCls} placeholder="Industria (ej: Agencia de vehículos)" />
               <select value={createForm.plan} onChange={e => setCreateForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
                 className={inputCls}>
@@ -562,11 +567,11 @@ export default function AdminPage() {
             </div>
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cuenta del propietario</p>
-              <input required value={createForm.ownerName} onChange={e => setCreateForm(f => ({ ...f, ownerName: e.target.value }))}
+              <input required autoComplete="off" value={createForm.ownerName} onChange={e => setCreateForm(f => ({ ...f, ownerName: e.target.value }))}
                 className={inputCls} placeholder="Nombre completo *" />
-              <input required type="email" value={createForm.ownerEmail} onChange={e => setCreateForm(f => ({ ...f, ownerEmail: e.target.value }))}
+              <input required type="email" autoComplete="off" value={createForm.ownerEmail} onChange={e => setCreateForm(f => ({ ...f, ownerEmail: e.target.value }))}
                 className={inputCls} placeholder="Email *" />
-              <input required type="password" minLength={6} value={createForm.ownerPassword} onChange={e => setCreateForm(f => ({ ...f, ownerPassword: e.target.value }))}
+              <input required type="password" autoComplete="new-password" minLength={6} value={createForm.ownerPassword} onChange={e => setCreateForm(f => ({ ...f, ownerPassword: e.target.value }))}
                 className={inputCls} placeholder="Contraseña temporal (mín. 6 caracteres) *" />
             </div>
             <div className="space-y-3 pt-4 border-t border-gray-800">
@@ -597,51 +602,60 @@ export default function AdminPage() {
 
         {/* Modal: Editar */}
         <DarkModal open={!!editOrg} onClose={() => setEditOrg(null)} title={`Editar: ${editOrg?.name}`} size="md">
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div>
-              <label className={labelCls}>Nombre</label>
-              <input required value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                className={inputCls} />
+          <form onSubmit={handleEdit} className="space-y-4" autoComplete="off">
+            {/* Info general */}
+            <div className="space-y-3 pb-4 border-b border-gray-800">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organización</p>
+              <div>
+                <label className={labelCls}>Nombre</label>
+                <input required autoComplete="off" value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className={inputCls} placeholder="Nombre de la organización" />
+              </div>
+              <div>
+                <label className={labelCls}>Industria</label>
+                <input autoComplete="off" value={editForm.industry}
+                  onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}
+                  className={inputCls} placeholder="Industria" />
+              </div>
+              <div>
+                <label className={labelCls}>Plan</label>
+                <select value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
+                  className={inputCls}>
+                  <option value="trial">Trial</option>
+                  <option value="basic">Basic</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </div>
+              <DurationPicker value={editForm.durationDays} onChange={days => setEditForm(f => ({ ...f, durationDays: days }))} />
             </div>
-            <div>
-              <label className={labelCls}>Industria</label>
-              <input value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}
-                className={inputCls} placeholder="Industria" />
-            </div>
-            <div>
-              <label className={labelCls}>Plan</label>
-              <select value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
-                className={inputCls}>
-                <option value="trial">Trial</option>
-                <option value="basic">Basic</option>
-                <option value="pro">Pro</option>
-              </select>
-            </div>
-            <DurationPicker value={editForm.durationDays} onChange={days => setEditForm(f => ({ ...f, durationDays: days }))} />
 
             {/* Tokens */}
-            <div className="space-y-3 pt-3 border-t border-gray-800">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <KeyRound size={14} className="text-indigo-400" />
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tokens de integración</p>
                 {loadingTokens && <div className="w-3 h-3 border-2 border-gray-600 border-t-indigo-400 rounded-full animate-spin ml-auto" />}
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-500 font-medium">WhatsApp (Meta Cloud API)</p>
-                <input value={editForm.waPhoneNumberId} onChange={e => setEditForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
+                <p className="text-[11px] text-gray-400 font-medium">WhatsApp · Meta Cloud API</p>
+                <input autoComplete="off" value={editForm.waPhoneNumberId}
+                  onChange={e => setEditForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
                   className={inputCls} placeholder="Phone Number ID" />
-                <input type="password" value={editForm.waToken} onChange={e => setEditForm(f => ({ ...f, waToken: e.target.value }))}
+                <input type="password" autoComplete="new-password" value={editForm.waToken}
+                  onChange={e => setEditForm(f => ({ ...f, waToken: e.target.value }))}
                   className={inputCls} placeholder="Token de acceso" />
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-500 font-medium">Instagram</p>
-                <input type="password" value={editForm.igToken} onChange={e => setEditForm(f => ({ ...f, igToken: e.target.value }))}
+                <p className="text-[11px] text-gray-400 font-medium">Instagram</p>
+                <input type="password" autoComplete="new-password" value={editForm.igToken}
+                  onChange={e => setEditForm(f => ({ ...f, igToken: e.target.value }))}
                   className={inputCls} placeholder="Token de acceso IG" />
               </div>
             </div>
 
             <button type="submit" disabled={saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors">
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors mt-2">
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
           </form>
