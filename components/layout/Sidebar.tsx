@@ -10,6 +10,9 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
+import { db } from '@/lib/firebase'
+import { doc, onSnapshot } from 'firebase/firestore'
+import type { Organization } from '@/types'
 
 type NavItem = {
   href: string
@@ -50,16 +53,24 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!profile?.orgId) return
-    const check = async () => {
-      try {
-        const res = await fetch(`/api/whatsapp/sessions/${profile.orgId}?orgId=${profile.orgId}`)
-        const data = await res.json()
-        setWaConnected(data.status === 'open')
-      } catch { setWaConnected(false) }
-    }
-    check()
-    const interval = setInterval(check, 30000)
-    return () => clearInterval(interval)
+    // Si la org tiene Meta configurado, mostrar como conectado directamente
+    const unsub = onSnapshot(doc(db, 'organizations', profile.orgId), (snap) => {
+      const org = snap.data() as Organization | undefined
+      if (org?.settings?.whatsappMetaConfigured) {
+        setWaConnected(true)
+        return
+      }
+      // Fallback: verificar sesión Baileys
+      if (process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
+        fetch(`/api/whatsapp/sessions/${profile.orgId}?orgId=${profile.orgId}`)
+          .then(r => r.json())
+          .then(d => setWaConnected(d.status === 'open'))
+          .catch(() => setWaConnected(false))
+      } else {
+        setWaConnected(false)
+      }
+    }, () => setWaConnected(false))
+    return () => unsub()
   }, [profile?.orgId])
 
   const visible = navItems.filter(item =>
@@ -74,8 +85,8 @@ export default function Sidebar() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">1CRM</h1>
           {waConnected !== null && (
             <div className="flex items-center gap-1.5" title={waConnected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}>
-              <span className={`w-2 h-2 rounded-full ${waConnected ? 'bg-green-500' : 'bg-red-400'}`} />
-              <span className="text-[10px] text-gray-400">{waConnected ? 'WA' : 'WA ✗'}</span>
+              <span className={`w-2 h-2 rounded-full ${waConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`} />
+              <span className="text-[10px] text-gray-400">WA</span>
             </div>
           )}
         </div>
