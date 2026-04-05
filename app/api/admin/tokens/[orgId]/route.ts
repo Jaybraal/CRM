@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
-import { encrypt, safeDecrypt } from '@/lib/encrypt'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -14,7 +13,7 @@ async function verifySuperAdmin(req: NextRequest): Promise<boolean> {
   return userSnap.data()?.role === 'super_admin' || authHeader === SUPER_ADMIN_UID
 }
 
-// GET — devuelve tokens desencriptados (solo superadmin)
+// GET — devuelve tokens (solo superadmin)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params
   if (!(await verifySuperAdmin(req))) {
@@ -25,9 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
     if (!snap.exists) return NextResponse.json({ wa_phone_number_id: '', wa_token: '', ig_token: '' })
     const data = snap.data()!
     return NextResponse.json({
-      wa_phone_number_id: safeDecrypt(data.wa_phone_number_id_enc),
-      wa_token: safeDecrypt(data.wa_token_enc),
-      ig_token: safeDecrypt(data.ig_token_enc),
+      wa_phone_number_id: data.wa_phone_number_id || '',
+      wa_token: data.wa_token || '',
+      ig_token: data.ig_token || '',
     })
   } catch (e) {
     console.error('Error reading tokens:', e)
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
   }
 }
 
-// POST — guarda tokens encriptados (solo superadmin)
+// POST — guarda tokens (solo superadmin)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params
   if (!(await verifySuperAdmin(req))) {
@@ -50,10 +49,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     }
 
     if (wa_phone_number_id !== undefined) {
-      update.wa_phone_number_id_enc = wa_phone_number_id ? encrypt(wa_phone_number_id.trim()) : ''
+      update.wa_phone_number_id = wa_phone_number_id?.trim() || ''
     }
     if (wa_token !== undefined) {
-      update.wa_token_enc = wa_token ? encrypt(wa_token.trim()) : ''
+      update.wa_token = wa_token?.trim() || ''
       // Actualizar whatsapp_configs para lookup por phoneNumberId en el webhook
       const phoneId = wa_phone_number_id?.trim()
       if (phoneId) {
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       }
     }
     if (ig_token !== undefined) {
-      update.ig_token_enc = ig_token ? encrypt(ig_token.trim()) : ''
+      update.ig_token = ig_token?.trim() || ''
     }
 
     await adminDb.doc(`org_tokens/${orgId}`).set(update, { merge: true })

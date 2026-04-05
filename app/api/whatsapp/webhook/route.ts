@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb, getAdminStorage, sendFCMToOrg } from '@/lib/firebase-admin'
-import { safeDecrypt } from '@/lib/encrypt'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -115,10 +114,10 @@ export async function POST(req: NextRequest) {
     }
     const { orgId } = configSnap.data() as { orgId: string }
 
-    // Leer token encriptado desde org_tokens (seguro - solo Admin SDK)
+    // Leer token desde org_tokens (seguro - solo Admin SDK)
     const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
     const tokenData = tokenSnap.data() || {}
-    const waToken = safeDecrypt(tokenData.wa_token_enc as string)
+    const waToken = (tokenData.wa_token as string) || ''
 
     // Buscar cliente por whatsappPhone
     const clientsSnap = await adminDb

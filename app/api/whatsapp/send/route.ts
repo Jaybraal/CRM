@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
-import { safeDecrypt } from '@/lib/encrypt'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface SendBody {
@@ -26,11 +25,9 @@ export async function POST(req: NextRequest) {
     // ── Detectar proveedor configurado para esta org ───────────────────────
     const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
     const tokenData = tokenSnap.exists ? tokenSnap.data()! : null
-    const metaPhoneNumberId = tokenData ? safeDecrypt(tokenData.wa_phone_number_id_enc as string) : ''
-    const metaToken = tokenData ? safeDecrypt(tokenData.wa_token_enc as string) : ''
+    const metaPhoneNumberId = (tokenData?.wa_phone_number_id as string) || ''
+    const metaToken = (tokenData?.wa_token as string) || ''
     const hasMetaConfig = !!(metaPhoneNumberId && metaToken)
-
-    console.log('[send] orgId:', orgId, '| tokenSnap exists:', tokenSnap.exists, '| hasMetaConfig:', hasMetaConfig, '| phoneIdLen:', metaPhoneNumberId.length, '| tokenLen:', metaToken.length)
 
     const baileysUrl = process.env.BAILEYS_URL?.trim()
 
