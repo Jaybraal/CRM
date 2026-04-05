@@ -65,6 +65,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     }
 
     await adminDb.doc(`org_tokens/${orgId}`).set(update, { merge: true })
+
+    // Guardar flag no sensible en org para que el frontend sepa si Meta está activo
+    const hasMetaConfig = !!(wa_phone_number_id?.trim() && wa_token?.trim())
+    if (wa_token !== undefined) {
+      await adminDb.doc(`organizations/${orgId}`).update({
+        'settings.whatsappMetaConfigured': hasMetaConfig,
+      }).catch(() => {})
+    }
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('Error saving tokens:', e)

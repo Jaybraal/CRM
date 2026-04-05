@@ -68,7 +68,7 @@ export default function ClientsPage() {
     getCategories(profile.orgId).then(setCategories)
     getOrganization(profile.orgId).then(o => {
       if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
-      if (o?.settings?.whatsapp?.phoneNumberId || process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
+      if (o?.settings?.whatsappMetaConfigured || process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
         setHasWhatsApp(true)
       }
     })

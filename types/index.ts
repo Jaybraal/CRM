@@ -48,6 +48,7 @@ export interface Organization {
     }
     roundRobinIndex?: number
     clientStatuses?: ClientStatus[]
+    whatsappMetaConfigured?: boolean
   }
 }
 
