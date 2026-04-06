@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
+    // Meta API requiere número sin "+" (ej: "18295080887")
+    const metaTo = to.startsWith('+') ? to.slice(1) : to
+
     // ── Detectar proveedor configurado para esta org ───────────────────────
     const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
     const tokenData = tokenSnap.exists ? tokenSnap.data()! : null
@@ -42,14 +45,14 @@ export async function POST(req: NextRequest) {
       for (const url of photoUrls) {
         await fetch(apiUrl, {
           method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: url, caption: '' } }),
+          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'image', image: { link: url, caption: '' } }),
         })
       }
 
       if (type === 'video' && videoUrl) {
         await fetch(apiUrl, {
           method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'video', video: { link: videoUrl, caption: text?.trim() || '' } }),
+          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'video', video: { link: videoUrl, caption: text?.trim() || '' } }),
         })
         return NextResponse.json({ ok: true })
       }
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
       if (type === 'audio' && audioUrl) {
         await fetch(apiUrl, {
           method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'audio', audio: { link: audioUrl } }),
+          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'audio', audio: { link: audioUrl } }),
         })
         return NextResponse.json({ ok: true })
       }
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
         await fetch(apiUrl, {
           method: 'POST', headers,
           body: JSON.stringify({
-            messaging_product: 'whatsapp', to, type: 'location',
+            messaging_product: 'whatsapp', to: metaTo, type: 'location',
             location: { latitude: location.lat, longitude: location.lng, name: location.name || '' },
           }),
         })
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
       if (text?.trim() && !videoUrl) {
         const metaRes = await fetch(apiUrl, {
           method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text.trim(), preview_url: false } }),
+          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'text', text: { body: text.trim(), preview_url: false } }),
         })
         if (!metaRes.ok) {
           const err = await metaRes.json().catch(() => ({}))

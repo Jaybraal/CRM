@@ -104,7 +104,8 @@ export async function POST(req: NextRequest) {
 
     const phoneNumberId: string = value.metadata?.phone_number_id
     const message = value.messages[0]
-    const fromPhone: string = message.from
+    const fromPhone: string = message.from // Meta envía sin "+", ej: "18295080887"
+    const fromPhoneWithPlus = `+${fromPhone}`
     const msgType: string = message.type
 
     // Buscar config de la org por phoneNumberId
@@ -119,12 +120,12 @@ export async function POST(req: NextRequest) {
     const tokenData = tokenSnap.data() || {}
     const waToken = (tokenData.wa_token as string) || ''
 
-    // Buscar cliente por whatsappPhone
-    const clientsSnap = await adminDb
-      .collection(`organizations/${orgId}/clients`)
-      .where('whatsappPhone', '==', fromPhone)
-      .limit(1)
-      .get()
+    // Buscar cliente por whatsappPhone — soporta con y sin "+"
+    const [snapNoPlus, snapWithPlus] = await Promise.all([
+      adminDb.collection(`organizations/${orgId}/clients`).where('whatsappPhone', '==', fromPhone).limit(1).get(),
+      adminDb.collection(`organizations/${orgId}/clients`).where('whatsappPhone', '==', fromPhoneWithPlus).limit(1).get(),
+    ])
+    const clientsSnap = !snapNoPlus.empty ? snapNoPlus : snapWithPlus
 
     let clientId: string
     let clientName: string
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest) {
       const assignedTo = await getNextAgentForOrg(orgId)
       const newClientRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
         name: clientName,
-        whatsappPhone: fromPhone,
+        whatsappPhone: fromPhone, // sin "+" para consistencia con Meta
         phone: fromPhone,
         orgId,
         status: 'lead',
