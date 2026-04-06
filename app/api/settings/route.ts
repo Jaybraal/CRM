@@ -74,6 +74,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'save_window_message') {
+      const { enabled, message, delayHours } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { windowMessage: { enabled: !!enabled, message: message || '', delayHours: Number(delayHours) || 23 } } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

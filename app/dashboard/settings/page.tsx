@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [savingStatuses, setSavingStatuses] = useState(false)
   const [autoReply, setAutoReply] = useState({ enabled: false, message: '' })
   const [savingAutoReply, setSavingAutoReply] = useState(false)
+  const [windowMsg, setWindowMsg] = useState({ enabled: false, message: '', delayHours: 23 })
+  const [savingWindowMsg, setSavingWindowMsg] = useState(false)
   const [qualForm, setQualForm] = useState<{
     enabled: boolean
     questions: QualificationQuestion[]
@@ -66,6 +68,11 @@ export default function SettingsPage() {
         setAutoReply({
           enabled: o.settings.autoReply?.enabled || false,
           message: o.settings.autoReply?.message || '',
+        })
+        setWindowMsg({
+          enabled: o.settings.windowMessage?.enabled || false,
+          message: o.settings.windowMessage?.message || '',
+          delayHours: o.settings.windowMessage?.delayHours ?? 23,
         })
         setQualForm({
           enabled: o.settings.qualificationForm?.enabled || false,
@@ -199,6 +206,18 @@ export default function SettingsPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al actualizar')
     }
+  }
+
+  const handleSaveWindowMsg = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile?.orgId) return
+    setSavingWindowMsg(true)
+    try {
+      await callApi({ action: 'save_window_message', enabled: windowMsg.enabled, message: windowMsg.message, delayHours: windowMsg.delayHours })
+      toast.success('Mensaje de ventana guardado')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar', { duration: 6000 })
+    } finally { setSavingWindowMsg(false) }
   }
 
   const handleSaveAutoReply = async (e: React.FormEvent) => {
@@ -529,6 +548,58 @@ export default function SettingsPage() {
         <button type="submit" disabled={savingAutoReply}
           className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
           {savingAutoReply ? 'Guardando...' : 'Guardar respuesta automática'}
+        </button>
+      </form>
+
+      {/* Mensaje de ventana 24h */}
+      <form onSubmit={handleSaveWindowMsg} className={cardClass}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <Bot size={20} className="text-gray-500" />
+          <div className="flex-1">
+            <h2 className="font-semibold text-gray-900">Mensaje de seguimiento automático</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Se envía automáticamente X horas después del primer mensaje de un cliente nuevo (ventana de 24h de WhatsApp)</p>
+          </div>
+        </div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div
+            onClick={() => setWindowMsg(w => ({ ...w, enabled: !w.enabled }))}
+            className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${windowMsg.enabled ? 'bg-gray-900' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${windowMsg.enabled ? 'left-5' : 'left-1'}`} />
+          </div>
+          <span className="text-sm text-gray-700">{windowMsg.enabled ? 'Activado' : 'Desactivado'}</span>
+        </label>
+        {windowMsg.enabled && (
+          <>
+            <div>
+              <label className={labelClass}>Horas de espera tras el primer mensaje</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={23}
+                  value={windowMsg.delayHours}
+                  onChange={e => setWindowMsg(w => ({ ...w, delayHours: Math.min(23, Math.max(1, Number(e.target.value))) }))}
+                  className={`${inputClass} w-24`}
+                />
+                <span className="text-sm text-gray-500">horas (máx. 23h para estar dentro de la ventana)</span>
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Mensaje a enviar</label>
+              <textarea
+                value={windowMsg.message}
+                onChange={e => setWindowMsg(w => ({ ...w, message: e.target.value }))}
+                rows={3}
+                className={`${inputClass} resize-none`}
+                placeholder="Ej: ¡Hola! Solo quería asegurarme de que recibiste toda la información. ¿Tienes alguna pregunta?"
+              />
+            </div>
+          </>
+        )}
+        <button type="submit" disabled={savingWindowMsg}
+          className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+          {savingWindowMsg ? 'Guardando...' : 'Guardar mensaje de seguimiento'}
         </button>
       </form>
 

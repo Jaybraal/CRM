@@ -49,6 +49,11 @@ export interface Organization {
     roundRobinIndex?: number
     clientStatuses?: ClientStatus[]
     whatsappMetaConfigured?: boolean
+    windowMessage?: {
+      enabled: boolean
+      message: string
+      delayHours: number  // horas desde el primer mensaje del cliente
+    }
   }
 }
 

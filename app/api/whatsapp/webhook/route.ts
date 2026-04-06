@@ -130,7 +130,9 @@ export async function POST(req: NextRequest) {
     let clientId: string
     let clientName: string
 
-    if (clientsSnap.empty) {
+    const isNewClient = clientsSnap.empty
+
+    if (isNewClient) {
       // Crear cliente automático si no existe
       const contact = value.contacts?.[0]
       clientName = contact?.profile?.name || fromPhone
@@ -238,18 +240,15 @@ export async function POST(req: NextRequest) {
     })
     void sendFCMToOrg(orgId, notifTitle, notifBody, notifUrl)
 
-    // Auto-reply bot
+    // Auto-reply bot + window message config
     const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()
     const orgData = orgDoc.data()
+
     const autoReply = orgData?.settings?.autoReply
     if (autoReply?.enabled && autoReply?.message) {
-      const orgToken = waToken
       void fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${orgToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${waToken}` },
         body: JSON.stringify({
           messaging_product: 'whatsapp',
           to: fromPhone,
@@ -257,6 +256,33 @@ export async function POST(req: NextRequest) {
           text: { body: autoReply.message },
         }),
       })
+    }
+
+    // Mensaje de ventana 24h — solo para clientes nuevos (primer mensaje)
+    if (isNewClient) {
+      const windowCfg = orgData?.settings?.windowMessage
+      if (windowCfg?.enabled && windowCfg?.message) {
+        const delayMs = (windowCfg.delayHours || 23) * 60 * 60 * 1000
+        const sendAt = new Date(Date.now() + delayMs)
+        // Verificar que no exista ya uno pendiente para este cliente
+        const existing = await adminDb
+          .collection(`organizations/${orgId}/scheduled_messages`)
+          .where('clientId', '==', clientId)
+          .where('status', '==', 'pending')
+          .limit(1)
+          .get()
+        if (existing.empty) {
+          await adminDb.collection(`organizations/${orgId}/scheduled_messages`).add({
+            orgId,
+            clientId,
+            whatsappPhone: fromPhone,
+            message: windowCfg.message,
+            sendAt: sendAt,
+            status: 'pending',
+            createdAt: FieldValue.serverTimestamp(),
+          })
+        }
+      }
     }
 
     return NextResponse.json({ ok: true })
