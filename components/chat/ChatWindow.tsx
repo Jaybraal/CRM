@@ -378,7 +378,8 @@ ${messages.map(m => {
             body: JSON.stringify({ orgId: profile.orgId, to: jid, text: text.trim(), type: 'text' }),
           })
           if (!waRes.ok) {
-            toast.error('Mensaje guardado pero falló en WhatsApp', { duration: 4000 })
+            const waErr = await waRes.json().catch(() => ({}))
+            toast.error(waErr.error || 'Falló el envío por WhatsApp', { duration: 6000 })
           } else {
             const waData = await waRes.json().catch(() => ({}))
             if (waData.msgId && msgRef && photoUrls.length === 0) {

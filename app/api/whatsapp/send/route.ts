@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    // Meta API requiere número sin "+" (ej: "18295080887")
-    const metaTo = to.startsWith('+') ? to.slice(1) : to
+    // Meta API requiere número sin "+" ni sufijo Baileys "@s.whatsapp.net"
+    const metaTo = to.replace(/@.+$/, '').replace(/^\+/, '')
 
     // ── Detectar proveedor configurado para esta org ───────────────────────
     const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         })
         if (!metaRes.ok) {
           const err = await metaRes.json().catch(() => ({}))
-          console.error('Meta send error:', err)
+          console.error('Meta send error (text):', JSON.stringify(err), '| to:', metaTo, '| phoneId:', metaPhoneNumberId)
           return NextResponse.json({ error: err?.error?.message || 'Error al enviar por WhatsApp' }, { status: metaRes.status })
         }
         const metaData = await metaRes.json().catch(() => ({}))
