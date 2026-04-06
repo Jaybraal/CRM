@@ -337,7 +337,7 @@ export default function AdminPage() {
 
       const userRes = await fetch('/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
         body: JSON.stringify({
           email: createForm.ownerEmail,
           password: createForm.ownerPassword,

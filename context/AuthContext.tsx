@@ -46,45 +46,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser)
       if (firebaseUser) {
         const isSA = firebaseUser.uid === superAdminUid
-        try {
-          const p = await getUserProfile(firebaseUser.uid)
-          if (p) {
-            // For super admin, apply active org override if set
-            if (isSA) {
-              const activeOrg = sessionStorage.getItem(ACTIVE_ORG_KEY)
-              setProfile({ ...p, role: 'super_admin', orgId: activeOrg || p.orgId })
-            } else {
-              setProfile(p)
-            }
-          } else if (isSA) {
-            const activeOrg = sessionStorage.getItem(ACTIVE_ORG_KEY)
-            setProfile({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Admin',
-              role: 'super_admin',
-              orgId: activeOrg || null,
-              createdAt: new Date(),
-            })
-          } else {
-            // No profile in Firestore = not a created user → block access
-            await firebaseSignOut(auth)
-            setProfile(null)
+
+        // Reintentar hasta 3 veces con backoff si Firestore falla (red lenta, adblocker, etc.)
+        let p = null
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            p = await getUserProfile(firebaseUser.uid)
+            break
+          } catch {
+            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
           }
-        } catch {
+        }
+
+        if (p) {
           if (isSA) {
             const activeOrg = sessionStorage.getItem(ACTIVE_ORG_KEY)
-            setProfile({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || 'Admin',
-              role: 'super_admin',
-              orgId: activeOrg || null,
-              createdAt: new Date(),
-            })
+            setProfile({ ...p, role: 'super_admin', orgId: activeOrg || p.orgId })
           } else {
-            setProfile(null)
+            setProfile(p)
           }
+        } else if (isSA) {
+          const activeOrg = sessionStorage.getItem(ACTIVE_ORG_KEY)
+          setProfile({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Admin',
+            role: 'super_admin',
+            orgId: activeOrg || null,
+            createdAt: new Date(),
+          })
+        } else {
+          // Perfil no encontrado después de reintentos — cerrar sesión
+          await firebaseSignOut(auth)
+          setProfile(null)
         }
       } else {
         setProfile(null)
