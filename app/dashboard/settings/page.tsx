@@ -7,7 +7,8 @@ import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuesti
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
-import { Building2, MessageCircle, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag } from 'lucide-react'
+import InstagramConnect from '@/components/settings/InstagramConnect'
+import { Building2, MessageCircle, Instagram, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
@@ -371,6 +372,18 @@ export default function SettingsPage() {
           </div>
         </div>
         <BaileysQR orgId={profile?.orgId || ''} />
+      </div>
+
+      {/* Instagram */}
+      <div className={cardClass}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <Instagram size={20} className="text-gray-500" />
+          <div>
+            <h2 className="font-semibold text-gray-900">Instagram</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Conecta tu cuenta de Instagram para recibir mensajes directos</p>
+          </div>
+        </div>
+        <InstagramConnect />
       </div>
 
       {/* WhatsApp — Meta Cloud API (solo info del webhook) */}

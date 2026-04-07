@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X, UserCircle,
-  Send, BarChart3, CalendarDays
+  Send, BarChart3, CalendarDays, Instagram
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
@@ -32,6 +32,7 @@ function WIcon({ size = 18 }: { size?: number }) {
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/clients', label: 'Clientes', icon: WIcon, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/instagram', label: 'Instagram', icon: Instagram, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/categories', label: 'Categorías', icon: Tag, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
@@ -50,6 +51,7 @@ export default function Sidebar() {
   const { profile, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const [waConnected, setWaConnected] = useState<boolean | null>(null)
+  const [igConnected, setIgConnected] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!profile?.orgId) return
@@ -70,6 +72,14 @@ export default function Sidebar() {
         setWaConnected(false)
       }
     }, () => setWaConnected(false))
+
+    // Verificar Instagram
+    fetch(`/api/instagram/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId: profile.orgId, check: true }),
+    }).then(r => r.json()).then(d => setIgConnected(!d.error || d.error !== 'Instagram no configurado para esta organización')).catch(() => setIgConnected(false))
+
     return () => unsub()
   }, [profile?.orgId])
 
@@ -83,12 +93,20 @@ export default function Sidebar() {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">1CRM</h1>
-          {waConnected !== null && (
-            <div className="flex items-center gap-1.5" title={waConnected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}>
-              <span className={`w-2 h-2 rounded-full ${waConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`} />
-              <span className="text-[10px] text-gray-400">WA</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {waConnected !== null && (
+              <div className="flex items-center gap-1" title={waConnected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}>
+                <span className={`w-2 h-2 rounded-full ${waConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`} />
+                <span className="text-[10px] text-gray-400">WA</span>
+              </div>
+            )}
+            {igConnected !== null && (
+              <div className="flex items-center gap-1" title={igConnected ? 'Instagram conectado' : 'Instagram no configurado'}>
+                <span className={`w-2 h-2 rounded-full ${igConnected ? 'bg-pink-500 animate-pulse' : 'bg-gray-300'}`} />
+                <span className="text-[10px] text-gray-400">IG</span>
+              </div>
+            )}
+          </div>
         </div>
         <p className="text-xs text-gray-500 mt-1 truncate">{profile?.displayName}</p>
         <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">

@@ -65,6 +65,11 @@ export default function CategoriesPage() {
 
   const handleDelete = async (id: string) => {
     if (!profile?.orgId) return
+    const cat = categories.find(c => c.id === id)
+    if (cat?.isSystem) {
+      toast.error('Esta categoría del sistema no puede eliminarse')
+      return
+    }
     const clients = await getClientsByCategory(profile.orgId, id)
     if (clients.length > 0) {
       toast.error(`No puedes eliminar esta categoría: ${clients.length} cliente(s) la usan`)

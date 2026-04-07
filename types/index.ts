@@ -85,9 +85,10 @@ export interface Message {
   callDuration?: number // seconds, -1 = missed
   senderId: string
   senderName: string
-  source: 'internal' | 'whatsapp'
+  source: 'internal' | 'whatsapp' | 'instagram'
   status?: MessageStatus   // solo mensajes enviados por el agente
   whatsappMsgId?: string   // ID del mensaje en Baileys
+  instagramMsgId?: string  // ID del mensaje en Instagram
   isNote?: boolean         // nota interna, no se envía por WA
   replyTo?: {
     id: string
@@ -132,6 +133,7 @@ export interface Client {
   whatsappPhone?: string
   whatsappJid?: string
   isLid?: boolean
+  instagramId?: string     // Instagram user ID (IGSID)
   categoryId?: string
   tags: string[]
   photos: string[]

@@ -15,9 +15,11 @@ interface Props {
   client: Client
   hasWhatsApp: boolean
   fitParent?: boolean
+  channel?: 'whatsapp' | 'instagram'
 }
 
-export default function ChatWindow({ client, hasWhatsApp, fitParent }: Props) {
+export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = 'whatsapp' }: Props) {
+  const isInstagram = channel === 'instagram'
   const { profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
@@ -356,7 +358,34 @@ ${messages.map(m => {
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
-      if (!noteMode && hasWhatsApp && client.whatsappPhone) {
+      if (!noteMode && isInstagram && client.instagramId) {
+        // Enviar por Instagram
+        if (photoUrls.length > 0) {
+          for (const url of photoUrls) {
+            await fetch('/api/instagram/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: url }),
+            })
+          }
+        }
+        if (text.trim()) {
+          const igRes = await fetch('/api/instagram/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: text.trim() }),
+          })
+          if (!igRes.ok) {
+            const igErr = await igRes.json().catch(() => ({}))
+            toast.error(igErr.error || 'Falló el envío por Instagram', { duration: 6000 })
+          } else {
+            const igData = await igRes.json().catch(() => ({}))
+            if (igData.msgId && msgRef) {
+              await updateDoc(msgRef, { instagramMsgId: igData.msgId, status: 'sent' })
+            }
+          }
+        }
+      } else if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
 
         // Send files (images and videos)
@@ -365,7 +394,6 @@ ${messages.map(m => {
           for (let i = 0; i < photoUrls.length; i++) {
             const url = photoUrls[i]
             const isVideo = pendingFiles[i]?.type?.startsWith('video/')
-            const endpoint = isVideo ? 'send-video' : 'send-image'
             const res = await fetch('/api/whatsapp/send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
