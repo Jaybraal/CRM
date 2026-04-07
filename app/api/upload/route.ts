@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminStorage } from '@/lib/firebase-admin'
 
 function getBaseMime(type: string): string {
   return type.split(';')[0].trim().toLowerCase()
@@ -30,11 +30,6 @@ function getExtension(mimeType: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    )
-
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     const orgId = formData.get('orgId') as string
@@ -50,17 +45,24 @@ export async function POST(req: NextRequest) {
 
     const contentType = getBaseMime(file.type || 'application/octet-stream')
     const ext = getExtension(contentType)
-    const path = `organizations/${orgId}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const path = `organizations/${orgId}/${folder}/${fileName}`
+
     const buffer = Buffer.from(await file.arrayBuffer())
+    const downloadToken = crypto.randomUUID()
+    const bucket = getAdminStorage()
 
-    const { error } = await supabase.storage
-      .from('crm-files')
-      .upload(path, buffer, { contentType, upsert: false })
+    await bucket.file(path).save(buffer, {
+      metadata: {
+        contentType,
+        metadata: { firebaseStorageDownloadTokens: downloadToken },
+      },
+    })
 
-    if (error) throw new Error(error.message)
+    const bucketName = bucket.name
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`
 
-    const { data } = supabase.storage.from('crm-files').getPublicUrl(path)
-    return NextResponse.json({ url: data.publicUrl })
+    return NextResponse.json({ url })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[api/upload] error:', msg)
