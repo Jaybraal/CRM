@@ -5,7 +5,9 @@ import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto, uploadBlob } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown, ShoppingBag } from 'lucide-react'
+import { getCatalog } from '@/lib/firestore'
+import type { CatalogItem } from '@/types'
 import type { Client as ClientType } from '@/types'
 import toast from 'react-hot-toast'
 import { updateDoc, doc } from 'firebase/firestore'
@@ -42,6 +44,9 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = '
   const [showSearch, setShowSearch] = useState(false)
   const [replyToMsg, setReplyToMsg] = useState<Message | null>(null)
   const [noteMode, setNoteMode] = useState(false)
+  const [showCatalog, setShowCatalog] = useState(false)
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
+  const [catalogSearch, setCatalogSearch] = useState('')
 
   // Voice recording
   const [isRecording, setIsRecording] = useState(false)
@@ -327,6 +332,68 @@ ${messages.map(m => {
   }
 
   const formatRecordTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  const openCatalog = async () => {
+    setShowActions(false)
+    if (catalogItems.length === 0 && profile?.orgId) {
+      const items = await getCatalog(profile.orgId).catch(() => [])
+      setCatalogItems(items.filter(i => i.available))
+    }
+    setCatalogSearch('')
+    setShowCatalog(true)
+  }
+
+  const sendCatalogItem = async (item: CatalogItem) => {
+    if (!profile?.orgId) return
+    setShowCatalog(false)
+    setSending(true)
+    try {
+      const caption = `*${item.title}*${item.price != null ? `\n💰 $${item.price.toLocaleString('es')}` : ''}${item.description ? `\n${item.description}` : ''}`
+      const photoUrl = item.photos[0] || null
+
+      await sendMessage(profile.orgId, client.id, {
+        type: photoUrl ? 'image' : 'text',
+        text: caption,
+        photos: photoUrl ? [photoUrl] : [],
+        senderId: profile.uid,
+        senderName: profile.displayName ?? '',
+        source: 'internal',
+        status: 'sending',
+      })
+
+      if (!isInstagram && hasWhatsApp && client.whatsappPhone) {
+        const jid = client.whatsappJid || client.whatsappPhone
+        if (photoUrl) {
+          await fetch('/api/whatsapp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, to: jid, photoUrls: [photoUrl], type: 'image' }),
+          })
+        }
+        if (caption) {
+          await fetch('/api/whatsapp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, to: jid, text: caption, type: 'text' }),
+          })
+        }
+      } else if (isInstagram && client.instagramId) {
+        if (photoUrl) {
+          await fetch('/api/instagram/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: photoUrl }),
+          })
+        }
+        await fetch('/api/instagram/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: caption }),
+        })
+      }
+    } catch { toast.error('Error al enviar producto') }
+    setSending(false)
+  }
 
   const handleSend = async () => {
     if (!text.trim() && pendingFiles.length === 0) return
@@ -913,11 +980,73 @@ ${messages.map(m => {
             <MapPin size={18} className="text-[#075E54]" />
             Enviar ubicación
           </button>
+          <button type="button" onClick={openCatalog}
+            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm text-gray-700 border-t border-gray-100">
+            <ShoppingBag size={18} className="text-[#075E54]" />
+            Enviar producto
+          </button>
           <button type="button" onClick={() => { setNoteMode(v => !v); setShowActions(false) }}
             className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-amber-50 active:bg-amber-100 transition-colors text-sm text-amber-700 border-t border-gray-100">
             <StickyNote size={18} className="text-amber-500" />
             Nota interna
           </button>
+        </div>
+      )}
+
+      {/* Modal catálogo */}
+      {showCatalog && (
+        <div className="absolute inset-0 z-20 bg-white flex flex-col">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
+            <button onClick={() => setShowCatalog(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+              <X size={18} className="text-gray-600" />
+            </button>
+            <h3 className="font-semibold text-gray-900 flex-1">Enviar producto</h3>
+          </div>
+          <div className="px-3 py-2 border-b border-gray-100">
+            <input
+              value={catalogSearch}
+              onChange={e => setCatalogSearch(e.target.value)}
+              placeholder="Buscar producto..."
+              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            {catalogItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <ShoppingBag size={32} className="text-gray-300 mb-2" />
+                <p className="text-sm text-gray-500">No hay productos disponibles</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {catalogItems
+                  .filter(i => !catalogSearch || i.title.toLowerCase().includes(catalogSearch.toLowerCase()))
+                  .map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => sendCatalogItem(item)}
+                      className="bg-white border border-gray-200 rounded-xl overflow-hidden text-left hover:border-gray-400 hover:shadow-sm transition-all active:scale-95"
+                    >
+                      <div className="aspect-square bg-gray-50">
+                        {item.photos[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.photos[0]} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ShoppingBag size={20} className="text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{item.title}</p>
+                        {item.price != null && (
+                          <p className="text-xs font-bold text-gray-700 mt-0.5">${item.price.toLocaleString('es')}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
