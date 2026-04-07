@@ -2,9 +2,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminStorage } from '@/lib/firebase-admin'
+import { put } from '@vercel/blob'
 
-// Normaliza el MIME type (quita parámetros como ;codecs=opus)
 function getBaseMime(type: string): string {
   return type.split(';')[0].trim().toLowerCase()
 }
@@ -44,29 +43,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'El archivo está vacío' }, { status: 400 })
     }
 
-    const contentType = file.type || 'application/octet-stream'
+    const contentType = getBaseMime(file.type || 'application/octet-stream')
     const ext = getExtension(contentType)
-    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    const path = `organizations/${orgId}/${folder}/${fileName}`
+    const fileName = `organizations/${orgId}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const downloadToken = crypto.randomUUID()
-    const bucket = getAdminStorage()
-
-    await bucket.file(path).save(buffer, {
-      metadata: {
-        contentType: getBaseMime(contentType),
-        metadata: { firebaseStorageDownloadTokens: downloadToken },
-      },
+    const blob = await put(fileName, file, {
+      access: 'public',
+      contentType,
     })
 
-    const bucketName = bucket.name
-    const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`
-
-    return NextResponse.json({ url })
+    return NextResponse.json({ url: blob.url })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[api/upload v2] error:', msg)
-    return NextResponse.json({ error: `[SERVER] ${msg}` }, { status: 500 })
+    console.error('[api/upload] error:', msg)
+    return NextResponse.json({ error: `[UPLOAD] ${msg}` }, { status: 500 })
   }
 }
