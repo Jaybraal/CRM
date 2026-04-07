@@ -10,20 +10,31 @@ async function uploadViaServer(
   mimeType?: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
-  const type = mimeType || (file instanceof File ? file.type : 'application/octet-stream')
-  const formData = new FormData()
-  formData.append('file', new File([file], 'upload', { type }))
-  formData.append('orgId', orgId)
-  formData.append('folder', folder)
+  const type = mimeType || (file instanceof File ? file.type : 'application/octet-stream') || 'application/octet-stream'
 
-  const res = await fetch('/api/upload', { method: 'POST', body: formData })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Upload failed' }))
-    throw new Error(err.error || 'Error al subir archivo')
+  // Retry hasta 3 veces con backoff — resuelve fallos intermitentes de red
+  let lastError: Error = new Error('Upload failed')
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const formData = new FormData()
+      formData.append('file', new File([file], 'upload', { type }))
+      formData.append('orgId', orgId)
+      formData.append('folder', folder)
+
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+        throw new Error(err.error || 'Error al subir archivo')
+      }
+      onProgress?.(100)
+      const { url } = await res.json()
+      return url
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+    }
   }
-  onProgress?.(100)
-  const { url } = await res.json()
-  return url
+  throw lastError
 }
 
 export async function uploadPhoto(

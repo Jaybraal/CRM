@@ -205,7 +205,22 @@ ${messages.map(m => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' })
+
+      // Detectar el mejor formato soportado (iOS usa audio/mp4, Android/Chrome usa audio/webm)
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/aac',
+      ]
+      const mimeType = preferredTypes.find(t => {
+        try { return MediaRecorder.isTypeSupported(t) } catch { return false }
+      }) || ''
+
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
 
@@ -214,7 +229,8 @@ ${messages.map(m => {
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm'
+        const blob = new Blob(audioChunksRef.current, { type: actualMime })
         setAudioBlob(blob)
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
