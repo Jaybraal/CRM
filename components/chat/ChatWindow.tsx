@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
-import { uploadMultiplePhotos, uploadPhoto } from '@/lib/storage'
+import { uploadMultiplePhotos, uploadPhoto, uploadBlob } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
 import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown } from 'lucide-react'
 import type { Client as ClientType } from '@/types'
@@ -268,8 +268,7 @@ ${messages.map(m => {
     if (!audioBlob || !profile?.orgId) return
     setSending(true)
     try {
-      const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' })
-      const audioFileUrl = await uploadPhoto(profile.orgId, `chat/${client.id}`, file)
+      const audioFileUrl = await uploadBlob(profile.orgId, `chat/${client.id}`, audioBlob, audioBlob.type || 'audio/webm')
 
       const msgId = await sendMessage(profile.orgId, client.id, {
         type: 'audio',

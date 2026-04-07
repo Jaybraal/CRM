@@ -1,33 +1,29 @@
-import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { ref, deleteObject } from 'firebase/storage'
 import { storage } from './firebase'
 
-async function uploadDirect(
+// Todos los uploads van por el servidor (/api/upload) para evitar CORS en Firebase Storage.
+// El Admin SDK no tiene restricciones de CORS.
+async function uploadViaServer(
   orgId: string,
   folder: string,
-  file: File,
+  file: File | Blob,
+  mimeType?: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
-  const ext = file.name.split('.').pop() || 'bin'
-  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-  const path = `organizations/${orgId}/${folder}/${fileName}`
-  const storageRef = ref(storage, path)
+  const type = mimeType || (file instanceof File ? file.type : 'application/octet-stream')
+  const formData = new FormData()
+  formData.append('file', new File([file], 'upload', { type }))
+  formData.append('orgId', orgId)
+  formData.append('folder', folder)
 
-  return new Promise((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, file, { contentType: file.type })
-    task.on(
-      'state_changed',
-      (snap) => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-      reject,
-      async () => {
-        try {
-          const url = await getDownloadURL(task.snapshot.ref)
-          resolve(url)
-        } catch (e) {
-          reject(e)
-        }
-      }
-    )
-  })
+  const res = await fetch('/api/upload', { method: 'POST', body: formData })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+    throw new Error(err.error || 'Error al subir archivo')
+  }
+  onProgress?.(100)
+  const { url } = await res.json()
+  return url
 }
 
 export async function uploadPhoto(
@@ -36,27 +32,17 @@ export async function uploadPhoto(
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> {
-  // Videos y audios se suben directamente desde el cliente (sin límite de tamaño del servidor)
-  if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-    return uploadDirect(orgId, folder, file, onProgress)
-  }
+  return uploadViaServer(orgId, folder, file, file.type, onProgress)
+}
 
-  // Imágenes van por servidor para evitar problemas de CORS en algunos entornos
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('orgId', orgId)
-  formData.append('folder', folder)
-
-  const res = await fetch('/api/upload', { method: 'POST', body: formData })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Upload failed' }))
-    throw new Error(err.error || 'Error al subir archivo')
-  }
-
-  onProgress?.(100)
-  const { url } = await res.json()
-  return url
+export async function uploadBlob(
+  orgId: string,
+  folder: string,
+  blob: Blob,
+  mimeType: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  return uploadViaServer(orgId, folder, blob, mimeType, onProgress)
 }
 
 export async function uploadMultiplePhotos(

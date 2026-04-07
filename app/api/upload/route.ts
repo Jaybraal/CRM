@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // segundos — necesario para videos/audios grandes
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminStorage } from '@/lib/firebase-admin'
