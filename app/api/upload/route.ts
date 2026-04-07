@@ -2,19 +2,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-
-const s3 = new S3Client({
-  endpoint: process.env.MINIO_ENDPOINT,
-  region: 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY!,
-    secretAccessKey: process.env.MINIO_SECRET_KEY!,
-  },
-  forcePathStyle: true,
-})
-
-const BUCKET = process.env.MINIO_BUCKET || 'crm-files'
+import { createClient } from '@supabase/supabase-js'
 
 function getBaseMime(type: string): string {
   return type.split(';')[0].trim().toLowerCase()
@@ -42,6 +30,11 @@ function getExtension(mimeType: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    )
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     const orgId = formData.get('orgId') as string
@@ -57,18 +50,17 @@ export async function POST(req: NextRequest) {
 
     const contentType = getBaseMime(file.type || 'application/octet-stream')
     const ext = getExtension(contentType)
-    const key = `organizations/${orgId}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const path = `organizations/${orgId}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    await s3.send(new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    }))
+    const { error } = await supabase.storage
+      .from('crm-files')
+      .upload(path, buffer, { contentType, upsert: false })
 
-    const url = `${process.env.MINIO_ENDPOINT}/${BUCKET}/${key}`
-    return NextResponse.json({ url })
+    if (error) throw new Error(error.message)
+
+    const { data } = supabase.storage.from('crm-files').getPublicUrl(path)
+    return NextResponse.json({ url: data.publicUrl })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[api/upload] error:', msg)
