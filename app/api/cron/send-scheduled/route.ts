@@ -89,6 +89,41 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // ── Auto-renovar tokens de Meta que expiran en < 7 días ──────────────────
+    const appId = process.env.META_APP_ID
+    const appSecret = process.env.META_APP_SECRET
+    if (appId && appSecret) {
+      const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const expiringSnaps = await adminDb.collection('org_tokens')
+        .where('wa_token_expires_at', '<=', sevenDaysFromNow)
+        .where('wa_token', '!=', '')
+        .get()
+
+      for (const tokenDoc of expiringSnaps.docs) {
+        const { wa_token } = tokenDoc.data()
+        if (!wa_token) continue
+        try {
+          const url = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${wa_token}`
+          const res = await fetch(url)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.access_token) {
+              const expiresIn = data.expires_in || (60 * 24 * 60 * 60)
+              const expiresAt = new Date(Date.now() + expiresIn * 1000)
+              await tokenDoc.ref.update({
+                wa_token: data.access_token,
+                wa_token_expires_at: expiresAt,
+                updatedAt: FieldValue.serverTimestamp(),
+              })
+              console.log('[cron] Token renovado para org:', tokenDoc.id, '| expira:', expiresAt.toISOString())
+            }
+          }
+        } catch (e) {
+          console.error('[cron] Error renovando token para org:', tokenDoc.id, e)
+        }
+      }
+    }
+
     return NextResponse.json({ ok: true, sent, failed, total: pending.size })
   } catch (err) {
     console.error('Cron send-scheduled error:', err)

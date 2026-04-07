@@ -288,6 +288,7 @@ export default function AdminPage() {
     name: '', industry: '', plan: 'trial' as Organization['plan'], durationDays: 0,
     waPhoneNumberId: '', waToken: '', igToken: '',
   })
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
   const [loadingTokens, setLoadingTokens] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -405,6 +406,7 @@ export default function AdminPage() {
       if (res.ok) {
         const tokens = await res.json()
         setEditForm(f => ({ ...f, waPhoneNumberId: tokens.wa_phone_number_id || '', waToken: tokens.wa_token || '', igToken: tokens.ig_token || '' }))
+        setTokenExpiresAt(tokens.wa_token_expires_at || null)
       }
     } finally {
       setLoadingTokens(false)
@@ -646,13 +648,21 @@ export default function AdminPage() {
                 {loadingTokens && <div className="w-3 h-3 border-2 border-gray-600 border-t-indigo-400 rounded-full animate-spin ml-auto" />}
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-400 font-medium">WhatsApp · Meta Cloud API</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-gray-400 font-medium">WhatsApp · Meta Cloud API</p>
+                  {tokenExpiresAt && (() => {
+                    const exp = new Date(tokenExpiresAt)
+                    const daysLeft = Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                    const color = daysLeft < 0 ? 'text-red-400' : daysLeft < 7 ? 'text-amber-400' : 'text-emerald-400'
+                    return <span className={`text-[10px] font-medium ${color}`}>{daysLeft < 0 ? '⚠ Expirado' : `✓ ${daysLeft}d restantes`}</span>
+                  })()}
+                </div>
                 <input autoComplete="off" value={editForm.waPhoneNumberId}
                   onChange={e => setEditForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
                   className={inputCls} placeholder="Phone Number ID" />
                 <input type="password" autoComplete="new-password" value={editForm.waToken}
                   onChange={e => setEditForm(f => ({ ...f, waToken: e.target.value }))}
-                  className={inputCls} placeholder="Token de acceso" />
+                  className={inputCls} placeholder="Token de acceso (se canjea por 60 días auto.)" />
               </div>
               <div className="space-y-2">
                 <p className="text-[11px] text-gray-400 font-medium">Instagram</p>
