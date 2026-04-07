@@ -5,6 +5,7 @@ import { onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/a
 import { auth } from '@/lib/firebase'
 import { getUserProfile } from '@/lib/firestore'
 import type { AppUser } from '@/types'
+import toast from 'react-hot-toast'
 
 const ACTIVE_ORG_KEY = 'superadmin_active_org'
 
@@ -49,11 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Reintentar hasta 3 veces con backoff si Firestore falla (red lenta, adblocker, etc.)
         let p = null
+        let fetchError = false
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             p = await getUserProfile(firebaseUser.uid)
+            fetchError = false
             break
           } catch {
+            fetchError = true
             if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
           }
         }
@@ -75,8 +79,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             orgId: activeOrg || null,
             createdAt: new Date(),
           })
+        } else if (fetchError) {
+          // Error de red/permisos al leer Firestore — no cerrar sesión, mostrar aviso
+          toast.error('Error al cargar tu perfil. Verifica tu conexión e intenta de nuevo.', { duration: 6000 })
+          await firebaseSignOut(auth)
+          setProfile(null)
         } else {
-          // Perfil no encontrado después de reintentos — cerrar sesión
+          // Documento no existe en Firestore — usuario sin perfil configurado
+          toast.error('Tu cuenta no tiene perfil asignado. Contacta al administrador.', { duration: 8000 })
           await firebaseSignOut(auth)
           setProfile(null)
         }
