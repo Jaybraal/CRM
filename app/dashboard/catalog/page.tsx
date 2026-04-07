@@ -234,7 +234,7 @@ export default function CatalogPage() {
       )}
 
       {/* Modal formulario */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar producto' : 'Nuevo producto'}>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar producto' : 'Nuevo producto'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Fotos */}
           <div>
