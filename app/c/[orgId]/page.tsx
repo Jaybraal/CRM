@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { getCatalog, getOrganization } from '@/lib/firestore'
-import type { CatalogItem, Organization } from '@/types'
+import { getCatalog } from '@/lib/firestore'
+import type { CatalogItem } from '@/types'
 import { ShoppingBag, MessageCircle, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 export default function PublicCatalogPage() {
@@ -11,17 +11,20 @@ export default function PublicCatalogPage() {
   const orgId = params.orgId as string
 
   const [items, setItems] = useState<CatalogItem[]>([])
-  const [org, setOrg] = useState<Organization | null>(null)
+  const [orgName, setOrgName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<CatalogItem | null>(null)
   const [photoIdx, setPhotoIdx] = useState(0)
 
   useEffect(() => {
     if (!orgId) return
-    Promise.all([getCatalog(orgId), getOrganization(orgId)])
-      .then(([catalog, organization]) => {
+    Promise.all([
+      getCatalog(orgId),
+      fetch(`/api/public/org/${orgId}`).then(r => r.json()).catch(() => ({ name: null })),
+    ])
+      .then(([catalog, orgData]) => {
         setItems(catalog.filter(i => i.available))
-        setOrg(organization)
+        setOrgName(orgData.name)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -31,10 +34,6 @@ export default function PublicCatalogPage() {
     setSelected(item)
     setPhotoIdx(0)
   }
-
-  const waLink = org?.settings?.whatsapp?.phoneNumberId
-    ? null // Meta no expone el número directamente
-    : null
 
   if (loading) {
     return (
@@ -50,7 +49,7 @@ export default function PublicCatalogPage() {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{org?.name || 'Catálogo'}</h1>
+            <h1 className="text-xl font-bold text-gray-900">{orgName || 'Catálogo'}</h1>
             <p className="text-xs text-gray-500 mt-0.5">{items.length} producto{items.length !== 1 ? 's' : ''} disponibles</p>
           </div>
           <ShoppingBag size={24} className="text-gray-400" />

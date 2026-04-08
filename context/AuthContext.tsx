@@ -82,8 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (fetchError) {
           // Error de red/permisos al leer Firestore — no cerrar sesión, mostrar aviso
           toast.error('Error al cargar tu perfil. Verifica tu conexión e intenta de nuevo.', { duration: 6000 })
-          await firebaseSignOut(auth)
-          setProfile(null)
         } else {
           // Documento no existe en Firestore — usuario sin perfil configurado
           toast.error('Tu cuenta no tiene perfil asignado. Contacta al administrador.', { duration: 8000 })
