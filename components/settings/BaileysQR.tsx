@@ -8,22 +8,33 @@ type Status = 'connecting' | 'qr' | 'open' | 'disconnected'
 
 export default function BaileysQR({ orgId }: { orgId: string }) {
   const [status, setStatus] = useState<Status>('connecting')
-  const [qr, setQr] = useState<string | null>(null)
+  // El QR se congela: una vez mostrado no se reemplaza hasta que el usuario pulse Reintentar
+  const [frozenQr, setFrozenQr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const sessionId = orgId || 'default'
 
-  const poll = async () => {
+  const poll = async (allowQrUpdate = false) => {
     try {
       const res = await fetch(`/api/whatsapp/sessions/${sessionId}?orgId=${sessionId}`)
       const data = await res.json()
-      setStatus(data.status as Status)
-      setQr(data.qr || null)
+      const newStatus = data.status as Status
 
-      if (data.status === 'open' && intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+      setStatus(newStatus)
+
+      // Solo actualizar el QR si no hay uno congelado ya (o si se forzó el refresh)
+      if (data.qr && (allowQrUpdate || !frozenQr)) {
+        setFrozenQr(data.qr)
+      }
+
+      // Al conectarse, limpiar QR y detener polling
+      if (newStatus === 'open') {
+        setFrozenQr(null)
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
       }
     } catch {
       setStatus('disconnected')
@@ -31,19 +42,13 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   }
 
   useEffect(() => {
-    poll()
-    intervalRef.current = setInterval(poll, 8000)
+    poll(true)
+    intervalRef.current = setInterval(() => poll(false), 10000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Resume polling when not connected
-  useEffect(() => {
-    if (status !== 'open' && !intervalRef.current) {
-      intervalRef.current = setInterval(poll, 3000)
-    }
-  }, [status])
 
   const handleDisconnect = async () => {
     if (!confirm('¿Desconectar WhatsApp? Tendrás que escanear el QR de nuevo.')) return
@@ -51,13 +56,8 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
     try {
       await fetch(`/api/whatsapp/sessions/${sessionId}`, { method: 'DELETE' })
       setStatus('disconnected')
-      setQr(null)
+      setFrozenQr(null)
       toast.success('WhatsApp desconectado')
-      // Restart polling
-      setTimeout(() => {
-        poll()
-        intervalRef.current = setInterval(poll, 3000)
-      }, 1000)
     } catch {
       toast.error('Error al desconectar')
     } finally {
@@ -67,11 +67,10 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
   const handleReconnect = () => {
     setStatus('connecting')
-    setQr(null)
-    poll()
-    if (!intervalRef.current) {
-      intervalRef.current = setInterval(poll, 3000)
-    }
+    setFrozenQr(null)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    poll(true)
+    intervalRef.current = setInterval(() => poll(false), 10000)
   }
 
   return (
@@ -106,7 +105,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
           >
             <Trash2 size={12} /> Desconectar
           </button>
-        ) : status === 'disconnected' ? (
+        ) : (status === 'disconnected' || status === 'qr') ? (
           <button
             onClick={handleReconnect}
             className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
@@ -116,16 +115,17 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
         ) : null}
       </div>
 
-      {/* QR code */}
-      {status === 'qr' && qr ? (
+      {/* QR code — congelado hasta escanear o reintentar */}
+      {frozenQr ? (
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR WhatsApp" className="w-52 h-52" />
+            <img src={frozenQr} alt="QR WhatsApp" className="w-52 h-52" />
           </div>
           <div className="text-center space-y-1">
             <p className="text-sm font-medium text-gray-800">Escanea con tu teléfono</p>
             <p className="text-xs text-gray-500">WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
+            <p className="text-xs text-gray-400 mt-1">Si el QR expiró, pulsa <strong>Reintentar</strong></p>
           </div>
         </div>
       ) : status === 'open' ? (
