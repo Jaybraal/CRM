@@ -83,6 +83,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'save_ig_tokens') {
+      const { ig_token, ig_page_id } = body
+      if (!ig_token || !ig_page_id) return NextResponse.json({ error: 'Faltan ig_token o ig_page_id' }, { status: 400 })
+      await adminDb.doc(`org_tokens/${orgId}`).set(
+        { ig_token: ig_token.trim(), ig_page_id: ig_page_id.trim(), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

@@ -8,14 +8,15 @@ type Status = 'connecting' | 'qr' | 'open' | 'disconnected'
 
 export default function BaileysQR({ orgId }: { orgId: string }) {
   const [status, setStatus] = useState<Status>('connecting')
-  // El QR se congela: una vez mostrado no se reemplaza hasta que el usuario pulse Reintentar
   const [frozenQr, setFrozenQr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Ref para evitar closure stale — refleja si ya tenemos un QR congelado
+  const hasQrRef = useRef(false)
 
   const sessionId = orgId || 'default'
 
-  const poll = async (allowQrUpdate = false) => {
+  const poll = async (forceQrUpdate = false) => {
     try {
       const res = await fetch(`/api/whatsapp/sessions/${sessionId}?orgId=${sessionId}`)
       const data = await res.json()
@@ -23,13 +24,14 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
       setStatus(newStatus)
 
-      // Solo actualizar el QR si no hay uno congelado ya (o si se forzó el refresh)
-      if (data.qr && (allowQrUpdate || !frozenQr)) {
+      // Actualizar QR solo si: se fuerza, o no tenemos uno todavía
+      if (data.qr && (forceQrUpdate || !hasQrRef.current)) {
+        hasQrRef.current = true
         setFrozenQr(data.qr)
       }
 
-      // Al conectarse, limpiar QR y detener polling
       if (newStatus === 'open') {
+        hasQrRef.current = false
         setFrozenQr(null)
         if (intervalRef.current) {
           clearInterval(intervalRef.current)
@@ -56,6 +58,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
     try {
       await fetch(`/api/whatsapp/sessions/${sessionId}`, { method: 'DELETE' })
       setStatus('disconnected')
+      hasQrRef.current = false
       setFrozenQr(null)
       toast.success('WhatsApp desconectado')
     } catch {
@@ -67,6 +70,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
   const handleReconnect = () => {
     setStatus('connecting')
+    hasQrRef.current = false
     setFrozenQr(null)
     if (intervalRef.current) clearInterval(intervalRef.current)
     poll(true)
@@ -105,17 +109,17 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
           >
             <Trash2 size={12} /> Desconectar
           </button>
-        ) : (status === 'disconnected' || status === 'qr') ? (
+        ) : (
           <button
             onClick={handleReconnect}
             className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
           >
             <RefreshCw size={12} /> Reintentar
           </button>
-        ) : null}
+        )}
       </div>
 
-      {/* QR code — congelado hasta escanear o reintentar */}
+      {/* QR congelado */}
       {frozenQr ? (
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm">
