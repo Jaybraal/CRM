@@ -386,37 +386,7 @@ export default function SettingsPage() {
         <InstagramConnect />
       </div>
 
-      {/* WhatsApp — Meta Cloud API (solo info del webhook) */}
-      <div className={cardClass}>
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-          <MessageCircle size={20} className="text-gray-400" />
-          <div>
-            <h2 className="font-semibold text-gray-900">Meta Cloud API</h2>
-            <p className="text-xs text-gray-400 mt-0.5">URL de webhook para configurar en Meta Business</p>
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>URL del Webhook</label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input readOnly value={webhookUrl}
-              className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600 select-all truncate" />
-            <button type="button" onClick={copyWebhook}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors shrink-0">
-              {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
-              {copied ? 'Copiado' : 'Copiar'}
-            </button>
-          </div>
-          <p className="text-xs text-gray-400 mt-1.5">
-            Token de verificación:{' '}
-            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
-              {process.env.NEXT_PUBLIC_WA_VERIFY_TOKEN || 'crm_webhook_2024'}
-            </span>
-          </p>
-        </div>
-        <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
-          Los tokens de acceso son gestionados por el administrador del sistema por razones de seguridad.
-        </p>
-      </div>
+      {/* Meta Cloud API — oculto, usando Baileys */}
 
       {/* Etapas del pipeline */}
       <div className={cardClass}>

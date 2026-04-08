@@ -6,13 +6,10 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X, UserCircle,
-  Send, BarChart3, CalendarDays, Instagram, ShoppingBag
+  Send, BarChart3, CalendarDays, Instagram
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
-import { db } from '@/lib/firebase'
-import { doc, onSnapshot } from 'firebase/firestore'
-import type { Organization } from '@/types'
 
 type NavItem = {
   href: string
@@ -37,7 +34,8 @@ const navItems: NavItem[] = [
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: CalendarDays, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-  { href: '/dashboard/catalog', label: 'Catálogo', icon: ShoppingBag, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  // Catálogo desactivado temporalmente — reactivar agregando 'owner', 'manager' etc.
+  // { href: '/dashboard/catalog', label: 'Catálogo', icon: ShoppingBag, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/broadcast', label: 'Difusión', icon: Send, roles: ['super_admin', 'owner', 'manager'] },
   { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/team', label: 'Equipo', icon: Users, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
@@ -56,23 +54,12 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!profile?.orgId) return
-    // Si la org tiene Meta configurado, mostrar como conectado directamente
-    const unsub = onSnapshot(doc(db, 'organizations', profile.orgId), (snap) => {
-      const org = snap.data() as Organization | undefined
-      if (org?.settings?.whatsappMetaConfigured) {
-        setWaConnected(true)
-        return
-      }
-      // Fallback: verificar sesión Baileys
-      if (process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
-        fetch(`/api/whatsapp/sessions/${profile.orgId}?orgId=${profile.orgId}`)
-          .then(r => r.json())
-          .then(d => setWaConnected(d.status === 'open'))
-          .catch(() => setWaConnected(false))
-      } else {
-        setWaConnected(false)
-      }
-    }, () => setWaConnected(false))
+
+    // Verificar sesión Baileys
+    fetch(`/api/whatsapp/sessions/${profile.orgId}?orgId=${profile.orgId}`)
+      .then(r => r.json())
+      .then(d => setWaConnected(d.status === 'open'))
+      .catch(() => setWaConnected(false))
 
     // Verificar Instagram
     fetch(`/api/instagram/send`, {
@@ -80,8 +67,6 @@ export default function Sidebar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orgId: profile.orgId, check: true }),
     }).then(r => r.json()).then(d => setIgConnected(!d.error || d.error !== 'Instagram no configurado para esta organización')).catch(() => setIgConnected(false))
-
-    return () => unsub()
   }, [profile?.orgId])
 
   const visible = navItems.filter(item =>
