@@ -6,6 +6,10 @@ import makeWASocket, {
   BufferJSON,
   downloadContentFromMessage,
 } from '@whiskeysockets/baileys'
+
+// Códigos que significan cierre permanente (no reconectar automáticamente)
+// 401 = loggedOut, 440 = connectionReplaced (otra instancia tomó la sesión), 500 = badSession
+const PERMANENT_DISCONNECT_CODES = new Set([401, 440, 500, 411])
 import { Boom } from '@hapi/boom'
 import qrcode from 'qrcode-terminal'
 import QRCode from 'qrcode'
@@ -90,7 +94,18 @@ async function useFirestoreAuthState(sessionId) {
 
   const saveCreds = () => writeData('creds', state.creds)
 
-  return { state, saveCreds }
+  const clearAuth = async () => {
+    try {
+      const authSnap = await docRef.collection('auth').get()
+      const batch = db.batch()
+      authSnap.docs.forEach(d => batch.delete(d.ref))
+      await batch.commit()
+    } catch (e) {
+      console.error('Error borrando auth:', e.message)
+    }
+  }
+
+  return { state, saveCreds, clearAuth }
 }
 
 // ── Session management ─────────────────────────────────────────
@@ -100,6 +115,8 @@ async function startSession(sessionId, orgId) {
   if (sessions.has(sessionId)) {
     const existing = sessions.get(sessionId)
     if (existing.status === 'open') return existing
+    // No reiniciar si ya hay un QR esperando ser escaneado
+    if (existing.status === 'qr' || existing.status === 'connecting') return existing
     if (!orgId) orgId = existing.orgId
   }
 
@@ -114,7 +131,7 @@ async function startSession(sessionId, orgId) {
     orgId = snap.data()?.orgId || ''
   }
 
-  const { state, saveCreds } = await useFirestoreAuthState(sessionId)
+  const { state, saveCreds, clearAuth } = await useFirestoreAuthState(sessionId)
   const { version } = await fetchLatestBaileysVersion()
 
   const sock = makeWASocket({
@@ -123,12 +140,19 @@ async function startSession(sessionId, orgId) {
     logger,
     printQRInTerminal: false,
     browser: ['CRM Auto', 'Chrome', '120.0'],
-    keepAliveIntervalMs: 15000,
+    keepAliveIntervalMs: 25000,
     retryRequestDelayMs: 2000,
-    connectTimeoutMs: 60000,
+    connectTimeoutMs: 120000, // 2 min para conectar
+    qrTimeout: 90000, // 90s antes de regenerar QR (default es ~20s)
+    defaultQueryTimeoutMs: 60000,
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
+    emitOwnEvents: false,
   })
 
-  const session = { sock, qr: null, status: 'connecting', orgId }
+  // Preservar conteo de reconexiones si ya existía la sesión
+  const prevReconnects = sessions.get(sessionId)?.reconnectCount || 0
+  const session = { sock, qr: null, status: 'connecting', orgId, clearAuth, reconnectCount: prevReconnects }
   sessions.set(sessionId, session)
 
   sock.ev.on('creds.update', saveCreds)
@@ -152,6 +176,7 @@ async function startSession(sessionId, orgId) {
     if (connection === 'open') {
       s.status = 'open'
       s.qr = null
+      s.reconnectCount = 0
       console.log(`Sesion [${sessionId}] conectada (org: ${s.orgId || 'sin org'})`)
       await db.collection('whatsapp_sessions').doc(sessionId).set(
         { status: 'connected', connectedAt: FieldValue.serverTimestamp() },
@@ -168,19 +193,38 @@ async function startSession(sessionId, orgId) {
 
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode
-      const reconnect = code !== DisconnectReason.loggedOut
-      console.log(`Sesion [${sessionId}] cerrada (codigo ${code})`)
-      if (reconnect) {
-        s.status = 'connecting'
-        setTimeout(() => startSession(sessionId), 3000)
-      } else {
+      const isPermanent = PERMANENT_DISCONNECT_CODES.has(code)
+      console.log(`Sesion [${sessionId}] cerrada (codigo ${code}, permanente: ${isPermanent})`)
+
+      if (isPermanent) {
         s.status = 'disconnected'
         s.sock = null
+        // Limpiar auth corrupto/revocado de Firestore
+        await s.clearAuth?.()
         await db.collection('whatsapp_sessions').doc(sessionId).set(
           { status: 'disconnected' },
           { merge: true }
         )
-        console.log(`Sesion [${sessionId}] cerrada permanentemente.`)
+        console.log(`Sesion [${sessionId}] cerrada permanentemente. Auth borrado.`)
+      } else {
+        // Reconexión con backoff exponencial (5s, 10s, 20s, 40s, 60s máx)
+        s.reconnectCount = (s.reconnectCount || 0) + 1
+        const MAX_RECONNECTS = 6
+        if (s.reconnectCount > MAX_RECONNECTS) {
+          console.log(`Sesion [${sessionId}] superó ${MAX_RECONNECTS} intentos. Marcando como desconectada.`)
+          s.status = 'disconnected'
+          s.sock = null
+          await s.clearAuth?.()
+          await db.collection('whatsapp_sessions').doc(sessionId).set(
+            { status: 'disconnected' },
+            { merge: true }
+          )
+        } else {
+          const delay = Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
+          console.log(`Sesion [${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
+          s.status = 'connecting'
+          setTimeout(() => startSession(sessionId), delay)
+        }
       }
     }
   })
@@ -483,6 +527,59 @@ app.post('/send-image', async (req, res) => {
   }
 })
 
+app.post('/send-video', async (req, res) => {
+  const { to, url, caption, sessionId: sid } = req.body
+  const sessionId = sid || 'default'
+  const s = sessions.get(sessionId)
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
+  try {
+    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+    const result = await s.sock.sendMessage(jid, { video: { url }, caption: caption || '' })
+    res.json({ ok: true, msgId: result?.key?.id || null })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/send-audio', async (req, res) => {
+  const { to, url, ptt, sessionId: sid } = req.body
+  const sessionId = sid || 'default'
+  const s = sessions.get(sessionId)
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
+  try {
+    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+    const result = await s.sock.sendMessage(jid, {
+      audio: { url },
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: ptt !== false, // por defecto nota de voz
+    })
+    res.json({ ok: true, msgId: result?.key?.id || null })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/send-document', async (req, res) => {
+  const { to, url, fileName, mimetype, sessionId: sid } = req.body
+  const sessionId = sid || 'default'
+  const s = sessions.get(sessionId)
+  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
+  try {
+    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+    const result = await s.sock.sendMessage(jid, {
+      document: { url },
+      fileName: fileName || 'archivo',
+      mimetype: mimetype || 'application/octet-stream',
+    })
+    res.json({ ok: true, msgId: result?.key?.id || null })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
 app.post('/send-location', async (req, res) => {
   const { to, lat, lng, name, sessionId: sid } = req.body
   const sessionId = sid || 'default'
@@ -503,6 +600,31 @@ app.post('/send-location', async (req, res) => {
 
 app.post('/call', async (_req, res) => {
   res.status(501).json({ error: 'Llamadas salientes no soportadas por Baileys.' })
+})
+
+// Forzar reset completo de una sesión: borra auth, desconecta, genera QR fresco
+app.post('/reset/:sessionId?', async (req, res) => {
+  const sessionId = req.params.sessionId || 'default'
+  const { orgId } = req.body || {}
+  const s = sessions.get(sessionId)
+  try {
+    if (s?.sock) { try { s.sock.end(undefined) } catch {} }
+    sessions.delete(sessionId)
+  } catch {}
+  // Borrar auth de Firestore
+  try {
+    const docRef = db.collection('whatsapp_sessions').doc(sessionId)
+    const authSnap = await docRef.collection('auth').get()
+    const batch = db.batch()
+    authSnap.docs.forEach(d => batch.delete(d.ref))
+    await batch.commit()
+    await docRef.set({ status: 'disconnected' }, { merge: true })
+  } catch (e) {
+    console.error('Error borrando auth en reset:', e.message)
+  }
+  // Iniciar sesión fresca (generará QR nuevo)
+  startSession(sessionId, orgId).catch(console.error)
+  res.json({ ok: true, message: 'Sesión reseteada, nuevo QR generándose' })
 })
 
 app.listen(PORT, () => {

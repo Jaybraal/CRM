@@ -32,7 +32,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
   useEffect(() => {
     poll()
-    intervalRef.current = setInterval(poll, 3000)
+    intervalRef.current = setInterval(poll, 8000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
