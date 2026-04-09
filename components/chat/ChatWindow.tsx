@@ -307,6 +307,7 @@ ${messages.map(m => {
         type: 'audio',
         text: '🎤 Nota de voz',
         photos: [audioFileUrl],
+        audioDuration: recordingTime,
         senderId: profile.uid,
         senderName: profile.displayName ?? '',
         source: 'internal',
@@ -750,11 +751,16 @@ ${messages.map(m => {
 
     // Audio/voice message
     if (msg.type === 'audio' || (msg.photos?.length === 1 && isAudioUrl(msg.photos[0]))) {
+      const durSec = msg.audioDuration
+      const durLabel = durSec ? `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, '0')}` : ''
       return (
         <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
           <div className="flex items-center gap-2 py-1">
             <Mic size={16} className="text-green-600 flex-shrink-0" />
-            <audio src={msg.photos?.[0]} controls className="h-8 flex-1 min-w-0" style={{ maxWidth: '240px' }} />
+            <div className="flex-1 min-w-0">
+              <audio src={msg.photos?.[0]} controls className="h-8 w-full" style={{ maxWidth: '220px' }} />
+              {durLabel && <p className="text-[10px] text-gray-400 mt-0.5">{durLabel}</p>}
+            </div>
           </div>
           {msg.text && msg.text !== '🎤 Nota de voz' && <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-wrap mt-1">{msg.text}</p>}
           <div className="flex items-center justify-end gap-0.5 mt-1">

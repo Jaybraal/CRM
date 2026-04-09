@@ -82,7 +82,8 @@ export interface Message {
   text?: string
   photos: string[]
   location?: MessageLocation
-  callDuration?: number // seconds, -1 = missed
+  callDuration?: number    // seconds, -1 = missed
+  audioDuration?: number   // seconds — nota de voz grabada desde el CRM
   senderId: string
   senderName: string
   source: 'internal' | 'whatsapp' | 'instagram'

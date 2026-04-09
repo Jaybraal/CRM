@@ -16,16 +16,28 @@ import pino from 'pino'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
-// ── ffmpeg (CJS → ESM safe) ──────────────────────────────────
+// ── ffmpeg: sistema primero, ffmpeg-static como fallback ─────
 const require_ = createRequire(import.meta.url)
 let FFMPEG = null
+
+// 1. Probar ffmpeg del sistema (instalado via nixpacks.toml)
 try {
-  FFMPEG = require_('ffmpeg-static')
-  const ver = execFileSync(FFMPEG, ['-version'], { timeout: 5000 }).toString().split('\n')[0]
-  console.log(`✓ ffmpeg: ${ver}`)
-} catch (e) {
-  FFMPEG = null
-  console.warn(`✗ ffmpeg no disponible: ${e.message}`)
+  const ver = execFileSync('ffmpeg', ['-version'], { timeout: 5000 }).toString().split('\n')[0]
+  FFMPEG = 'ffmpeg'
+  console.log(`✓ ffmpeg sistema: ${ver}`)
+} catch {
+  // 2. Fallback: ffmpeg-static (binario npm)
+  try {
+    const staticPath = require_('ffmpeg-static')
+    if (staticPath) {
+      execFileSync(staticPath, ['-version'], { timeout: 5000 })
+      FFMPEG = staticPath
+      console.log(`✓ ffmpeg-static: ${FFMPEG}`)
+    }
+  } catch (e) {
+    FFMPEG = null
+    console.warn(`✗ ffmpeg no disponible: ${e.message}. Audio se enviará como adjunto.`)
+  }
 }
 
 // Transcodifica audio a ogg/opus. Devuelve null si falla.
