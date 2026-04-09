@@ -54,14 +54,11 @@ async function transcodeToOpus(inputBuffer) {
   try {
     writeFileSync(inFile, inputBuffer)
     await new Promise((resolve, reject) => {
+      // Parámetros exactos recomendados por Baileys para compatibilidad total con WhatsApp
       const proc = spawn(FFMPEG, [
         '-y', '-i', inFile,
-        '-vn',
-        '-c:a', 'libopus',
-        '-b:a', '32k',
-        '-ar', '16000',
-        '-ac', '1',
         '-avoid_negative_ts', 'make_zero',
+        '-ac', '1',
         outFile,
       ], { stdio: ['ignore', 'pipe', 'pipe'] })
       let stderr = ''
