@@ -204,6 +204,7 @@ async function startSession(sessionId, orgId) {
 
       if (isPermanent) {
         s.status = 'disconnected'
+        s.qr = null
         s.sock = null
         // Limpiar auth corrupto/revocado de Firestore
         await s.clearAuth?.()
@@ -212,6 +213,10 @@ async function startSession(sessionId, orgId) {
           { merge: true }
         )
         console.log(`Sesion [${sessionId}] cerrada permanentemente. Auth borrado.`)
+        // Eliminar sesión del Map para que no reconecte automáticamente
+        // El usuario debe escanear QR de nuevo manualmente
+        sessions.delete(sessionId)
+        console.log(`Sesion [${sessionId}] eliminada del Map. Requiere reconexión manual.`)
       } else {
         // Reconexión con backoff exponencial (5s, 10s, 20s, 40s, 60s máx)
         s.reconnectCount = (s.reconnectCount || 0) + 1
