@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import { spawn } from 'child_process'
+import ffmpegPath from 'ffmpeg-static'
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -6,6 +8,36 @@ import makeWASocket, {
   BufferJSON,
   downloadContentFromMessage,
 } from '@whiskeysockets/baileys'
+
+// Transcodifica cualquier audio (webm, mp4, wav, etc.) a ogg/opus mono 16kHz
+// usando ffmpeg estático. Necesario para que WhatsApp lo reproduzca como PTT.
+function transcodeToOpus(inputBuffer) {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegPath) return reject(new Error('ffmpeg-static no disponible'))
+    const proc = spawn(ffmpegPath, [
+      '-i', 'pipe:0',
+      '-vn',
+      '-c:a', 'libopus',
+      '-b:a', '64k',
+      '-ar', '48000',
+      '-ac', '1',
+      '-f', 'ogg',
+      'pipe:1',
+    ], { stdio: ['pipe', 'pipe', 'pipe'] })
+
+    const chunks = []
+    let stderr = ''
+    proc.stdout.on('data', c => chunks.push(c))
+    proc.stderr.on('data', c => { stderr += c.toString() })
+    proc.on('error', reject)
+    proc.on('close', code => {
+      if (code === 0) resolve(Buffer.concat(chunks))
+      else reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-500)}`))
+    })
+    proc.stdin.on('error', () => {}) // evitar EPIPE si ffmpeg cierra antes
+    proc.stdin.end(inputBuffer)
+  })
+}
 
 // Códigos que significan cierre permanente (no reconectar automáticamente)
 // 401 = loggedOut, 440 = connectionReplaced (otra instancia tomó la sesión), 500 = badSession
@@ -543,10 +575,16 @@ app.post('/send-image', async (req, res) => {
     const imgFetch = await fetch(url)
     if (!imgFetch.ok) throw new Error(`No se pudo descargar la imagen: ${imgFetch.status}`)
     const imgBuffer = Buffer.from(await imgFetch.arrayBuffer())
-    const result = await s.sock.sendMessage(jid, { image: imgBuffer, caption: caption || '' })
-    const msgId = result?.key?.id || null
-    res.json({ ok: true, msgId })
+    const contentType = imgFetch.headers.get('content-type') || 'image/jpeg'
+    console.log(`[${sessionId}] send-image: ${imgBuffer.length} bytes, ${contentType}`)
+    const result = await s.sock.sendMessage(jid, {
+      image: imgBuffer,
+      mimetype: contentType.startsWith('image/') ? contentType : 'image/jpeg',
+      caption: caption || '',
+    })
+    res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
+    console.error(`[${sessionId}] /send-image error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
@@ -561,10 +599,46 @@ app.post('/send-video', async (req, res) => {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
     const vidFetch = await fetch(url)
     if (!vidFetch.ok) throw new Error(`No se pudo descargar el video: ${vidFetch.status}`)
-    const vidBuffer = Buffer.from(await vidFetch.arrayBuffer())
-    const result = await s.sock.sendMessage(jid, { video: vidBuffer, caption: caption || '' })
+    const rawBuffer = Buffer.from(await vidFetch.arrayBuffer())
+    const contentType = vidFetch.headers.get('content-type') || 'video/mp4'
+    console.log(`[${sessionId}] send-video: ${rawBuffer.length} bytes, ${contentType}`)
+
+    // Si es webm (navegador), transcodificar a mp4 para que WhatsApp lo reproduzca
+    let vidBuffer = rawBuffer
+    if (contentType.includes('webm') || contentType.includes('quicktime')) {
+      try {
+        vidBuffer = await new Promise((resolve, reject) => {
+          const proc = spawn(ffmpegPath, [
+            '-i', 'pipe:0',
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+            '-f', 'mp4',
+            'pipe:1',
+          ], { stdio: ['pipe', 'pipe', 'pipe'] })
+          const chunks = []
+          let stderr = ''
+          proc.stdout.on('data', c => chunks.push(c))
+          proc.stderr.on('data', c => { stderr += c.toString() })
+          proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`ffmpeg ${code}: ${stderr.slice(-300)}`)))
+          proc.stdin.on('error', () => {})
+          proc.stdin.end(rawBuffer)
+        })
+        console.log(`[${sessionId}] video transcodificado: ${rawBuffer.length}→${vidBuffer.length} bytes`)
+      } catch (e) {
+        console.error(`[${sessionId}] video ffmpeg falló:`, e.message)
+        vidBuffer = rawBuffer
+      }
+    }
+
+    const result = await s.sock.sendMessage(jid, {
+      video: vidBuffer,
+      mimetype: 'video/mp4',
+      caption: caption || '',
+    })
     res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
+    console.error(`[${sessionId}] /send-video error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
@@ -578,19 +652,29 @@ app.post('/send-audio', async (req, res) => {
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
 
-    // Descargar el audio y enviarlo como Buffer para que WhatsApp lo pueda reproducir
+    // Descargar el audio original (puede ser webm, mp4, wav, etc.)
     const audioFetch = await fetch(url)
     if (!audioFetch.ok) throw new Error(`No se pudo descargar el audio: ${audioFetch.status}`)
-    const arrayBuffer = await audioFetch.arrayBuffer()
-    const audioBuffer = Buffer.from(arrayBuffer)
+    const rawBuffer = Buffer.from(await audioFetch.arrayBuffer())
+
+    // Transcodificar a ogg/opus para que WhatsApp lo reproduzca siempre
+    let oggBuffer
+    try {
+      oggBuffer = await transcodeToOpus(rawBuffer)
+      console.log(`[${sessionId}] Audio transcodificado: ${rawBuffer.length}→${oggBuffer.length} bytes`)
+    } catch (e) {
+      console.error(`[${sessionId}] ffmpeg falló, enviando raw:`, e.message)
+      oggBuffer = rawBuffer // fallback: enviar raw (puede no reproducir)
+    }
 
     const result = await s.sock.sendMessage(jid, {
-      audio: audioBuffer,
+      audio: oggBuffer,
       mimetype: 'audio/ogg; codecs=opus',
       ptt: ptt !== false,
     })
     res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
+    console.error(`[${sessionId}] /send-audio error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })

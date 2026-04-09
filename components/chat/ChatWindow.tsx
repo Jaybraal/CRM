@@ -306,19 +306,23 @@ ${messages.map(m => {
       if (hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
         const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
-        const waRes = await fetch('/api/whatsapp/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: profile.orgId, to: jid, audioUrl: audioFileUrl, type: 'audio' }),
-        })
-        if (waRes.ok) {
-          const waData = await waRes.json().catch(() => ({}))
-          if (waData.msgId && msgRef) {
-            await updateDoc(msgRef, { whatsappMsgId: waData.msgId, status: 'sent' })
+        try {
+          const waRes = await fetch('/api/whatsapp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, to: jid, audioUrl: audioFileUrl, type: 'audio' }),
+          })
+          if (waRes.ok) {
+            const waData = await waRes.json().catch(() => ({}))
+            if (msgRef) await updateDoc(msgRef, { whatsappMsgId: waData.msgId || null, status: 'sent' })
+          } else {
+            const waErr = await waRes.json().catch(() => ({}))
+            if (msgRef) await updateDoc(msgRef, { status: 'failed' })
+            toast.error(waErr.error || 'Audio falló en WhatsApp', { duration: 5000 })
           }
-        } else {
-          if (msgRef) await updateDoc(msgRef, { status: 'sent' })
-          toast.error('Audio guardado pero falló en WhatsApp', { duration: 4000 })
+        } catch (e) {
+          if (msgRef) await updateDoc(msgRef, { status: 'failed' }).catch(() => {})
+          toast.error(`Audio: ${e instanceof Error ? e.message : 'error de red'}`, { duration: 5000 })
         }
       }
 
@@ -454,54 +458,79 @@ ${messages.map(m => {
         }
       } else if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
+        let mediaOk = photoUrls.length === 0
+        let textOk = !text.trim()
 
-        // Send files (images and videos)
+        // Send files (images and videos) — errores aislados, no bloquean el texto
         if (photoUrls.length > 0) {
           let lastMsgId: string | null = null
+          let anyFailed = false
           for (let i = 0; i < photoUrls.length; i++) {
             const url = photoUrls[i]
             const isVideo = pendingFiles[i]?.type?.startsWith('video/')
-            const res = await fetch('/api/whatsapp/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orgId: profile.orgId,
-                to: jid,
-                photoUrls: isVideo ? undefined : [url],
-                videoUrl: isVideo ? url : undefined,
-                type: isVideo ? 'video' : 'image',
-              }),
-            })
-            const data = await res.json().catch(() => ({}))
-            if (data.msgId) lastMsgId = data.msgId
-          }
-          if (lastMsgId && msgRef) {
-            await updateDoc(msgRef, { whatsappMsgId: lastMsgId, status: 'sent' })
-          }
-        }
-
-        // Send text
-        if (text.trim()) {
-          const waRes = await fetch('/api/whatsapp/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, to: jid, text: text.trim(), type: 'text' }),
-          })
-          if (!waRes.ok) {
-            const waErr = await waRes.json().catch(() => ({}))
-            toast.error(waErr.error || 'Falló el envío por WhatsApp', { duration: 6000 })
-          } else {
-            const waData = await waRes.json().catch(() => ({}))
-            if (waData.msgId && msgRef && photoUrls.length === 0) {
-              await updateDoc(msgRef, { whatsappMsgId: waData.msgId, status: 'sent' })
+            try {
+              const res = await fetch('/api/whatsapp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  orgId: profile.orgId,
+                  to: jid,
+                  photoUrls: isVideo ? undefined : [url],
+                  videoUrl: isVideo ? url : undefined,
+                  type: isVideo ? 'video' : 'image',
+                }),
+              })
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                anyFailed = true
+                toast.error(err.error || `Falló ${isVideo ? 'video' : 'imagen'}`, { duration: 5000 })
+              } else {
+                const data = await res.json().catch(() => ({}))
+                if (data.msgId) lastMsgId = data.msgId
+              }
+            } catch (e) {
+              anyFailed = true
+              toast.error(`Media: ${e instanceof Error ? e.message : 'error'}`, { duration: 5000 })
             }
           }
+          mediaOk = !anyFailed
+          if (msgRef) {
+            await updateDoc(msgRef, {
+              ...(lastMsgId ? { whatsappMsgId: lastMsgId } : {}),
+              status: anyFailed ? 'failed' : 'sent',
+            }).catch(() => {})
+          }
         }
 
-        // If no WA response updated status, mark as sent anyway
-        if (msgRef && photoUrls.length === 0 && !text.trim()) {
-          await updateDoc(msgRef, { status: 'sent' }).catch(() => {})
+        // Send text — independiente del resultado anterior
+        if (text.trim()) {
+          try {
+            const waRes = await fetch('/api/whatsapp/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orgId: profile.orgId, to: jid, text: text.trim(), type: 'text' }),
+            })
+            if (!waRes.ok) {
+              const waErr = await waRes.json().catch(() => ({}))
+              toast.error(waErr.error || 'Falló el envío por WhatsApp', { duration: 6000 })
+              if (msgRef && photoUrls.length === 0) await updateDoc(msgRef, { status: 'failed' }).catch(() => {})
+            } else {
+              textOk = true
+              const waData = await waRes.json().catch(() => ({}))
+              if (msgRef && photoUrls.length === 0) {
+                await updateDoc(msgRef, {
+                  ...(waData.msgId ? { whatsappMsgId: waData.msgId } : {}),
+                  status: 'sent',
+                }).catch(() => {})
+              }
+            }
+          } catch (e) {
+            toast.error(`Texto: ${e instanceof Error ? e.message : 'error'}`, { duration: 5000 })
+            if (msgRef && photoUrls.length === 0) await updateDoc(msgRef, { status: 'failed' }).catch(() => {})
+          }
         }
+
+        void mediaOk; void textOk
       } else {
         // No WhatsApp — mark as sent immediately (internal message)
         if (msgRef) await updateDoc(msgRef, { status: 'sent' }).catch(() => {})

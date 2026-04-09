@@ -280,8 +280,8 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Auto-reply only if not in qualification flow
-      if (!qualificationHandled && autoReply?.enabled && autoReply?.message) {
+      // Auto-reply SOLO en el primer mensaje del cliente (isNew === true)
+      if (isNew && !qualificationHandled && autoReply?.enabled && autoReply?.message) {
         void sendBaileys(baileysUrl, jid || from, autoReply.message, orgId)
       }
     }
