@@ -255,6 +255,7 @@ async function startSession(sessionId, orgId) {
       const isLid = jid.endsWith('@lid')
       const from  = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
       const fromName = msg.pushName || from
+      const msgId   = msg.key.id || ''
 
       let text = ''
       let msgType = 'text'
@@ -262,13 +263,16 @@ async function startSession(sessionId, orgId) {
       let mediaBase64 = null
       let mediaMime = null
 
-      const m = msg.message || {}
+      // Normalizar: desempaquetar wrappers de WhatsApp
+      let m = msg.message || {}
+      if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message
+      if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message
+      if (m.viewOnceMessageV2?.message?.message) m = m.viewOnceMessageV2.message.message
+
       if (m.conversation) {
         text = m.conversation
       } else if (m.extendedTextMessage?.text) {
         text = m.extendedTextMessage.text
-      } else if (m.ephemeralMessage?.message?.extendedTextMessage?.text) {
-        text = m.ephemeralMessage.message.extendedTextMessage.text
       } else if (m.imageMessage) {
         text = m.imageMessage.caption || ''
         msgType = 'image'
@@ -326,14 +330,20 @@ async function startSession(sessionId, orgId) {
         continue // ignorar reacciones
       } else if (m.protocolMessage) {
         continue // ignorar mensajes de protocolo (ediciones, borrados)
+      } else if (m.senderKeyDistributionMessage || m.messageContextInfo || m.callLogMessag) {
+        continue // ignorar mensajes de sistema/señalización
+      } else if (!text && msgType === 'text' && !mediaBase64 && !locationData) {
+        // Mensaje sin contenido reconocido — ignorar para no crear burbuja vacía
+        console.log(`[${sessionId}] Mensaje ignorado (sin contenido). Claves: ${Object.keys(m).join(',')}`)
+        continue
       }
 
-      console.log(`[${sessionId}] ${fromName}: ${text || `[${msgType}]`}${mediaBase64 ? ' [+media]' : ''}`)
+      console.log(`[${sessionId}] ${fromName} [${msgId}]: ${text || `[${msgType}]`}${mediaBase64 ? ' [+media]' : ''}`)
       const orgId = sessions.get(sessionId)?.orgId
       if (!orgId) continue
 
       // Enviar al CRM secuencialmente con reintentos
-      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId, mediaBase64, mediaMime })
+      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId, mediaBase64, mediaMime, msgId })
       let sent = false
       for (let attempt = 1; attempt <= 4; attempt++) {
         try {

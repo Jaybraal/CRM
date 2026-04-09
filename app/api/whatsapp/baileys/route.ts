@@ -73,7 +73,7 @@ async function sendBaileys(baileysUrl: string, to: string, text: string, session
 
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration, mediaBase64, mediaMime } = await req.json()
+    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration, mediaBase64, mediaMime, msgId } = await req.json()
 
     if (!orgId || !from) return NextResponse.json({ ok: true })
 
@@ -181,7 +181,16 @@ export async function POST(req: NextRequest) {
       if (type === 'document') messageData.text = `[Documento: ${text || 'archivo'}]`
     }
 
-    await adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`).add(messageData)
+    // Usar msgId de WhatsApp como ID del documento → dedup automático ante reintentos
+    const messagesRef = adminDb.collection(`organizations/${orgId}/clients/${clientId}/messages`)
+    if (msgId) {
+      const docRef = messagesRef.doc(`wa_${msgId}`)
+      const existing = await docRef.get()
+      if (existing.exists) return NextResponse.json({ ok: true, dup: true })
+      await docRef.set(messageData)
+    } else {
+      await messagesRef.add(messageData)
+    }
 
     // Notification
     const notifTitle = isNew ? `Nuevo contacto: ${clientName}` : `Mensaje de ${clientName}`
