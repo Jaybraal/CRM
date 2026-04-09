@@ -213,14 +213,15 @@ ${messages.map(m => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      // ogg/opus es el formato que WhatsApp reproduce como nota de voz.
-      // Chrome y Firefox lo soportan. Safari usa mp4 (se envía como audio adjunto).
+      // Chrome graba en webm (no soporta ogg en MediaRecorder aunque diga que sí).
+      // Firefox soporta ogg/opus nativo. Safari usa mp4.
+      // Ponemos webm primero para Chrome; el servidor transcodifica a ogg/opus.
       const preferredTypes = [
-        'audio/ogg;codecs=opus',   // WhatsApp nativo — Chrome + Firefox
-        'audio/ogg',               // Firefox fallback
-        'audio/webm;codecs=opus',  // Chrome fallback si ogg no está
+        'audio/webm;codecs=opus',
         'audio/webm',
-        'audio/mp4',               // Safari/iOS
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/mp4',
         'audio/aac',
       ]
       const mimeType = preferredTypes.find(t => {
@@ -233,12 +234,19 @@ ${messages.map(m => {
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
 
+      // timeslice 250ms: recibir datos continuamente, detecta si no llega nada
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
 
       mediaRecorder.onstop = () => {
         const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm'
+        if (audioChunksRef.current.length === 0) {
+          toast.error('No se capturó audio. Intenta de nuevo.')
+          stream.getTracks().forEach(t => t.stop())
+          setIsRecording(false)
+          return
+        }
         const blob = new Blob(audioChunksRef.current, { type: actualMime })
         setAudioBlob(blob)
         const url = URL.createObjectURL(blob)
@@ -246,7 +254,7 @@ ${messages.map(m => {
         stream.getTracks().forEach(t => t.stop())
       }
 
-      mediaRecorder.start()
+      mediaRecorder.start(250)
       setIsRecording(true)
       setRecordingTime(0)
       recordTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)

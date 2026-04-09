@@ -582,10 +582,17 @@ async function safeSend(sessionId, s, jid, content) {
     return { ok: true, msgId: result?.key?.id || null }
   } catch (e) {
     console.error(`[${sessionId}] sendMessage error:`, e.message)
-    // Si el error indica que el socket murió, marcar la sesión
-    const dead = !s.sock?.user || e.message?.includes('Connection Closed') || e.message?.includes('not open')
-    if (dead) {
-      console.error(`[${sessionId}] Socket muerto detectado. Reconectando...`)
+    // Solo marcar sesión muerta si es un error de CONEXIÓN, no de protocolo
+    // Errores de protocolo (audio malformado, etc.) NO deben matar la sesión
+    const msg = e.message || ''
+    const isConnectionDead =
+      msg.includes('Connection Closed') ||
+      msg.includes('not open') ||
+      msg.includes('WebSocket') ||
+      msg.includes('connect ECONNREFUSED') ||
+      (!s.sock?.user && msg !== '')
+    if (isConnectionDead) {
+      console.error(`[${sessionId}] Conexión muerta detectada. Reconectando...`)
       s.status = 'connecting'
       s.reconnectCount = (s.reconnectCount || 0) + 1
       setTimeout(() => startSession(sessionId), 3000)
@@ -681,6 +688,12 @@ app.post('/send-video', async (req, res) => {
   }
 })
 
+// Detecta si un buffer es realmente ogg/opus por sus magic bytes
+function isOggOpus(buf) {
+  // OGG: empieza con "OggS" (4f 67 67 53)
+  return buf.length > 4 && buf[0] === 0x4f && buf[1] === 0x67 && buf[2] === 0x67 && buf[3] === 0x53
+}
+
 app.post('/send-audio', async (req, res) => {
   const { to, url, ptt, sessionId: sid } = req.body
   const { sessionId, s } = getSession(sid)
@@ -689,13 +702,27 @@ app.post('/send-audio', async (req, res) => {
   try {
     const jid = toJid(to)
     const { buffer: rawBuffer, contentType } = await downloadUrl(url, 'audio')
-    console.log(`[${sessionId}] send-audio: ${rawBuffer.length} bytes, ${contentType}`)
 
-    // Intentar transcodificar a ogg/opus (ffmpeg)
+    if (rawBuffer.length === 0) {
+      return res.status(400).json({ error: 'El archivo de audio está vacío' })
+    }
+
+    console.log(`[${sessionId}] send-audio: ${rawBuffer.length} bytes, contentType=${contentType}, isOgg=${isOggOpus(rawBuffer)}`)
+
+    // Si ya es ogg/opus (Firefox, o conversión previa), enviar directo como PTT
+    if (isOggOpus(rawBuffer)) {
+      console.log(`[${sessionId}] audio ya en ogg/opus, enviando como PTT`)
+      const result = await safeSend(sessionId, s, jid, {
+        audio: rawBuffer,
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: ptt !== false,
+      })
+      return res.json(result)
+    }
+
+    // Si ffmpeg disponible: transcodificar webm/mp4 → ogg/opus
     const oggBuffer = await transcodeToOpus(rawBuffer)
-
-    if (oggBuffer) {
-      // Éxito: enviar como nota de voz (PTT)
+    if (oggBuffer && oggBuffer.length > 0) {
       console.log(`[${sessionId}] audio transcodificado: ${rawBuffer.length}→${oggBuffer.length} bytes`)
       const result = await safeSend(sessionId, s, jid, {
         audio: oggBuffer,
@@ -705,16 +732,17 @@ app.post('/send-audio', async (req, res) => {
       return res.json(result)
     }
 
-    // Fallback SIN ffmpeg: enviar como archivo de audio (no voice note, pero SE REPRODUCE)
-    console.log(`[${sessionId}] ffmpeg no disponible, enviando audio raw como archivo`)
-    const mime = contentType || 'audio/webm'
+    // Sin ffmpeg: enviar como audio adjunto normal (NO PTT) — se reproduce pero no es nota de voz
+    const mime = contentType?.split(';')[0] || 'audio/webm'
+    console.log(`[${sessionId}] ffmpeg no disponible, enviando como audio adjunto (${mime})`)
     const result = await safeSend(sessionId, s, jid, {
       audio: rawBuffer,
       mimetype: mime,
-      ptt: false, // no PTT con formato no-ogg — evita que WA lo rechace
+      ptt: false,
     })
     res.json(result)
   } catch (e) {
+    console.error(`[${sessionId}] /send-audio error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
