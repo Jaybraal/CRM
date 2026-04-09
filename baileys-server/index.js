@@ -1,6 +1,10 @@
 import 'dotenv/config'
 import { spawn, execFileSync } from 'child_process'
 import { createRequire } from 'module'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { randomUUID } from 'crypto'
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -40,28 +44,43 @@ try {
   }
 }
 
-// Transcodifica audio a ogg/opus. Devuelve null si falla.
+// Transcodifica audio a ogg/opus usando archivos temporales (más fiable que pipe).
+// Usa los mismos parámetros que WhatsApp internamente: 16kHz mono 32kbps.
 async function transcodeToOpus(inputBuffer) {
   if (!FFMPEG) return null
+  const id = randomUUID()
+  const inFile  = join(tmpdir(), `wa_in_${id}`)
+  const outFile = join(tmpdir(), `wa_out_${id}.ogg`)
   try {
-    return await new Promise((resolve, reject) => {
+    writeFileSync(inFile, inputBuffer)
+    await new Promise((resolve, reject) => {
       const proc = spawn(FFMPEG, [
-        '-i', 'pipe:0', '-vn',
-        '-c:a', 'libopus', '-b:a', '64k', '-ar', '48000', '-ac', '1',
-        '-f', 'ogg', 'pipe:1',
-      ], { stdio: ['pipe', 'pipe', 'pipe'] })
-      const chunks = []
+        '-y', '-i', inFile,
+        '-vn',
+        '-c:a', 'libopus',
+        '-b:a', '32k',
+        '-ar', '16000',
+        '-ac', '1',
+        '-avoid_negative_ts', 'make_zero',
+        outFile,
+      ], { stdio: ['ignore', 'pipe', 'pipe'] })
       let stderr = ''
-      proc.stdout.on('data', c => chunks.push(c))
       proc.stderr.on('data', c => { stderr += c.toString() })
       proc.on('error', reject)
-      proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-300)}`)))
-      proc.stdin.on('error', () => {})
-      proc.stdin.end(inputBuffer)
+      proc.on('close', code => {
+        if (code === 0) resolve()
+        else reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-400)}`))
+      })
     })
+    const result = readFileSync(outFile)
+    if (result.length === 0) throw new Error('ffmpeg produjo archivo vacío')
+    return result
   } catch (e) {
-    console.warn('ffmpeg transcode falló:', e.message)
+    console.warn('transcodeToOpus falló:', e.message)
     return null
+  } finally {
+    try { unlinkSync(inFile) } catch {}
+    try { unlinkSync(outFile) } catch {}
   }
 }
 
