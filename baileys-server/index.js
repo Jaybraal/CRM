@@ -39,9 +39,12 @@ function transcodeToOpus(inputBuffer) {
   })
 }
 
-// Códigos que significan cierre permanente (no reconectar automáticamente)
-// 401 = loggedOut, 440 = connectionReplaced (otra instancia tomó la sesión), 500 = badSession
-const PERMANENT_DISCONNECT_CODES = new Set([401, 440, 500, 411])
+// Códigos que borran auth y requieren QR nuevo:
+// 401 = loggedOut (usuario revocó), 500 = badSession (auth corrupto)
+const AUTH_CLEAR_CODES = new Set([401, 500])
+// 440 = connectionReplaced — otra instancia tomó la sesión (deploy rolling).
+// NO borrar auth: la nueva instancia lo necesita. Solo dejar de reconectar.
+const STOP_RECONNECT_CODES = new Set([401, 440, 500])
 import { Boom } from '@hapi/boom'
 import qrcode from 'qrcode-terminal'
 import QRCode from 'qrcode'
@@ -54,6 +57,19 @@ const CRM_URL = process.env.CRM_URL || 'http://localhost:3000'
 const PORT    = process.env.PORT    || 3001
 
 const logger = pino({ level: 'silent' })
+
+// Verificar ffmpeg al arrancar
+import { execFileSync } from 'child_process'
+try {
+  if (ffmpegPath) {
+    const ver = execFileSync(ffmpegPath, ['-version'], { timeout: 5000 }).toString().split('\n')[0]
+    console.log(`✓ ffmpeg disponible: ${ver}`)
+  } else {
+    console.warn('✗ ffmpeg-static no devolvió un path. Audio/video no se transcodificará.')
+  }
+} catch (e) {
+  console.warn(`✗ ffmpeg no funciona: ${e.message}. Audio/video se enviarán sin transcodificar.`)
+}
 
 // Evitar que errores no capturados maten el proceso
 process.on('uncaughtException', err => console.error('uncaughtException:', err.message))
@@ -231,40 +247,46 @@ async function startSession(sessionId, orgId) {
 
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode
-      const isPermanent = PERMANENT_DISCONNECT_CODES.has(code)
-      console.log(`Sesion [${sessionId}] cerrada (codigo ${code}, permanente: ${isPermanent})`)
+      const shouldClearAuth = AUTH_CLEAR_CODES.has(code)
+      const shouldStopReconnect = STOP_RECONNECT_CODES.has(code)
+      console.log(`Sesion [${sessionId}] cerrada (codigo ${code}, clearAuth: ${shouldClearAuth}, stopReconnect: ${shouldStopReconnect})`)
 
-      if (isPermanent) {
+      if (shouldStopReconnect) {
         s.status = 'disconnected'
         s.qr = null
         s.sock = null
-        // Limpiar auth corrupto/revocado de Firestore
-        await s.clearAuth?.()
+
+        if (shouldClearAuth) {
+          // 401 (loggedOut) o 500 (badSession): auth inválido, borrar
+          await s.clearAuth?.()
+          console.log(`[${sessionId}] Auth borrado (código ${code}). Requiere QR nuevo.`)
+        } else {
+          // 440 (connectionReplaced): auth sigue válido, no borrar
+          // Esto pasa durante deploys de Railway (rolling restart)
+          console.log(`[${sessionId}] Otra instancia tomó la sesión. Auth preservado.`)
+        }
+
         await db.collection('whatsapp_sessions').doc(sessionId).set(
-          { status: 'disconnected' },
+          { status: shouldClearAuth ? 'disconnected' : 'replaced' },
           { merge: true }
         )
-        console.log(`Sesion [${sessionId}] cerrada permanentemente. Auth borrado.`)
-        // Eliminar sesión del Map para que no reconecte automáticamente
-        // El usuario debe escanear QR de nuevo manualmente
         sessions.delete(sessionId)
-        console.log(`Sesion [${sessionId}] eliminada del Map. Requiere reconexión manual.`)
       } else {
         // Reconexión con backoff exponencial (5s, 10s, 20s, 40s, 60s máx)
         s.reconnectCount = (s.reconnectCount || 0) + 1
-        const MAX_RECONNECTS = 6
+        const MAX_RECONNECTS = 8
         if (s.reconnectCount > MAX_RECONNECTS) {
-          console.log(`Sesion [${sessionId}] superó ${MAX_RECONNECTS} intentos. Marcando como desconectada.`)
+          console.log(`[${sessionId}] superó ${MAX_RECONNECTS} intentos. Marcando como desconectada.`)
           s.status = 'disconnected'
           s.sock = null
-          await s.clearAuth?.()
+          // No borrar auth — puede ser transitorio y otro restart lo recupera
           await db.collection('whatsapp_sessions').doc(sessionId).set(
             { status: 'disconnected' },
             { merge: true }
           )
         } else {
           const delay = Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
-          console.log(`Sesion [${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
+          console.log(`[${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
           s.status = 'connecting'
           setTimeout(() => startSession(sessionId), delay)
         }
@@ -443,14 +465,19 @@ async function startSession(sessionId, orgId) {
 // ── Restaurar sesiones activas al arrancar ─────────────────────
 async function restoreActiveSessions() {
   try {
-    const snap = await db.collection('whatsapp_sessions').where('status', '==', 'connected').get()
-    if (snap.empty) {
+    // Restaurar sesiones que estaban 'connected' O 'replaced' (auth preservado tras 440)
+    const [connSnap, replSnap] = await Promise.all([
+      db.collection('whatsapp_sessions').where('status', '==', 'connected').get(),
+      db.collection('whatsapp_sessions').where('status', '==', 'replaced').get(),
+    ])
+    const allDocs = [...connSnap.docs, ...replSnap.docs]
+    if (allDocs.length === 0) {
       console.log('No hay sesiones previas, iniciando sesion default...')
       startSession('default')
       return
     }
-    console.log(`Restaurando ${snap.size} sesion(es)...`)
-    for (const doc of snap.docs) {
+    console.log(`Restaurando ${allDocs.length} sesion(es) (${connSnap.size} connected, ${replSnap.size} replaced)...`)
+    for (const doc of allDocs) {
       startSession(doc.id).catch(e => console.error(`Error restaurando [${doc.id}]:`, e.message))
     }
   } catch (e) {
@@ -603,9 +630,10 @@ app.post('/send-video', async (req, res) => {
     const contentType = vidFetch.headers.get('content-type') || 'video/mp4'
     console.log(`[${sessionId}] send-video: ${rawBuffer.length} bytes, ${contentType}`)
 
-    // Si es webm (navegador), transcodificar a mp4 para que WhatsApp lo reproduzca
+    // Si es webm (navegador) y ffmpeg está disponible, transcodificar a mp4
     let vidBuffer = rawBuffer
-    if (contentType.includes('webm') || contentType.includes('quicktime')) {
+    let finalMime = contentType.includes('mp4') ? 'video/mp4' : contentType
+    if ((contentType.includes('webm') || contentType.includes('quicktime')) && ffmpegPath) {
       try {
         vidBuffer = await new Promise((resolve, reject) => {
           const proc = spawn(ffmpegPath, [
@@ -624,6 +652,7 @@ app.post('/send-video', async (req, res) => {
           proc.stdin.on('error', () => {})
           proc.stdin.end(rawBuffer)
         })
+        finalMime = 'video/mp4'
         console.log(`[${sessionId}] video transcodificado: ${rawBuffer.length}→${vidBuffer.length} bytes`)
       } catch (e) {
         console.error(`[${sessionId}] video ffmpeg falló:`, e.message)
@@ -633,7 +662,7 @@ app.post('/send-video', async (req, res) => {
 
     const result = await s.sock.sendMessage(jid, {
       video: vidBuffer,
-      mimetype: 'video/mp4',
+      mimetype: finalMime,
       caption: caption || '',
     })
     res.json({ ok: true, msgId: result?.key?.id || null })
@@ -687,13 +716,17 @@ app.post('/send-document', async (req, res) => {
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+    const docFetch = await fetch(url)
+    if (!docFetch.ok) throw new Error(`No se pudo descargar el documento: ${docFetch.status}`)
+    const docBuffer = Buffer.from(await docFetch.arrayBuffer())
     const result = await s.sock.sendMessage(jid, {
-      document: { url },
+      document: docBuffer,
       fileName: fileName || 'archivo',
-      mimetype: mimetype || 'application/octet-stream',
+      mimetype: mimetype || docFetch.headers.get('content-type') || 'application/octet-stream',
     })
     res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
+    console.error(`[${sessionId}] /send-document error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
