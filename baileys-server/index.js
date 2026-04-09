@@ -525,7 +525,10 @@ app.post('/send-image', async (req, res) => {
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const result = await s.sock.sendMessage(jid, { image: { url }, caption: caption || '' })
+    const imgFetch = await fetch(url)
+    if (!imgFetch.ok) throw new Error(`No se pudo descargar la imagen: ${imgFetch.status}`)
+    const imgBuffer = Buffer.from(await imgFetch.arrayBuffer())
+    const result = await s.sock.sendMessage(jid, { image: imgBuffer, caption: caption || '' })
     const msgId = result?.key?.id || null
     res.json({ ok: true, msgId })
   } catch (e) {
@@ -541,7 +544,10 @@ app.post('/send-video', async (req, res) => {
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const result = await s.sock.sendMessage(jid, { video: { url }, caption: caption || '' })
+    const vidFetch = await fetch(url)
+    if (!vidFetch.ok) throw new Error(`No se pudo descargar el video: ${vidFetch.status}`)
+    const vidBuffer = Buffer.from(await vidFetch.arrayBuffer())
+    const result = await s.sock.sendMessage(jid, { video: vidBuffer, caption: caption || '' })
     res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -556,10 +562,17 @@ app.post('/send-audio', async (req, res) => {
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+
+    // Descargar el audio y enviarlo como Buffer para que WhatsApp lo pueda reproducir
+    const audioFetch = await fetch(url)
+    if (!audioFetch.ok) throw new Error(`No se pudo descargar el audio: ${audioFetch.status}`)
+    const arrayBuffer = await audioFetch.arrayBuffer()
+    const audioBuffer = Buffer.from(arrayBuffer)
+
     const result = await s.sock.sendMessage(jid, {
-      audio: { url },
+      audio: audioBuffer,
       mimetype: 'audio/ogg; codecs=opus',
-      ptt: ptt !== false, // por defecto nota de voz
+      ptt: ptt !== false,
     })
     res.json({ ok: true, msgId: result?.key?.id || null })
   } catch (e) {
