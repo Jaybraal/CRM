@@ -59,7 +59,7 @@ export default function ClientsPage() {
   const [visibleCount, setVisibleCount] = useState(50)
   const importRef = useRef<HTMLInputElement>(null)
 
-  const [hasWhatsApp, setHasWhatsApp] = useState(process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true')
+  const [hasWhatsApp, setHasWhatsApp] = useState(true) // Usa Baileys — siempre activo
   const selectedClient = clients.find(c => c.id === selectedId) || null
   const totalUnread = clients.reduce((s, c) => s + (c.unreadCount ?? 0), 0)
 
@@ -68,9 +68,7 @@ export default function ClientsPage() {
     getCategories(profile.orgId).then(setCategories)
     getOrganization(profile.orgId).then(o => {
       if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
-      if (o?.settings?.whatsappMetaConfigured || process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true') {
-        setHasWhatsApp(true)
-      }
+      // Baileys siempre activo — setHasWhatsApp ya es true por defecto
     })
     if (profile.role !== 'agent') {
       getOrgUsers(profile.orgId).then(setAgents)

@@ -189,8 +189,7 @@ export default function ClientDetailPage() {
   }
   if (!client) return <div className="text-center py-20 text-gray-500">Cliente no encontrado</div>
 
-  const hasWhatsApp = !!(org?.settings?.whatsapp?.phoneNumberId && org?.settings?.whatsapp?.token) ||
-    process.env.NEXT_PUBLIC_BAILEYS_ENABLED === 'true'
+  const hasWhatsApp = true // Usa Baileys — siempre activo
   const categoryName = categories.find(c => c.id === client.categoryId)?.name
 
   return (
