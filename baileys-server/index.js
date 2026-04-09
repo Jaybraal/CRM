@@ -1,6 +1,6 @@
 import 'dotenv/config'
-import { spawn } from 'child_process'
-import ffmpegPath from 'ffmpeg-static'
+import { spawn, execFileSync } from 'child_process'
+import { createRequire } from 'module'
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -8,43 +8,6 @@ import makeWASocket, {
   BufferJSON,
   downloadContentFromMessage,
 } from '@whiskeysockets/baileys'
-
-// Transcodifica cualquier audio (webm, mp4, wav, etc.) a ogg/opus mono 16kHz
-// usando ffmpeg estático. Necesario para que WhatsApp lo reproduzca como PTT.
-function transcodeToOpus(inputBuffer) {
-  return new Promise((resolve, reject) => {
-    if (!ffmpegPath) return reject(new Error('ffmpeg-static no disponible'))
-    const proc = spawn(ffmpegPath, [
-      '-i', 'pipe:0',
-      '-vn',
-      '-c:a', 'libopus',
-      '-b:a', '64k',
-      '-ar', '48000',
-      '-ac', '1',
-      '-f', 'ogg',
-      'pipe:1',
-    ], { stdio: ['pipe', 'pipe', 'pipe'] })
-
-    const chunks = []
-    let stderr = ''
-    proc.stdout.on('data', c => chunks.push(c))
-    proc.stderr.on('data', c => { stderr += c.toString() })
-    proc.on('error', reject)
-    proc.on('close', code => {
-      if (code === 0) resolve(Buffer.concat(chunks))
-      else reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-500)}`))
-    })
-    proc.stdin.on('error', () => {}) // evitar EPIPE si ffmpeg cierra antes
-    proc.stdin.end(inputBuffer)
-  })
-}
-
-// Códigos que borran auth y requieren QR nuevo:
-// 401 = loggedOut (usuario revocó), 500 = badSession (auth corrupto)
-const AUTH_CLEAR_CODES = new Set([401, 500])
-// 440 = connectionReplaced — otra instancia tomó la sesión (deploy rolling).
-// NO borrar auth: la nueva instancia lo necesita. Solo dejar de reconectar.
-const STOP_RECONNECT_CODES = new Set([401, 440, 500])
 import { Boom } from '@hapi/boom'
 import qrcode from 'qrcode-terminal'
 import QRCode from 'qrcode'
@@ -53,23 +16,52 @@ import pino from 'pino'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
+// ── ffmpeg (CJS → ESM safe) ──────────────────────────────────
+const require_ = createRequire(import.meta.url)
+let FFMPEG = null
+try {
+  FFMPEG = require_('ffmpeg-static')
+  const ver = execFileSync(FFMPEG, ['-version'], { timeout: 5000 }).toString().split('\n')[0]
+  console.log(`✓ ffmpeg: ${ver}`)
+} catch (e) {
+  FFMPEG = null
+  console.warn(`✗ ffmpeg no disponible: ${e.message}`)
+}
+
+// Transcodifica audio a ogg/opus. Devuelve null si falla.
+async function transcodeToOpus(inputBuffer) {
+  if (!FFMPEG) return null
+  try {
+    return await new Promise((resolve, reject) => {
+      const proc = spawn(FFMPEG, [
+        '-i', 'pipe:0', '-vn',
+        '-c:a', 'libopus', '-b:a', '64k', '-ar', '48000', '-ac', '1',
+        '-f', 'ogg', 'pipe:1',
+      ], { stdio: ['pipe', 'pipe', 'pipe'] })
+      const chunks = []
+      let stderr = ''
+      proc.stdout.on('data', c => chunks.push(c))
+      proc.stderr.on('data', c => { stderr += c.toString() })
+      proc.on('error', reject)
+      proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-300)}`)))
+      proc.stdin.on('error', () => {})
+      proc.stdin.end(inputBuffer)
+    })
+  } catch (e) {
+    console.warn('ffmpeg transcode falló:', e.message)
+    return null
+  }
+}
+
+// Códigos que borran auth y requieren QR nuevo
+const AUTH_CLEAR_CODES = new Set([401, 500])
+// Códigos que paran reconexión (440 = otra instancia tomó la sesión)
+const STOP_RECONNECT_CODES = new Set([401, 440, 500])
+
 const CRM_URL = process.env.CRM_URL || 'http://localhost:3000'
 const PORT    = process.env.PORT    || 3001
 
 const logger = pino({ level: 'silent' })
-
-// Verificar ffmpeg al arrancar
-import { execFileSync } from 'child_process'
-try {
-  if (ffmpegPath) {
-    const ver = execFileSync(ffmpegPath, ['-version'], { timeout: 5000 }).toString().split('\n')[0]
-    console.log(`✓ ffmpeg disponible: ${ver}`)
-  } else {
-    console.warn('✗ ffmpeg-static no devolvió un path. Audio/video no se transcodificará.')
-  }
-} catch (e) {
-  console.warn(`✗ ffmpeg no funciona: ${e.message}. Audio/video se enviarán sin transcodificar.`)
-}
 
 // Evitar que errores no capturados maten el proceso
 process.on('uncaughtException', err => console.error('uncaughtException:', err.message))
@@ -575,17 +567,55 @@ app.delete('/session/:sessionId?', async (req, res) => {
   res.json({ ok: true })
 })
 
-app.post('/send', async (req, res) => {
-  const { to, text, sessionId: sid, orgId, clientId } = req.body
+// ── Wrapper seguro para envíos ─────────────────────────────────
+// Verifica sesión, intenta enviar, y si el socket se murió lo marca
+function getSession(sid) {
   const sessionId = sid || 'default'
   const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  if (!s || !s.sock || s.status !== 'open') return { sessionId, s: null }
+  return { sessionId, s }
+}
+
+async function safeSend(sessionId, s, jid, content) {
+  try {
+    const result = await s.sock.sendMessage(jid, content)
+    return { ok: true, msgId: result?.key?.id || null }
+  } catch (e) {
+    console.error(`[${sessionId}] sendMessage error:`, e.message)
+    // Si el error indica que el socket murió, marcar la sesión
+    const dead = !s.sock?.user || e.message?.includes('Connection Closed') || e.message?.includes('not open')
+    if (dead) {
+      console.error(`[${sessionId}] Socket muerto detectado. Reconectando...`)
+      s.status = 'connecting'
+      s.reconnectCount = (s.reconnectCount || 0) + 1
+      setTimeout(() => startSession(sessionId), 3000)
+    }
+    throw e
+  }
+}
+
+function toJid(to) {
+  return to.includes('@') ? to : `${to}@s.whatsapp.net`
+}
+
+async function downloadUrl(url, label) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
+  if (!res.ok) throw new Error(`No se pudo descargar ${label}: HTTP ${res.status}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (buf.length === 0) throw new Error(`${label} descargado está vacío`)
+  return { buffer: buf, contentType: res.headers.get('content-type') || '' }
+}
+
+// ── Endpoints de envío ────────────────────────────────────────
+
+app.post('/send', async (req, res) => {
+  const { to, text, sessionId: sid } = req.body
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !text) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const result = await s.sock.sendMessage(jid, { text })
-    const msgId = result?.key?.id || null
-    res.json({ ok: true, msgId })
+    const result = await safeSend(sessionId, s, toJid(to), { text })
+    res.json(result)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -593,157 +623,130 @@ app.post('/send', async (req, res) => {
 
 app.post('/send-image', async (req, res) => {
   const { to, url, caption, sessionId: sid } = req.body
-  const sessionId = sid || 'default'
-  const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const imgFetch = await fetch(url)
-    if (!imgFetch.ok) throw new Error(`No se pudo descargar la imagen: ${imgFetch.status}`)
-    const imgBuffer = Buffer.from(await imgFetch.arrayBuffer())
-    const contentType = imgFetch.headers.get('content-type') || 'image/jpeg'
-    console.log(`[${sessionId}] send-image: ${imgBuffer.length} bytes, ${contentType}`)
-    const result = await s.sock.sendMessage(jid, {
-      image: imgBuffer,
+    const { buffer, contentType } = await downloadUrl(url, 'imagen')
+    console.log(`[${sessionId}] send-image: ${buffer.length} bytes`)
+    const result = await safeSend(sessionId, s, toJid(to), {
+      image: buffer,
       mimetype: contentType.startsWith('image/') ? contentType : 'image/jpeg',
       caption: caption || '',
     })
-    res.json({ ok: true, msgId: result?.key?.id || null })
+    res.json(result)
   } catch (e) {
-    console.error(`[${sessionId}] /send-image error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
 
 app.post('/send-video', async (req, res) => {
   const { to, url, caption, sessionId: sid } = req.body
-  const sessionId = sid || 'default'
-  const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const vidFetch = await fetch(url)
-    if (!vidFetch.ok) throw new Error(`No se pudo descargar el video: ${vidFetch.status}`)
-    const rawBuffer = Buffer.from(await vidFetch.arrayBuffer())
-    const contentType = vidFetch.headers.get('content-type') || 'video/mp4'
+    const { buffer: rawBuffer, contentType } = await downloadUrl(url, 'video')
     console.log(`[${sessionId}] send-video: ${rawBuffer.length} bytes, ${contentType}`)
 
-    // Si es webm (navegador) y ffmpeg está disponible, transcodificar a mp4
+    // Intentar transcodificar webm → mp4 (ffmpeg); si no, enviar raw
     let vidBuffer = rawBuffer
-    let finalMime = contentType.includes('mp4') ? 'video/mp4' : contentType
-    if ((contentType.includes('webm') || contentType.includes('quicktime')) && ffmpegPath) {
+    let mime = contentType || 'video/mp4'
+    if (FFMPEG && (contentType.includes('webm') || contentType.includes('quicktime'))) {
       try {
         vidBuffer = await new Promise((resolve, reject) => {
-          const proc = spawn(ffmpegPath, [
-            '-i', 'pipe:0',
-            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+          const proc = spawn(FFMPEG, [
+            '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
             '-c:a', 'aac', '-b:a', '128k',
             '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
-            '-f', 'mp4',
-            'pipe:1',
+            '-f', 'mp4', 'pipe:1',
           ], { stdio: ['pipe', 'pipe', 'pipe'] })
           const chunks = []
-          let stderr = ''
           proc.stdout.on('data', c => chunks.push(c))
-          proc.stderr.on('data', c => { stderr += c.toString() })
-          proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`ffmpeg ${code}: ${stderr.slice(-300)}`)))
+          proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error('ffmpeg error')))
           proc.stdin.on('error', () => {})
           proc.stdin.end(rawBuffer)
         })
-        finalMime = 'video/mp4'
-        console.log(`[${sessionId}] video transcodificado: ${rawBuffer.length}→${vidBuffer.length} bytes`)
-      } catch (e) {
-        console.error(`[${sessionId}] video ffmpeg falló:`, e.message)
-        vidBuffer = rawBuffer
-      }
+        mime = 'video/mp4'
+        console.log(`[${sessionId}] video transcodificado → ${vidBuffer.length} bytes`)
+      } catch { vidBuffer = rawBuffer }
     }
 
-    const result = await s.sock.sendMessage(jid, {
-      video: vidBuffer,
-      mimetype: finalMime,
-      caption: caption || '',
+    const result = await safeSend(sessionId, s, toJid(to), {
+      video: vidBuffer, mimetype: mime, caption: caption || '',
     })
-    res.json({ ok: true, msgId: result?.key?.id || null })
+    res.json(result)
   } catch (e) {
-    console.error(`[${sessionId}] /send-video error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
 
 app.post('/send-audio', async (req, res) => {
   const { to, url, ptt, sessionId: sid } = req.body
-  const sessionId = sid || 'default'
-  const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
+    const jid = toJid(to)
+    const { buffer: rawBuffer, contentType } = await downloadUrl(url, 'audio')
+    console.log(`[${sessionId}] send-audio: ${rawBuffer.length} bytes, ${contentType}`)
 
-    // Descargar el audio original (puede ser webm, mp4, wav, etc.)
-    const audioFetch = await fetch(url)
-    if (!audioFetch.ok) throw new Error(`No se pudo descargar el audio: ${audioFetch.status}`)
-    const rawBuffer = Buffer.from(await audioFetch.arrayBuffer())
+    // Intentar transcodificar a ogg/opus (ffmpeg)
+    const oggBuffer = await transcodeToOpus(rawBuffer)
 
-    // Transcodificar a ogg/opus para que WhatsApp lo reproduzca siempre
-    let oggBuffer
-    try {
-      oggBuffer = await transcodeToOpus(rawBuffer)
-      console.log(`[${sessionId}] Audio transcodificado: ${rawBuffer.length}→${oggBuffer.length} bytes`)
-    } catch (e) {
-      console.error(`[${sessionId}] ffmpeg falló, enviando raw:`, e.message)
-      oggBuffer = rawBuffer // fallback: enviar raw (puede no reproducir)
+    if (oggBuffer) {
+      // Éxito: enviar como nota de voz (PTT)
+      console.log(`[${sessionId}] audio transcodificado: ${rawBuffer.length}→${oggBuffer.length} bytes`)
+      const result = await safeSend(sessionId, s, jid, {
+        audio: oggBuffer,
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: ptt !== false,
+      })
+      return res.json(result)
     }
 
-    const result = await s.sock.sendMessage(jid, {
-      audio: oggBuffer,
-      mimetype: 'audio/ogg; codecs=opus',
-      ptt: ptt !== false,
+    // Fallback SIN ffmpeg: enviar como archivo de audio (no voice note, pero SE REPRODUCE)
+    console.log(`[${sessionId}] ffmpeg no disponible, enviando audio raw como archivo`)
+    const mime = contentType || 'audio/webm'
+    const result = await safeSend(sessionId, s, jid, {
+      audio: rawBuffer,
+      mimetype: mime,
+      ptt: false, // no PTT con formato no-ogg — evita que WA lo rechace
     })
-    res.json({ ok: true, msgId: result?.key?.id || null })
+    res.json(result)
   } catch (e) {
-    console.error(`[${sessionId}] /send-audio error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
 
 app.post('/send-document', async (req, res) => {
   const { to, url, fileName, mimetype, sessionId: sid } = req.body
-  const sessionId = sid || 'default'
-  const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || !url) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const docFetch = await fetch(url)
-    if (!docFetch.ok) throw new Error(`No se pudo descargar el documento: ${docFetch.status}`)
-    const docBuffer = Buffer.from(await docFetch.arrayBuffer())
-    const result = await s.sock.sendMessage(jid, {
-      document: docBuffer,
+    const { buffer, contentType } = await downloadUrl(url, 'documento')
+    const result = await safeSend(sessionId, s, toJid(to), {
+      document: buffer,
       fileName: fileName || 'archivo',
-      mimetype: mimetype || docFetch.headers.get('content-type') || 'application/octet-stream',
+      mimetype: mimetype || contentType || 'application/octet-stream',
     })
-    res.json({ ok: true, msgId: result?.key?.id || null })
+    res.json(result)
   } catch (e) {
-    console.error(`[${sessionId}] /send-document error:`, e.message)
     res.status(500).json({ error: e.message })
   }
 })
 
 app.post('/send-location', async (req, res) => {
   const { to, lat, lng, name, sessionId: sid } = req.body
-  const sessionId = sid || 'default'
-  const s = sessions.get(sessionId)
-  if (!s?.sock || s.status !== 'open') return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
+  const { sessionId, s } = getSession(sid)
+  if (!s) return res.status(503).json({ error: 'Sesion no conectada: ' + sessionId })
   if (!to || lat == null || lng == null) return res.status(400).json({ error: 'Faltan parametros' })
   try {
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`
-    const result = await s.sock.sendMessage(jid, {
+    const result = await safeSend(sessionId, s, toJid(to), {
       location: { degreesLatitude: parseFloat(lat), degreesLongitude: parseFloat(lng), name: name || '' },
     })
-    const msgId = result?.key?.id || null
-    res.json({ ok: true, msgId })
+    res.json(result)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
