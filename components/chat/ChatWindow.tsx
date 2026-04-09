@@ -213,12 +213,14 @@ ${messages.map(m => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      // Detectar el mejor formato soportado (iOS usa audio/mp4, Android/Chrome usa audio/webm)
+      // ogg/opus es el formato que WhatsApp reproduce como nota de voz.
+      // Chrome y Firefox lo soportan. Safari usa mp4 (se envía como audio adjunto).
       const preferredTypes = [
-        'audio/webm;codecs=opus',
+        'audio/ogg;codecs=opus',   // WhatsApp nativo — Chrome + Firefox
+        'audio/ogg',               // Firefox fallback
+        'audio/webm;codecs=opus',  // Chrome fallback si ogg no está
         'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4',
+        'audio/mp4',               // Safari/iOS
         'audio/aac',
       ]
       const mimeType = preferredTypes.find(t => {
