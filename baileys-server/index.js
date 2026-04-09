@@ -114,6 +114,12 @@ const sessions = new Map()
 async function startSession(sessionId, orgId) {
   if (sessions.has(sessionId)) {
     const existing = sessions.get(sessionId)
+    // Siempre actualizar orgId si se proporciona y no estaba seteado
+    if (orgId && !existing.orgId) {
+      existing.orgId = orgId
+      db.collection('whatsapp_sessions').doc(sessionId).set({ orgId }, { merge: true }).catch(() => {})
+      console.log(`[${sessionId}] orgId seteado en sesión existente: ${orgId}`)
+    }
     if (existing.status === 'open') return existing
     // No reiniciar si ya hay un QR esperando ser escaneado
     if (existing.status === 'qr' || existing.status === 'connecting') return existing

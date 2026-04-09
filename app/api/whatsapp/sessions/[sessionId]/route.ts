@@ -9,19 +9,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ sess
   const { sessionId } = await params
   const orgId = req.nextUrl.searchParams.get('orgId') || ''
   try {
-    // Leer estado actual sin reconectar
+    // Siempre llamar /connect para asegurar que el orgId quede seteado
+    // startSession en Baileys es idempotente: no reinicia si ya hay QR o está open
+    await fetch(`${BAILEYS_URL}/connect/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId }),
+    })
+
     const qrRes = await fetch(`${BAILEYS_URL}/qr/${sessionId}`)
     const data = await qrRes.json()
-
-    // Solo iniciar sesión si está desconectada o no existe
-    if (data.status === 'disconnected' || data.status === 'not_found') {
-      await fetch(`${BAILEYS_URL}/connect/${sessionId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId }),
-      })
-    }
-
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ status: 'disconnected', qr: null })
