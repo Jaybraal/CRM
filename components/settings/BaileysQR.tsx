@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Wifi, WifiOff, RefreshCw, Trash2 } from 'lucide-react'
+import { Smartphone, Wifi, WifiOff, RefreshCw, Trash2, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Status = 'connecting' | 'qr' | 'open' | 'disconnected'
@@ -77,6 +77,31 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
     intervalRef.current = setInterval(() => poll(false), 10000)
   }
 
+  const handleReset = async () => {
+    if (!confirm('¿Reset completo? Esto borra el auth de Firestore y genera un QR nuevo.')) return
+    setLoading(true)
+    try {
+      hasQrRef.current = false
+      setFrozenQr(null)
+      setStatus('connecting')
+      await fetch(`/api/whatsapp/sessions/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: sessionId }),
+      })
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      setTimeout(() => {
+        poll(true)
+        intervalRef.current = setInterval(() => poll(false), 10000)
+      }, 3000)
+      toast.success('Sesión reseteada — esperando QR nuevo...')
+    } catch {
+      toast.error('Error al resetear')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Status badge */}
@@ -110,12 +135,22 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
             <Trash2 size={12} /> Desconectar
           </button>
         ) : (
-          <button
-            onClick={handleReconnect}
-            className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            <RefreshCw size={12} /> Reintentar
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleReconnect}
+              className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <RefreshCw size={12} /> Reintentar
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              title="Borra el auth guardado y genera un QR completamente nuevo"
+            >
+              <RotateCcw size={12} /> Reset
+            </button>
+          </div>
         )}
       </div>
 

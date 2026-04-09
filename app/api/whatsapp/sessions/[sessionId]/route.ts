@@ -35,7 +35,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ s
     const res = await fetch(`${BAILEYS_URL}/session/${sessionId}`, { method: 'DELETE' })
     const data = await res.json()
     return NextResponse.json(data)
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Error al desconectar' }, { status: 500 })
+  }
+}
+
+// POST /api/whatsapp/sessions/[sessionId] — reset completo (borra auth + genera QR nuevo)
+export async function POST(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await params
+  const { orgId } = await req.json().catch(() => ({}))
+  try {
+    const res = await fetch(`${BAILEYS_URL}/reset/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId }),
+    })
+    const data = await res.json()
+    return NextResponse.json(data)
+  } catch {
+    return NextResponse.json({ error: 'Error al resetear sesión' }, { status: 500 })
   }
 }
