@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb } from '@/lib/firebase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface SendBody {
@@ -22,89 +21,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    // Meta API requiere número sin "+" ni sufijo Baileys "@s.whatsapp.net"
-    const metaTo = to.replace(/@.+$/, '').replace(/^\+/, '')
-
-    // ── Detectar proveedor configurado para esta org ───────────────────────
-    const tokenSnap = await adminDb.doc(`org_tokens/${orgId}`).get()
-    const tokenData = tokenSnap.exists ? tokenSnap.data()! : null
-    const metaPhoneNumberId = (tokenData?.wa_phone_number_id as string) || ''
-    const metaToken = (tokenData?.wa_token as string) || ''
-    const hasMetaConfig = !!(metaPhoneNumberId && metaToken)
-
+    // ── Baileys (único proveedor) ──────────────────────────────────────────
     const baileysUrl = process.env.BAILEYS_URL?.trim()
-
-    // ── Meta Cloud API (si tiene tokens configurados) ──────────────────────
-    if (hasMetaConfig) {
-      const apiUrl = `https://graph.facebook.com/v19.0/${metaPhoneNumberId}/messages`
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${metaToken}`,
-      }
-
-      for (const url of photoUrls) {
-        await fetch(apiUrl, {
-          method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'image', image: { link: url, caption: '' } }),
-        })
-      }
-
-      if (type === 'video' && videoUrl) {
-        await fetch(apiUrl, {
-          method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'video', video: { link: videoUrl, caption: text?.trim() || '' } }),
-        })
-        return NextResponse.json({ ok: true })
-      }
-
-      if (type === 'audio' && audioUrl) {
-        await fetch(apiUrl, {
-          method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'audio', audio: { link: audioUrl } }),
-        })
-        return NextResponse.json({ ok: true })
-      }
-
-      if (type === 'location' && location) {
-        await fetch(apiUrl, {
-          method: 'POST', headers,
-          body: JSON.stringify({
-            messaging_product: 'whatsapp', to: metaTo, type: 'location',
-            location: { latitude: location.lat, longitude: location.lng, name: location.name || '' },
-          }),
-        })
-        return NextResponse.json({ ok: true })
-      }
-
-      if (text?.trim() && !videoUrl) {
-        const metaRes = await fetch(apiUrl, {
-          method: 'POST', headers,
-          body: JSON.stringify({ messaging_product: 'whatsapp', to: metaTo, type: 'text', text: { body: text.trim(), preview_url: false } }),
-        })
-        if (!metaRes.ok) {
-          const err = await metaRes.json().catch(() => ({}))
-          console.error('Meta send error (text):', JSON.stringify(err), '| to:', metaTo, '| phoneId:', metaPhoneNumberId)
-          return NextResponse.json({ error: err?.error?.message || 'Error al enviar por WhatsApp' }, { status: metaRes.status })
-        }
-        const metaData = await metaRes.json().catch(() => ({}))
-        return NextResponse.json({ ok: true, msgId: metaData?.messages?.[0]?.id || null })
-      }
-
-      return NextResponse.json({ ok: true })
-    }
-
-    // ── Baileys (fallback si no hay Meta configurado) ──────────────────────
     if (!baileysUrl) {
-      return NextResponse.json({ error: 'WhatsApp no configurado' }, { status: 400 })
+      return NextResponse.json({ error: 'BAILEYS_URL no configurado' }, { status: 400 })
     }
 
-    // Send images via Baileys
+    // Send images via Baileys — el texto va como caption en la primera imagen
     let lastImgMsgId: string | null = null
-    for (const url of photoUrls) {
+    for (let i = 0; i < photoUrls.length; i++) {
+      const url = photoUrls[i]
+      const caption = i === 0 ? (text?.trim() || '') : ''
       const imgRes = await fetch(`${baileysUrl}/send-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, url, caption: '', sessionId: orgId }),
+        body: JSON.stringify({ to, url, caption, sessionId: orgId }),
       })
       if (!imgRes.ok) {
         const err = await imgRes.json().catch(() => ({ error: 'Error desconocido' }))
@@ -113,7 +44,8 @@ export async function POST(req: NextRequest) {
       const imgData = await imgRes.json().catch(() => ({}))
       if (imgData.msgId) lastImgMsgId = imgData.msgId
     }
-    if (lastImgMsgId && photoUrls.length > 0 && !text?.trim() && !videoUrl && !audioUrl) {
+    // Si ya enviamos imágenes con caption, no enviar texto duplicado
+    if (lastImgMsgId && photoUrls.length > 0 && !videoUrl && !audioUrl) {
       return NextResponse.json({ ok: true, msgId: lastImgMsgId })
     }
 

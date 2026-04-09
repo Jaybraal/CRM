@@ -77,19 +77,20 @@ export async function POST(req: NextRequest) {
 
     if (!orgId || !from) return NextResponse.json({ ok: true })
 
-    // Find client by phone or jid
-    let clientsSnap = await adminDb
-      .collection(`organizations/${orgId}/clients`)
-      .where('whatsappPhone', '==', from)
-      .limit(1)
-      .get()
+    // Normalizar el número: solo dígitos, sin +, sin sufijos
+    const normalizedPhone = String(from).replace(/\D/g, '')
+    if (!normalizedPhone) return NextResponse.json({ ok: true })
 
+    // Buscar cliente existente para evitar duplicados.
+    // Buscamos por: whatsappPhone, phone, whatsappJid (en ese orden)
+    const clientsRef = adminDb.collection(`organizations/${orgId}/clients`)
+    let clientsSnap = await clientsRef.where('whatsappPhone', '==', normalizedPhone).limit(1).get()
+
+    if (clientsSnap.empty) {
+      clientsSnap = await clientsRef.where('phone', '==', normalizedPhone).limit(1).get()
+    }
     if (clientsSnap.empty && jid) {
-      clientsSnap = await adminDb
-        .collection(`organizations/${orgId}/clients`)
-        .where('whatsappJid', '==', jid)
-        .limit(1)
-        .get()
+      clientsSnap = await clientsRef.where('whatsappJid', '==', jid).limit(1).get()
     }
 
     let clientId: string
@@ -98,25 +99,36 @@ export async function POST(req: NextRequest) {
 
     if (clientsSnap.empty) {
       const assignedTo = await getNextAgentForOrg(orgId)
-      clientName = fromName || from
-      const newRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
-        name: clientName,
-        whatsappPhone: from,
-        whatsappJid: jid || from,
-        ...(isLid ? {} : { phone: from }),
-        isLid: !!isLid,
-        orgId,
-        status: 'lead',
-        tags: [],
-        photos: [],
-        pipelineStage: 'new',
-        assignedTo,
-        createdBy: 'whatsapp',
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
-      clientId = newRef.id
-      isNew = true
+      clientName = fromName || normalizedPhone
+      // ID determinístico basado en el número para evitar carrera de duplicados
+      const deterministicId = isLid ? `lid_${normalizedPhone}` : `wa_${normalizedPhone}`
+      const newRef = clientsRef.doc(deterministicId)
+
+      // Si por carrera ya existe, recargamos en vez de sobrescribir
+      const existingDoc = await newRef.get()
+      if (existingDoc.exists) {
+        clientId = newRef.id
+        clientName = (existingDoc.data() as { name?: string }).name || normalizedPhone
+      } else {
+        await newRef.set({
+          name: clientName,
+          whatsappPhone: normalizedPhone,
+          whatsappJid: jid || `${normalizedPhone}@s.whatsapp.net`,
+          ...(isLid ? {} : { phone: normalizedPhone }),
+          isLid: !!isLid,
+          orgId,
+          status: 'lead',
+          tags: [],
+          photos: [],
+          pipelineStage: 'new',
+          assignedTo,
+          createdBy: 'whatsapp',
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+        clientId = newRef.id
+        isNew = true
+      }
     } else {
       const clientDoc = clientsSnap.docs[0]
       clientId = clientDoc.id

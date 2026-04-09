@@ -589,9 +589,9 @@ export default function AdminPage() {
                 <KeyRound size={14} className="text-indigo-400" />
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tokens (opcional)</p>
               </div>
-              <p className="text-xs text-gray-600">Se guardan encriptados con AES-256-GCM. Pueden configurarse ahora o editarse después.</p>
+              <p className="text-xs text-gray-600">Por defecto el sistema usa <b className="text-gray-400">Baileys (QR)</b> para WhatsApp. Estos tokens son solo necesarios si quieres usar la API oficial de Meta. Se guardan encriptados con AES-256-GCM.</p>
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-500 font-medium">WhatsApp (Meta Cloud API)</p>
+                <p className="text-[11px] text-gray-500 font-medium">WhatsApp Meta Cloud API (opcional)</p>
                 <input value={createForm.waPhoneNumberId} onChange={e => setCreateForm(f => ({ ...f, waPhoneNumberId: e.target.value }))}
                   className={inputCls} placeholder="Phone Number ID" />
                 <input type="password" value={createForm.waToken} onChange={e => setCreateForm(f => ({ ...f, waToken: e.target.value }))}

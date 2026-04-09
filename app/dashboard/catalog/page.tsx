@@ -9,8 +9,8 @@ import Modal from '@/components/ui/Modal'
 import { Plus, Pencil, Trash2, ShoppingBag, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
+const inputClass = 'w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
+const labelClass = 'block text-xs font-medium text-gray-600 mb-1'
 
 const emptyForm = { title: '', description: '', price: '', available: true, photos: [] as string[], specs: {} as Record<string, string> }
 
@@ -234,18 +234,37 @@ export default function CatalogPage() {
       )}
 
       {/* Modal formulario */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar producto' : 'Nuevo producto'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Fotos */}
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? 'Editar producto' : 'Nuevo producto'}
+        size="sm"
+        footer={
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowForm(false)}
+              className="flex-1 py-2 border border-gray-200 text-gray-600 rounded text-xs hover:bg-gray-50 transition-colors">
+              Cancelar
+            </button>
+            <button form="catalog-form" type="submit" disabled={saving}
+              className="flex-1 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded text-xs font-medium transition-colors">
+              {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
+            </button>
+          </div>
+        }
+      >
+        <form id="catalog-form" onSubmit={handleSubmit} className="space-y-3">
+          {/* Fotos - grid compacto */}
           <div>
-            <label className={labelClass}>Fotos del producto *</label>
-            <PhotoUploader
-              orgId={profile?.orgId || ''}
-              folder="catalog"
-              existingPhotos={form.photos}
-              onPhotosChange={urls => setForm(f => ({ ...f, photos: urls }))}
-              maxPhotos={8}
-            />
+            <label className={labelClass}>Fotos (máx. 8)</label>
+            <div className="mt-1">
+              <PhotoUploader
+                orgId={profile?.orgId || ''}
+                folder="catalog"
+                existingPhotos={form.photos}
+                onPhotosChange={urls => setForm(f => ({ ...f, photos: urls }))}
+                maxPhotos={8}
+              />
+            </div>
           </div>
 
           {/* Nombre */}
@@ -255,9 +274,38 @@ export default function CatalogPage() {
               className={inputClass}
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ej: Camiseta negra talla M"
+              placeholder="Producto"
               required
             />
+          </div>
+
+          {/* Precio + Disponible */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelClass}>Precio</label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={inputClass + ' pl-6'}
+                  value={form.price}
+                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Disponible</label>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, available: !f.available }))}
+                className={`w-full h-7 rounded transition-colors flex items-center justify-center text-xs font-medium ${form.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+              >
+                {form.available ? 'Sí' : 'No'}
+              </button>
+            </div>
           </div>
 
           {/* Descripción */}
@@ -265,47 +313,11 @@ export default function CatalogPage() {
             <label className={labelClass}>Descripción</label>
             <textarea
               className={inputClass + ' resize-none'}
-              rows={3}
+              rows={2}
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Detalles del producto..."
+              placeholder="Detalles..."
             />
-          </div>
-
-          {/* Precio */}
-          <div>
-            <label className={labelClass}>Precio</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              className={inputClass}
-              value={form.price}
-              onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-              placeholder="0.00"
-            />
-          </div>
-
-          {/* Disponible */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div
-              onClick={() => setForm(f => ({ ...f, available: !f.available }))}
-              className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${form.available ? 'bg-gray-900' : 'bg-gray-300'}`}
-            >
-              <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${form.available ? 'translate-x-4' : 'translate-x-0'}`} />
-            </div>
-            <span className="text-sm text-gray-700">Disponible para la venta</span>
-          </label>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setShowForm(false)}
-              className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
-              {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear producto'}
-            </button>
           </div>
         </form>
       </Modal>

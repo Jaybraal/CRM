@@ -17,7 +17,12 @@ async function uploadViaServer(
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const formData = new FormData()
-      formData.append('file', new File([file], 'upload', { type }))
+      // En Safari, usar el archivo directamente en lugar de new File()
+      if (file instanceof File) {
+        formData.append('file', file)
+      } else {
+        formData.append('file', new File([file], 'upload', { type }))
+      }
       formData.append('orgId', orgId)
       formData.append('folder', folder)
 

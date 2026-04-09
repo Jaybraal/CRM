@@ -85,8 +85,8 @@ export default function BroadcastPage() {
         res.push({ clientId: client.id, name: client.name, phone: client.whatsappPhone || '', success: false, error: 'Error de red' })
       }
       setResults([...res])
-      // Small delay to avoid rate limiting
-      await new Promise(r => setTimeout(r, 200))
+      // Throttling: 1.5s entre mensajes para evitar bloqueos de WhatsApp por spam
+      await new Promise(r => setTimeout(r, 1500))
     }
 
     setSending(false)

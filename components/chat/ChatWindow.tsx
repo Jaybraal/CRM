@@ -980,8 +980,9 @@ ${messages.map(m => {
             <MapPin size={18} className="text-[#075E54]" />
             Enviar ubicación
           </button>
+          {/* Botón "Enviar producto" desactivado temporalmente — catálogo inactivo */}
           <button type="button" onClick={openCatalog}
-            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm text-gray-700 border-t border-gray-100">
+            className="hidden items-center gap-3 w-full px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm text-gray-700 border-t border-gray-100">
             <ShoppingBag size={18} className="text-[#075E54]" />
             Enviar producto
           </button>
