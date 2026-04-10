@@ -392,19 +392,8 @@ ${messages.map(m => {
             body: JSON.stringify({ orgId: profile.orgId, to: jid, text: caption, type: 'text' }),
           })
         }
-      } else if (isInstagram && client.instagramId) {
-        if (photoUrl) {
-          await fetch('/api/instagram/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: photoUrl }),
-          })
-        }
-        await fetch('/api/instagram/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: caption }),
-        })
+      } else if (isInstagram) {
+        toast('📵 Instagram no disponible por el momento.', { duration: 4000 })
       }
     } catch { toast.error('Error al enviar producto') }
     setSending(false)
@@ -440,33 +429,10 @@ ${messages.map(m => {
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
-      if (!noteMode && isInstagram && client.instagramId) {
-        // Enviar por Instagram
-        if (photoUrls.length > 0) {
-          for (const url of photoUrls) {
-            await fetch('/api/instagram/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: url }),
-            })
-          }
-        }
-        if (text.trim()) {
-          const igRes = await fetch('/api/instagram/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: text.trim() }),
-          })
-          if (!igRes.ok) {
-            const igErr = await igRes.json().catch(() => ({}))
-            toast.error(igErr.error || 'Falló el envío por Instagram', { duration: 6000 })
-          } else {
-            const igData = await igRes.json().catch(() => ({}))
-            if (igData.msgId && msgRef) {
-              await updateDoc(msgRef, { instagramMsgId: igData.msgId, status: 'sent' })
-            }
-          }
-        }
+      if (!noteMode && isInstagram) {
+        // Instagram no disponible por el momento
+        toast('📵 Instagram no disponible por el momento.\nPróximamente.', { duration: 4000 })
+        if (msgRef) await updateDoc(msgRef, { status: 'failed' }).catch(() => {})
       } else if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
         let mediaOk = photoUrls.length === 0
@@ -1181,9 +1147,10 @@ ${messages.map(m => {
 
             {/* Mic or Send */}
             {!text.trim() && pendingFiles.length === 0 ? (
-              <button onClick={startRecording}
-                className="p-2.5 text-gray-500 hover:text-[#075E54] hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
-                title="Grabar nota de voz">
+              <button
+                onClick={() => toast('🎤 Notas de voz no disponibles por el momento', { duration: 3000 })}
+                className="p-2.5 text-gray-300 cursor-not-allowed rounded-full flex-shrink-0"
+                title="Notas de voz no disponibles">
                 <Mic size={20} />
               </button>
             ) : (
