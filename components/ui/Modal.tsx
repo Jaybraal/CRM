@@ -32,8 +32,8 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   const isDark = variant === 'dark'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60">
-      <div className={`w-full ${sizeClass} ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border rounded-xl shadow-xl flex flex-col max-h-[90vh]`}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60">
+      <div className={`w-full ${sizeClass} ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border rounded-t-2xl sm:rounded-xl shadow-xl flex flex-col max-h-[92svh] sm:max-h-[90vh]`}>
         <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
           <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
           <button onClick={onClose} className={`transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>

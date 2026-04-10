@@ -11,8 +11,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ org
   try {
     const snap = await adminDb.doc(`organizations/${orgId}`).get()
     if (!snap.exists) return NextResponse.json({ name: null }, { status: 404 })
-    const name = snap.data()?.name || null
-    return NextResponse.json({ name })
+    const data = snap.data()
+    return NextResponse.json({
+      name: data?.name || null,
+      whatsappNumber: data?.settings?.whatsappNumber || null,
+    })
   } catch {
     return NextResponse.json({ name: null }, { status: 500 })
   }

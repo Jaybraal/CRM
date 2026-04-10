@@ -180,18 +180,23 @@ export async function getCatalog(orgId: string) {
 }
 
 export async function createCatalogItem(orgId: string, data: Omit<CatalogItem, 'id' | 'orgId' | 'createdAt'>) {
-  const ref = await addDoc(collection(db, 'organizations', orgId, 'catalog'), {
-    ...data,
+  const payload: Record<string, unknown> = {
     orgId,
+    title: data.title,
+    available: data.available,
     photos: data.photos || [],
     specs: data.specs || {},
     createdAt: serverTimestamp(),
-  })
+  }
+  if (data.description !== undefined) payload.description = data.description
+  if (data.price !== undefined) payload.price = data.price
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'catalog'), payload)
   return ref.id
 }
 
 export async function updateCatalogItem(orgId: string, itemId: string, data: Partial<CatalogItem>) {
-  await updateDoc(doc(db, 'organizations', orgId, 'catalog', itemId), data)
+  const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined))
+  await updateDoc(doc(db, 'organizations', orgId, 'catalog', itemId), clean)
 }
 
 export async function deleteCatalogItem(orgId: string, itemId: string) {

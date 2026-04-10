@@ -292,24 +292,13 @@ async function startSession(sessionId, orgId) {
         )
         sessions.delete(sessionId)
       } else {
-        // Reconexión con backoff exponencial (5s, 10s, 20s, 40s, 60s máx)
+        // Reconexión infinita con backoff exponencial: 5s→10s→20s→40s→60s (máx)
+        // No hay límite de intentos para errores de red — la sesión siempre se recupera
         s.reconnectCount = (s.reconnectCount || 0) + 1
-        const MAX_RECONNECTS = 8
-        if (s.reconnectCount > MAX_RECONNECTS) {
-          console.log(`[${sessionId}] superó ${MAX_RECONNECTS} intentos. Marcando como desconectada.`)
-          s.status = 'disconnected'
-          s.sock = null
-          // No borrar auth — puede ser transitorio y otro restart lo recupera
-          await db.collection('whatsapp_sessions').doc(sessionId).set(
-            { status: 'disconnected' },
-            { merge: true }
-          )
-        } else {
-          const delay = Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
-          console.log(`[${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
-          s.status = 'connecting'
-          setTimeout(() => startSession(sessionId), delay)
-        }
+        const delay = Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
+        console.log(`[${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
+        s.status = 'connecting'
+        setTimeout(() => startSession(sessionId), delay)
       }
     }
   })
@@ -504,6 +493,32 @@ async function restoreActiveSessions() {
     console.error('Error leyendo sesiones de Firestore:', e.message)
     startSession('default')
   }
+}
+
+// ── Watchdog: revive sesiones con auth válido que quedaron disconnected ────────
+// Corre cada 3 minutos. Si el servidor de WhatsApp estaba caído o hubo corte
+// de internet prolongado, las sesiones se reconectan automáticamente sin QR.
+async function startWatchdog() {
+  setInterval(async () => {
+    try {
+      const snap = await db.collection('whatsapp_sessions')
+        .where('status', '==', 'disconnected')
+        .get()
+      for (const doc of snap.docs) {
+        const sessionId = doc.id
+        // No reiniciar si ya hay una sesión activa en memoria
+        const existing = sessions.get(sessionId)
+        if (existing && (existing.status === 'open' || existing.status === 'connecting' || existing.status === 'qr')) continue
+        // Verificar que tenga auth guardado (si no, necesita QR nuevo)
+        const authSnap = await db.collection('whatsapp_sessions').doc(sessionId).collection('auth').limit(1).get()
+        if (authSnap.empty) continue
+        console.log(`[watchdog] Reviviendo sesión desconectada: ${sessionId}`)
+        startSession(sessionId).catch(e => console.error(`[watchdog] Error reviviendo [${sessionId}]:`, e.message))
+      }
+    } catch (e) {
+      console.error('[watchdog] Error:', e.message)
+    }
+  }, 3 * 60 * 1000) // cada 3 minutos
 }
 
 // ── REST API ───────────────────────────────────────────────────
@@ -844,3 +859,4 @@ app.listen(PORT, () => {
 })
 
 restoreActiveSessions()
+startWatchdog()

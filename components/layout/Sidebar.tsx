@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X, UserCircle,
-  Send, BarChart3, CalendarDays, Instagram
+  Send, BarChart3, CalendarDays, Instagram, ShoppingBag
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import GlobalSearch from '@/components/ui/GlobalSearch'
@@ -34,8 +34,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: FolderKanban, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: CalendarDays, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-  // Catálogo desactivado temporalmente — reactivar agregando 'owner', 'manager' etc.
-  // { href: '/dashboard/catalog', label: 'Catálogo', icon: ShoppingBag, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+  { href: '/dashboard/catalog', label: 'Catálogo', icon: ShoppingBag, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
   { href: '/dashboard/broadcast', label: 'Difusión', icon: Send, roles: ['super_admin', 'owner', 'manager'] },
   { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
   { href: '/dashboard/team', label: 'Equipo', icon: Users, roles: ['super_admin', 'owner', 'manager', 'supervisor'] },

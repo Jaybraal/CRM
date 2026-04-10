@@ -38,9 +38,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'save_org') {
-      const { name, industry } = body
+      const { name, industry, whatsappNumber } = body
+      const settings: Record<string, unknown> = { industry }
+      if (whatsappNumber !== undefined) settings.whatsappNumber = whatsappNumber
       await adminDb.doc(`organizations/${orgId}`).set(
-        { name, settings: { industry } },
+        { name, settings },
         { merge: true }
       )
       return NextResponse.json({ ok: true })

@@ -12,6 +12,7 @@ export default function PublicCatalogPage() {
 
   const [items, setItems] = useState<CatalogItem[]>([])
   const [orgName, setOrgName] = useState<string | null>(null)
+  const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<CatalogItem | null>(null)
   const [photoIdx, setPhotoIdx] = useState(0)
@@ -25,6 +26,7 @@ export default function PublicCatalogPage() {
       .then(([catalog, orgData]) => {
         setItems(catalog.filter(i => i.available))
         setOrgName(orgData.name)
+        setWhatsappNumber(orgData.whatsappNumber || null)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -174,7 +176,7 @@ export default function PublicCatalogPage() {
             {/* CTA WhatsApp */}
             <div className="p-4 border-t border-gray-100">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Hola, me interesa: *${selected.title}*${selected.price != null ? ` ($${selected.price.toLocaleString('es')})` : ''}`)}`}
+                href={`https://wa.me/${whatsappNumber || ''}?text=${encodeURIComponent(`Hola, me interesa: *${selected.title}*${selected.price != null ? ` ($${selected.price.toLocaleString('es')})` : ''}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#22c55e] text-white py-3 rounded-xl font-semibold text-sm transition-colors"

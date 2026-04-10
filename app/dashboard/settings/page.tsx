@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [form, setForm] = useState({ name: '', industry: '' })
+  const [form, setForm] = useState({ name: '', industry: '', whatsappNumber: '' })
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [newTemplate, setNewTemplate] = useState({ name: '', body: '' })
   const [savingTemplate, setSavingTemplate] = useState(false)
@@ -63,7 +63,7 @@ export default function SettingsPage() {
     ]).then(([o, tmpl]) => {
       if (o) {
         setOrg(o)
-        setForm({ name: o.name, industry: o.settings.industry })
+        setForm({ name: o.name, industry: o.settings.industry, whatsappNumber: o.settings.whatsappNumber || '' })
         setStages(o.settings.pipelineStages || DEFAULT_STAGES)
         setClientStatuses(o.settings.clientStatuses || DEFAULT_CLIENT_STATUSES)
         setAutoReply({
@@ -103,7 +103,7 @@ export default function SettingsPage() {
     if (!profile?.orgId) return
     setSaving(true)
     try {
-      await callApi({ action: 'save_org', name: form.name, industry: form.industry })
+      await callApi({ action: 'save_org', name: form.name, industry: form.industry, whatsappNumber: form.whatsappNumber.trim() })
       toast.success('Configuración guardada')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar')
@@ -354,6 +354,17 @@ export default function SettingsPage() {
           <input value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}
             className={inputClass}
             placeholder="Ej: Agencia de vehículos, Inmobiliaria, Consultoría..." />
+        </div>
+
+        <div>
+          <label className={labelClass}>Número de WhatsApp del negocio</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+</span>
+            <input value={form.whatsappNumber} onChange={e => setForm(f => ({ ...f, whatsappNumber: e.target.value.replace(/\D/g, '') }))}
+              className={inputClass + ' pl-6'}
+              placeholder="5491112345678  (código país + número sin espacios ni +)" />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Se usa en el botón &quot;Consultar por WhatsApp&quot; del catálogo público</p>
         </div>
 
         <button type="submit" disabled={saving}

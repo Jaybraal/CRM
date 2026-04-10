@@ -49,6 +49,7 @@ export interface Organization {
     roundRobinIndex?: number
     clientStatuses?: ClientStatus[]
     whatsappMetaConfigured?: boolean
+    whatsappNumber?: string    // número del negocio para catálogo público (ej: 5491112345678)
     windowMessage?: {
       enabled: boolean
       message: string
