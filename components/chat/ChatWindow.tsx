@@ -392,8 +392,19 @@ ${messages.map(m => {
             body: JSON.stringify({ orgId: profile.orgId, to: jid, text: caption, type: 'text' }),
           })
         }
-      } else if (isInstagram) {
-        toast('📵 Instagram no disponible por el momento.', { duration: 4000 })
+      } else if (isInstagram && client.instagramId) {
+        if (photoUrl) {
+          await fetch('/api/instagram/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: photoUrl }),
+          })
+        }
+        await fetch('/api/instagram/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: caption }),
+        })
       }
     } catch { toast.error('Error al enviar producto') }
     setSending(false)
@@ -429,10 +440,32 @@ ${messages.map(m => {
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
-      if (!noteMode && isInstagram) {
-        // Instagram no disponible por el momento
-        toast('📵 Instagram no disponible por el momento.\nPróximamente.', { duration: 4000 })
-        if (msgRef) await updateDoc(msgRef, { status: 'failed' }).catch(() => {})
+      if (!noteMode && isInstagram && client.instagramId) {
+        if (photoUrls.length > 0) {
+          for (const url of photoUrls) {
+            await fetch('/api/instagram/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: url }),
+            })
+          }
+        }
+        if (text.trim()) {
+          const igRes = await fetch('/api/instagram/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: text.trim() }),
+          })
+          if (!igRes.ok) {
+            const igErr = await igRes.json().catch(() => ({}))
+            toast.error(igErr.error || 'Falló el envío por Instagram', { duration: 6000 })
+          } else {
+            const igData = await igRes.json().catch(() => ({}))
+            if (igData.msgId && msgRef) {
+              await updateDoc(msgRef, { instagramMsgId: igData.msgId, status: 'sent' })
+            }
+          }
+        }
       } else if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
         let mediaOk = photoUrls.length === 0

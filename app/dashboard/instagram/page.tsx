@@ -200,19 +200,12 @@ export default function InstagramPage() {
         )}
 
         {selectedClient ? (
-          <div className="flex flex-col h-full">
-            <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-700 text-center flex-shrink-0">
-              📵 Respuestas por Instagram no disponibles por el momento — solo lectura
-            </div>
-            <div className="flex-1 min-h-0">
-              <ChatWindow
-                client={selectedClient}
-                hasWhatsApp={false}
-                channel="instagram"
-                fitParent
-              />
-            </div>
-          </div>
+          <ChatWindow
+            client={selectedClient}
+            hasWhatsApp={false}
+            channel="instagram"
+            fitParent
+          />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
