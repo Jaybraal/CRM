@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Wifi, WifiOff, RefreshCw, Trash2, RotateCcw } from 'lucide-react'
+import { Smartphone, Wifi, WifiOff, RefreshCw, Trash2, RotateCcw, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Status = 'connecting' | 'qr' | 'open' | 'disconnected'
@@ -11,7 +11,6 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   const [frozenQr, setFrozenQr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // Ref para evitar closure stale — refleja si ya tenemos un QR congelado
   const hasQrRef = useRef(false)
 
   const sessionId = orgId || 'default'
@@ -21,22 +20,15 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
       const res = await fetch(`/api/whatsapp/sessions/${sessionId}?orgId=${sessionId}`)
       const data = await res.json()
       const newStatus = data.status as Status
-
       setStatus(newStatus)
-
-      // Actualizar QR solo si: se fuerza, o no tenemos uno todavía
       if (data.qr && (forceQrUpdate || !hasQrRef.current)) {
         hasQrRef.current = true
         setFrozenQr(data.qr)
       }
-
       if (newStatus === 'open') {
         hasQrRef.current = false
         setFrozenQr(null)
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
-        }
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
       }
     } catch {
       setStatus('disconnected')
@@ -46,9 +38,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   useEffect(() => {
     poll(true)
     intervalRef.current = setInterval(() => poll(false), 10000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -61,11 +51,8 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
       hasQrRef.current = false
       setFrozenQr(null)
       toast.success('WhatsApp desconectado')
-    } catch {
-      toast.error('Error al desconectar')
-    } finally {
-      setLoading(false)
-    }
+    } catch { toast.error('Error al desconectar') }
+    finally { setLoading(false) }
   }
 
   const handleReconnect = () => {
@@ -95,33 +82,30 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
         intervalRef.current = setInterval(() => poll(false), 10000)
       }, 3000)
       toast.success('Sesión reseteada — esperando QR nuevo...')
-    } catch {
-      toast.error('Error al resetear')
-    } finally {
-      setLoading(false)
-    }
+    } catch { toast.error('Error al resetear') }
+    finally { setLoading(false) }
   }
 
   return (
     <div className="space-y-4">
-      {/* Status badge */}
+      {/* Status row */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div>
           {status === 'open' ? (
-            <span className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-full font-medium">
-              <Wifi size={14} /> Conectado
+            <span className="flex items-center gap-1.5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Conectado
             </span>
           ) : status === 'qr' ? (
             <span className="flex items-center gap-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-medium">
-              <Smartphone size={14} /> Escanea el QR
+              <Smartphone size={13} /> Escanea el QR
             </span>
           ) : status === 'connecting' ? (
-            <span className="flex items-center gap-1.5 text-sm text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1 rounded-full font-medium">
-              <RefreshCw size={14} className="animate-spin" /> Conectando...
+            <span className="flex items-center gap-1.5 text-sm text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full font-medium">
+              <RefreshCw size={13} className="animate-spin" /> Conectando...
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full font-medium">
-              <WifiOff size={14} /> Desconectado
+              <WifiOff size={13} /> Desconectado
             </span>
           )}
         </div>
@@ -130,7 +114,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
           <button
             onClick={handleDisconnect}
             disabled={loading}
-            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-xs text-red-600 hover:bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
           >
             <Trash2 size={12} /> Desconectar
           </button>
@@ -138,14 +122,14 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
           <div className="flex gap-2">
             <button
               onClick={handleReconnect}
-              className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-700 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-xl transition-colors"
             >
               <RefreshCw size={12} /> Reintentar
             </button>
             <button
               onClick={handleReset}
               disabled={loading}
-              className="flex items-center gap-1.5 text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
               title="Borra el auth guardado y genera un QR completamente nuevo"
             >
               <RotateCcw size={12} /> Reset
@@ -154,32 +138,41 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
         )}
       </div>
 
-      {/* QR congelado */}
+      {/* Main area */}
       {frozenQr ? (
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={frozenQr} alt="QR WhatsApp" className="w-52 h-52" />
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 to-green-400/20 rounded-2xl blur-xl" />
+            <div className="relative bg-white p-4 rounded-2xl border-2 border-emerald-100 shadow-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={frozenQr} alt="QR WhatsApp" className="w-52 h-52" />
+            </div>
           </div>
           <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-gray-800">Escanea con tu teléfono</p>
+            <p className="text-sm font-semibold text-gray-800">Escanea con tu teléfono</p>
             <p className="text-xs text-gray-500">WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
             <p className="text-xs text-gray-400 mt-1">Si el QR expiró, pulsa <strong>Reintentar</strong></p>
           </div>
         </div>
       ) : status === 'open' ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
-            <Wifi size={28} className="text-green-500" />
+          <div className="relative">
+            <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl" />
+            <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200">
+              <CheckCircle2 size={30} className="text-white" />
+            </div>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-800">WhatsApp conectado y activo</p>
-            <p className="text-xs text-gray-500 mt-0.5">Los mensajes se sincronizarán automáticamente</p>
+            <p className="text-sm font-semibold text-gray-800">WhatsApp conectado y activo</p>
+            <p className="text-xs text-gray-500 mt-0.5">Los mensajes se sincronizan automáticamente</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+            <Wifi size={12} /> Sesión activa
           </div>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
           </div>
           <p className="text-xs text-gray-400">Iniciando conexión con WhatsApp...</p>

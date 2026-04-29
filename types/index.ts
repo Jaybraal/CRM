@@ -177,10 +177,76 @@ export interface Deal {
   catalogItemId?: string
   stage: string
   value?: number
+  probability?: number   // 0-100
+  closeDate?: Date       // fecha estimada de cierre
   notes?: string
   assignedTo: string
   createdAt: Date
   updatedAt: Date
+}
+
+export interface BroadcastCampaign {
+  id: string
+  orgId: string
+  name: string
+  message: string
+  status: 'scheduled' | 'sending' | 'done' | 'failed'
+  recipientCount: number
+  sentCount: number
+  failedCount: number
+  scheduledAt?: Date
+  sentAt?: Date
+  createdAt: Date
+  createdBy: string
+  filterStatus?: string
+  filterCategory?: string
+}
+
+export type WebhookEvent = 'new_client' | 'new_message' | 'deal_closed' | 'deal_created' | 'task_created'
+
+export interface Webhook {
+  id: string
+  orgId: string
+  url: string
+  events: WebhookEvent[]
+  active: boolean
+  createdAt: Date
+  secret?: string
+}
+
+export interface CaptureForm {
+  id: string
+  orgId: string
+  name: string
+  fields: CaptureFormField[]
+  assignTo?: string       // uid del agente al que se asignan los leads
+  defaultStatus: string
+  defaultCategory?: string
+  confirmationMessage: string
+  active: boolean
+  createdAt: Date
+  submissionCount: number
+}
+
+export interface CaptureFormField {
+  id: string
+  label: string
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'select'
+  options?: string[]      // para tipo select
+  required: boolean
+  mapTo?: 'name' | 'email' | 'phone' | 'whatsappPhone' | 'notes' // campo del cliente
+}
+
+export interface ActivityLog {
+  id: string
+  orgId: string
+  entityType: 'client' | 'deal' | 'task'
+  entityId: string
+  action: string          // 'created' | 'updated' | 'deleted' | 'stage_changed' | 'assigned' | ...
+  detail?: string
+  actorId: string
+  actorName: string
+  createdAt: Date
 }
 
 export interface Task {
@@ -235,4 +301,17 @@ export interface OrgStats {
   clients: number
   deals: number
   tasks: number
+}
+
+export interface EmailThread {
+  id: string
+  orgId: string
+  clientId: string
+  subject: string
+  fromName: string
+  fromEmail: string
+  toEmail: string
+  body: string
+  direction: 'inbound' | 'outbound'
+  createdAt: Date
 }

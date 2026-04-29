@@ -63,6 +63,9 @@ export async function sendFCMToOrg(orgId: string, title: string, body: string, u
   }
 }
 
+import { FieldValue } from 'firebase-admin/firestore'
+export const adminTimestamp = () => FieldValue.serverTimestamp()
+
 // Proxy transparente: adminDb.collection(...) etc.
 export const adminDb = new Proxy({} as ReturnType<typeof getFirestore>, {
   get(_target, prop) {

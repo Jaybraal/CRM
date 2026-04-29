@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getClients, getDeals, getTasks, getOrgUsers } from '@/lib/firestore'
 import type { Client, Deal, Task, AppUser } from '@/types'
-import { TrendingUp, Users, CheckSquare, DollarSign, Target, BarChart3 } from 'lucide-react'
+import { TrendingUp, Users, CheckSquare, DollarSign, Target, BarChart3, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-interface MonthlyRevenue { month: string; value: number }
-interface StageConversion { stage: string; count: number; value: number; color: string }
-interface AgentPerf { name: string; clients: number; won: number; wonValue: number; tasksDone: number }
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, FunnelChart, Funnel, LabelList
+} from 'recharts'
 
 const STAGES = [
   { id: 'new', name: 'Nuevo', color: '#6b7280' },
@@ -26,6 +26,30 @@ function getTs(d: unknown): Date {
   return new Date(d as string)
 }
 
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
+  if (active && payload?.length) {
+    return (
+      <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg">
+        <p className="font-medium">{label}</p>
+        <p>${payload[0].value.toLocaleString()}</p>
+      </div>
+    )
+  }
+  return null
+}
+
+const ClientTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
+  if (active && payload?.length) {
+    return (
+      <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg">
+        <p className="font-medium">{label}</p>
+        <p>{payload[0].value} clientes</p>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function ReportsPage() {
   const { profile } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
@@ -36,27 +60,24 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<3 | 6 | 12>(6)
 
   useEffect(() => {
-    if (!profile) return
-    if (!profile.orgId) { setLoading(false); return }
+    if (!profile?.orgId) { setLoading(false); return }
     Promise.all([
       getClients(profile.orgId),
       getDeals(profile.orgId),
       getTasks(profile.orgId),
       getOrgUsers(profile.orgId),
     ]).then(([c, d, t, u]) => {
-      setClients(c)
-      setDeals(d)
-      setTasks(t)
-      setUsers(u)
+      setClients(c); setDeals(d); setTasks(t); setUsers(u)
     })
-    .catch(e => { console.error('Error cargando reportes:', e); toast.error('Error al cargar reportes') })
+    .catch(() => toast.error('Error al cargar reportes'))
     .finally(() => setLoading(false))
   }, [profile])
 
-  // Monthly revenue (won deals by month)
-  const monthlyRevenue: MonthlyRevenue[] = (() => {
-    const now = new Date()
-    const months: MonthlyRevenue[] = []
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const revenueData = (() => {
+    const months = []
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const label = d.toLocaleDateString('es', { month: 'short', year: '2-digit' })
@@ -72,36 +93,55 @@ export default function ReportsPage() {
     return months
   })()
 
-  const maxRevenue = Math.max(...monthlyRevenue.map(m => m.value), 1)
+  const clientData = (() => {
+    const months = []
+    for (let i = period - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const label = d.toLocaleDateString('es', { month: 'short', year: '2-digit' })
+      const count = clients.filter(c => {
+        const t = getTs(c.createdAt)
+        return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth()
+      }).length
+      months.push({ month: label, count })
+    }
+    return months
+  })()
 
-  // Stage funnel
-  const stageFunnel: StageConversion[] = STAGES.map(s => ({
-    stage: s.name,
+  const stageFunnel = STAGES.map(s => ({
+    name: s.name,
     count: deals.filter(d => d.stage === s.id).length,
     value: deals.filter(d => d.stage === s.id).reduce((sum, d) => sum + (d.value ?? 0), 0),
-    color: s.color,
+    fill: s.color,
   }))
-  const maxStageCount = Math.max(...stageFunnel.map(s => s.count), 1)
 
-  // Agent performance
-  const agentPerf: AgentPerf[] = users
+  const agentPerf = users
     .filter(u => u.role === 'agent' || u.role === 'manager')
     .map(u => ({
-      name: u.displayName,
+      name: u.displayName.split(' ')[0],
       clients: clients.filter(c => c.assignedTo === u.uid).length,
       won: deals.filter(d => d.assignedTo === u.uid && d.stage === 'closed_won').length,
       wonValue: deals.filter(d => d.assignedTo === u.uid && d.stage === 'closed_won').reduce((s, d) => s + (d.value ?? 0), 0),
       tasksDone: tasks.filter(t => t.assignedTo === u.uid && t.completed).length,
     }))
 
-  // KPIs
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const totalWon = deals.filter(d => d.stage === 'closed_won').reduce((s, d) => s + (d.value ?? 0), 0)
   const wonThisMonth = deals.filter(d => d.stage === 'closed_won' && getTs(d.updatedAt) >= startOfMonth).reduce((s, d) => s + (d.value ?? 0), 0)
   const conversionRate = deals.length > 0 ? Math.round((deals.filter(d => d.stage === 'closed_won').length / deals.length) * 100) : 0
   const taskCompletionRate = tasks.length > 0 ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 0
   const newClientsThisMonth = clients.filter(c => getTs(c.createdAt) >= startOfMonth).length
+
+  const exportCSV = () => {
+    const rows = [
+      ['Periodo', 'Mes', 'Ingresos ($)', 'Clientes nuevos'],
+      ...revenueData.map((r, i) => [period + 'm', r.month, r.value, clientData[i]?.count ?? 0]),
+    ]
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url
+    a.download = `reporte_${new Date().toISOString().slice(0, 10)}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="space-y-6">
@@ -110,16 +150,18 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
           <p className="text-gray-500 text-sm mt-1">Métricas de rendimiento de tu equipo</p>
         </div>
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-          {([3, 6, 12] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setPeriod(m)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${period === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              {m}m
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            <Download size={14} /> Exportar CSV
+          </button>
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+            {([3, 6, 12] as const).map(m => (
+              <button key={m} onClick={() => setPeriod(m)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${period === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                {m}m
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -156,29 +198,15 @@ export default function ReportsPage() {
               <TrendingUp size={16} className="text-gray-400" />
               <h2 className="font-semibold text-gray-900 text-sm">Ingresos mensuales (deals ganados)</h2>
             </div>
-            <div className="flex items-end gap-2 h-40">
-              {monthlyRevenue.map(m => {
-                const pct = Math.round((m.value / maxRevenue) * 100)
-                return (
-                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 group">
-                    <div className="relative w-full flex justify-center">
-                      {m.value > 0 && (
-                        <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-gray-900 text-white px-1.5 py-0.5 rounded whitespace-nowrap">
-                          ${m.value.toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="w-full flex items-end justify-center" style={{ height: '128px' }}>
-                      <div
-                        className="w-full bg-gray-900 rounded-t-md transition-all"
-                        style={{ height: `${Math.max(pct, m.value > 0 ? 4 : 0)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-400 text-center">{m.month}</span>
-                  </div>
-                )
-              })}
-            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={revenueData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => v > 0 ? `$${(v/1000).toFixed(0)}k` : '0'} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f9fafb' }} />
+                <Bar dataKey="value" fill="#111827" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Pipeline funnel */}
@@ -187,17 +215,15 @@ export default function ReportsPage() {
               <BarChart3 size={16} className="text-gray-400" />
               <h2 className="font-semibold text-gray-900 text-sm">Embudo de conversión</h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {stageFunnel.map(s => {
-                const pct = Math.round((s.count / maxStageCount) * 100)
+                const maxCount = Math.max(...stageFunnel.map(x => x.count), 1)
+                const pct = Math.max(s.count > 0 ? Math.round((s.count / maxCount) * 100) : 0, s.count > 0 ? 6 : 0)
                 return (
-                  <div key={s.stage} className="flex items-center gap-3">
-                    <div className="w-24 text-xs text-gray-500 text-right flex-shrink-0">{s.stage}</div>
+                  <div key={s.name} className="flex items-center gap-3">
+                    <div className="w-24 text-xs text-gray-500 text-right flex-shrink-0">{s.name}</div>
                     <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
-                      <div
-                        className="h-6 rounded-full flex items-center px-2 transition-all"
-                        style={{ width: `${Math.max(pct, s.count > 0 ? 8 : 0)}%`, backgroundColor: s.color }}
-                      >
+                      <div className="h-6 rounded-full flex items-center px-2 transition-all" style={{ width: `${pct}%`, backgroundColor: s.fill }}>
                         {s.count > 0 && <span className="text-xs text-white font-medium">{s.count}</span>}
                       </div>
                     </div>
@@ -208,6 +234,23 @@ export default function ReportsPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Client growth */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Users size={16} className="text-gray-400" />
+              <h2 className="font-semibold text-gray-900 text-sm">Nuevos clientes por mes</h2>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={clientData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<ClientTooltip />} cursor={{ stroke: '#e5e7eb' }} />
+                <Line type="monotone" dataKey="count" stroke="#111827" strokeWidth={2} dot={{ r: 4, fill: '#111827' }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Agent performance */}
@@ -243,43 +286,6 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
-
-          {/* Client growth */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Users size={16} className="text-gray-400" />
-              <h2 className="font-semibold text-gray-900 text-sm">Nuevos clientes por mes</h2>
-            </div>
-            <div className="flex items-end gap-2 h-32">
-              {(() => {
-                const mths = []
-                for (let i = period - 1; i >= 0; i--) {
-                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                  const label = d.toLocaleDateString('es', { month: 'short', year: '2-digit' })
-                  const count = clients.filter(c => {
-                    const t = getTs(c.createdAt)
-                    return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth()
-                  }).length
-                  mths.push({ month: label, count })
-                }
-                const maxC = Math.max(...mths.map(m => m.count), 1)
-                return mths.map(m => {
-                  const pct = Math.round((m.count / maxC) * 100)
-                  return (
-                    <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className="w-full flex items-end justify-center" style={{ height: '100px' }}>
-                        <div
-                          className="w-full bg-gray-300 rounded-t-md transition-all"
-                          style={{ height: `${Math.max(pct, m.count > 0 ? 4 : 0)}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-400 text-center">{m.month}</span>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
-          </div>
         </>
       )}
     </div>

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getOrganization, getWhatsAppTemplates } from '@/lib/firestore'
-import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType, ClientStatus } from '@/types'
+import { getOrganization, getWhatsAppTemplates, getWebhooks, createWebhook, updateWebhook, deleteWebhook, getCaptureForms, createCaptureForm, deleteCaptureForm } from '@/lib/firestore'
+import type { Organization, WhatsAppTemplate, PipelineStage, QualificationQuestion, QualificationQuestionType, ClientStatus, Webhook, WebhookEvent, CaptureForm, CaptureFormField } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
 import InstagramConnect from '@/components/settings/InstagramConnect'
-import { Building2, MessageCircle, Instagram, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag } from 'lucide-react'
+import { Building2, MessageCircle, Instagram, Copy, CheckCircle, Plus, Trash2, GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag, Webhook as WebhookIcon, CreditCard, FormInput, ExternalLink, Globe } from 'lucide-react'
 
 const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
@@ -60,7 +60,11 @@ export default function SettingsPage() {
     Promise.all([
       getOrganization(profile.orgId),
       getWhatsAppTemplates(profile.orgId),
-    ]).then(([o, tmpl]) => {
+      getWebhooks(profile.orgId),
+      getCaptureForms(profile.orgId),
+    ]).then(([o, tmpl, wh, forms]) => {
+      setWebhooks(wh)
+      setCaptureForms(forms)
       if (o) {
         setOrg(o)
         setForm({ name: o.name, industry: o.settings.industry, whatsappNumber: o.settings.whatsappNumber || '' })
@@ -280,8 +284,97 @@ export default function SettingsPage() {
     number: 'bg-purple-100 text-purple-700',
   }
 
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState<Webhook[]>([])
+  const [newWebhook, setNewWebhook] = useState({ url: '', events: [] as WebhookEvent[] })
+  const [savingWebhook, setSavingWebhook] = useState(false)
+
+  // Capture forms state
+  const [captureForms, setCaptureForms] = useState<CaptureForm[]>([])
+  const [showFormBuilder, setShowFormBuilder] = useState(false)
+  const [newFormName, setNewFormName] = useState('')
+  const [newFormFields, setNewFormFields] = useState<CaptureFormField[]>([])
+  const [newFormConfirmation, setNewFormConfirmation] = useState('¡Gracias! Nos pondremos en contacto pronto.')
+  const [savingForm, setSavingForm] = useState(false)
+
   const [cleaningPhones, setCleaningPhones] = useState(false)
   const [cleaningFakes, setCleaningFakes] = useState(false)
+
+  // Webhook handlers
+  const WEBHOOK_EVENTS: { value: WebhookEvent; label: string }[] = [
+    { value: 'new_client', label: 'Nuevo cliente' },
+    { value: 'new_message', label: 'Nuevo mensaje' },
+    { value: 'deal_created', label: 'Deal creado' },
+    { value: 'deal_closed', label: 'Deal cerrado' },
+    { value: 'task_created', label: 'Tarea creada' },
+  ]
+
+  const handleAddWebhook = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile?.orgId || !newWebhook.url || newWebhook.events.length === 0) {
+      toast.error('Completa la URL y selecciona al menos un evento'); return
+    }
+    setSavingWebhook(true)
+    try {
+      const id = await createWebhook(profile.orgId, { url: newWebhook.url, events: newWebhook.events, active: true })
+      setWebhooks(prev => [...prev, { id, ...newWebhook, orgId: profile.orgId!, active: true, createdAt: new Date() }])
+      setNewWebhook({ url: '', events: [] })
+      toast.success('Webhook añadido')
+    } catch { toast.error('Error al guardar webhook') }
+    finally { setSavingWebhook(false) }
+  }
+
+  const handleToggleWebhook = async (wh: Webhook) => {
+    if (!profile?.orgId) return
+    await updateWebhook(profile.orgId, wh.id, { active: !wh.active })
+    setWebhooks(prev => prev.map(w => w.id === wh.id ? { ...w, active: !w.active } : w))
+  }
+
+  const handleDeleteWebhook = async (id: string) => {
+    if (!profile?.orgId) return
+    await deleteWebhook(profile.orgId, id)
+    setWebhooks(prev => prev.filter(w => w.id !== id))
+    toast.success('Webhook eliminado')
+  }
+
+  // Capture form handlers
+  const addFormField = () => {
+    const field: CaptureFormField = { id: `f_${Date.now()}`, label: '', type: 'text', required: false }
+    setNewFormFields(prev => [...prev, field])
+  }
+
+  const updateFormField = (id: string, data: Partial<CaptureFormField>) => {
+    setNewFormFields(prev => prev.map(f => f.id === id ? { ...f, ...data } : f))
+  }
+
+  const handleSaveCaptureForm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile?.orgId || !newFormName.trim() || newFormFields.length === 0) {
+      toast.error('Añade un nombre y al menos un campo'); return
+    }
+    setSavingForm(true)
+    try {
+      const id = await createCaptureForm(profile.orgId, {
+        name: newFormName,
+        fields: newFormFields.filter(f => f.label.trim()),
+        defaultStatus: 'lead',
+        confirmationMessage: newFormConfirmation,
+        active: true,
+      })
+      setCaptureForms(prev => [...prev, { id, name: newFormName, fields: newFormFields, defaultStatus: 'lead', confirmationMessage: newFormConfirmation, active: true, createdAt: new Date(), submissionCount: 0, orgId: profile.orgId! }])
+      setNewFormName(''); setNewFormFields([]); setNewFormConfirmation('¡Gracias! Nos pondremos en contacto pronto.')
+      setShowFormBuilder(false)
+      toast.success('Formulario creado')
+    } catch { toast.error('Error al crear formulario') }
+    finally { setSavingForm(false) }
+  }
+
+  const handleDeleteForm = async (id: string) => {
+    if (!profile?.orgId) return
+    await deleteCaptureForm(profile.orgId, id)
+    setCaptureForms(prev => prev.filter(f => f.id !== id))
+    toast.success('Formulario eliminado')
+  }
 
   const handleFixPhones = async () => {
     if (!profile?.orgId) return
@@ -714,6 +807,210 @@ export default function SettingsPage() {
           </span>
         </div>
       </div>
+
+      {/* Webhooks salientes */}
+      {(profile?.role === 'owner' || profile?.role === 'super_admin') && (
+        <div className={cardClass}>
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <WebhookIcon size={20} className="text-gray-500" />
+            <div>
+              <h2 className="font-semibold text-gray-900">Webhooks salientes</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Notifica sistemas externos cuando ocurren eventos</p>
+            </div>
+          </div>
+          {webhooks.length > 0 && (
+            <div className="space-y-2">
+              {webhooks.map(wh => (
+                <div key={wh.id} className="flex items-start gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-mono text-gray-700 truncate">{wh.url}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {wh.events.map(ev => <span key={ev} className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">{ev}</span>)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div onClick={() => handleToggleWebhook(wh)}
+                      className={`relative w-8 h-5 rounded-full cursor-pointer transition-colors ${wh.active ? 'bg-gray-900' : 'bg-gray-300'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${wh.active ? 'left-3.5' : 'left-0.5'}`} />
+                    </div>
+                    <button onClick={() => handleDeleteWebhook(wh.id)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <form onSubmit={handleAddWebhook} className="space-y-3 pt-2 border-t border-gray-100">
+            <input value={newWebhook.url} onChange={e => setNewWebhook(w => ({ ...w, url: e.target.value }))}
+              className={inputClass} placeholder="https://mi-sistema.com/webhook" />
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-2">Eventos a notificar</p>
+              <div className="flex flex-wrap gap-2">
+                {WEBHOOK_EVENTS.map(ev => (
+                  <label key={ev.value} className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={newWebhook.events.includes(ev.value)}
+                      onChange={e => setNewWebhook(w => ({
+                        ...w,
+                        events: e.target.checked ? [...w.events, ev.value] : w.events.filter(x => x !== ev.value)
+                      }))}
+                      className="w-3.5 h-3.5 rounded" />
+                    <span className="text-xs text-gray-700">{ev.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <button type="submit" disabled={savingWebhook || !newWebhook.url}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+              <Plus size={14} /> Añadir webhook
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Formularios de captura */}
+      {(profile?.role === 'owner' || profile?.role === 'super_admin' || profile?.role === 'manager') && (
+        <div className={cardClass}>
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <FormInput size={20} className="text-gray-500" />
+            <div className="flex-1">
+              <h2 className="font-semibold text-gray-900">Formularios de captura</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Crea formularios públicos para capturar leads automáticamente</p>
+            </div>
+          </div>
+          {captureForms.length > 0 && (
+            <div className="space-y-2">
+              {captureForms.map(f => {
+                const formUrl = typeof window !== 'undefined' ? `${window.location.origin}/form/${profile?.orgId}/${f.id}` : ''
+                return (
+                  <div key={f.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{f.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{f.fields.length} campo(s) · {f.submissionCount} envíos</p>
+                    </div>
+                    <a href={formUrl} target="_blank" rel="noopener noreferrer"
+                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors" title="Ver formulario">
+                      <ExternalLink size={13} />
+                    </a>
+                    <button onClick={() => { navigator.clipboard.writeText(formUrl); toast.success('URL copiada') }}
+                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors" title="Copiar URL">
+                      <Copy size={13} />
+                    </button>
+                    <button onClick={() => handleDeleteForm(f.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {!showFormBuilder ? (
+            <button onClick={() => setShowFormBuilder(true)}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm rounded-lg transition-colors">
+              <Plus size={14} /> Crear formulario
+            </button>
+          ) : (
+            <form onSubmit={handleSaveCaptureForm} className="space-y-3 pt-2 border-t border-gray-100">
+              <input value={newFormName} onChange={e => setNewFormName(e.target.value)}
+                className={inputClass} placeholder='Nombre del formulario (ej: "Contacto web")' />
+              <div className="space-y-2">
+                {newFormFields.map(field => (
+                  <div key={field.id} className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                    <input value={field.label} onChange={e => updateFormField(field.id, { label: e.target.value })}
+                      className="flex-1 bg-white border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-900 focus:outline-none" placeholder="Etiqueta del campo" />
+                    <select value={field.type} onChange={e => updateFormField(field.id, { type: e.target.value as CaptureFormField['type'] })}
+                      className="bg-white border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-700 focus:outline-none">
+                      <option value="text">Texto</option>
+                      <option value="email">Email</option>
+                      <option value="phone">Teléfono</option>
+                      <option value="textarea">Área de texto</option>
+                    </select>
+                    <label className="flex items-center gap-1 text-xs text-gray-600 whitespace-nowrap">
+                      <input type="checkbox" checked={field.required} onChange={e => updateFormField(field.id, { required: e.target.checked })} className="w-3 h-3" /> Req.
+                    </label>
+                    <button type="button" onClick={() => setNewFormFields(prev => prev.filter(f => f.id !== field.id))}
+                      className="p-1 text-gray-400 hover:text-red-500 rounded">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addFormField}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
+                <Plus size={13} /> Añadir campo
+              </button>
+              <input value={newFormConfirmation} onChange={e => setNewFormConfirmation(e.target.value)}
+                className={inputClass} placeholder="Mensaje de confirmación al enviar" />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowFormBuilder(false)} className="flex-1 px-3 py-2.5 border border-gray-200 text-sm text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={savingForm}
+                  className="flex-1 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors py-2.5">
+                  {savingForm ? 'Guardando...' : 'Crear formulario'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* Facturación */}
+      {(profile?.role === 'owner' || profile?.role === 'super_admin') && (
+        <div className={cardClass}>
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <CreditCard size={20} className="text-gray-500" />
+            <div>
+              <h2 className="font-semibold text-gray-900">Facturación</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Gestiona tu plan y métodos de pago</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {[
+              { plan: 'trial' as const, name: 'Trial', price: 'Gratis', features: ['1 usuario', '100 clientes', 'WhatsApp básico'] },
+              { plan: 'basic' as const, name: 'Básico', price: '$29/mes', features: ['5 usuarios', '1,000 clientes', 'WhatsApp + Instagram', 'Reportes básicos'] },
+              { plan: 'pro' as const, name: 'Pro', price: '$79/mes', features: ['Usuarios ilimitados', 'Clientes ilimitados', 'Todos los canales', 'Reportes avanzados', 'Webhooks', 'Formularios'] },
+            ].map(tier => {
+              const current = org?.plan === tier.plan
+              return (
+                <div key={tier.plan} className={`p-4 rounded-xl border-2 transition-all ${current ? 'border-gray-900 bg-gray-50' : 'border-gray-100'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">{tier.name}</span>
+                      {current && <span className="text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full">Plan actual</span>}
+                    </div>
+                    <span className="font-semibold text-gray-700">{tier.price}</span>
+                  </div>
+                  <ul className="space-y-1 mb-3">
+                    {tier.features.map(f => (
+                      <li key={f} className="text-xs text-gray-500 flex items-center gap-1.5">
+                        <CheckCircle size={11} className="text-green-500 flex-shrink-0" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  {!current && (
+                    <button onClick={async () => {
+                      try {
+                        const res = await fetch('/api/billing/checkout', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ orgId: profile?.orgId, plan: tier.plan }),
+                        })
+                        const data = await res.json()
+                        if (data.url) window.location.href = data.url
+                        else toast.error(data.error || 'Error al iniciar pago')
+                      } catch { toast.error('Error de conexión') }
+                    }}
+                      className="w-full bg-gray-900 hover:bg-gray-800 text-white text-sm py-2 rounded-lg transition-colors">
+                      Cambiar a {tier.name}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Mantenimiento — solo owners */}
       {profile?.role === 'owner' && (
