@@ -10,8 +10,8 @@ import toast from 'react-hot-toast'
 
 const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16','#6366f1']
 
-const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
+const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
 
 export default function CategoriesPage() {
   const { profile } = useAuth()
@@ -25,56 +25,32 @@ export default function CategoriesPage() {
     if (!profile?.orgId) { setLoading(false); return }
     try {
       await ensureEliminadosCategory(profile.orgId)
-      const cats = await getCategories(profile.orgId)
-      setCategories(cats)
-    } catch (e) { console.error('Error cargando categorías:', e) }
+      setCategories(await getCategories(profile.orgId))
+    } catch (e) { console.error(e) }
     setLoading(false)
   }, [profile?.orgId])
 
   useEffect(() => { load() }, [load])
 
-  const openCreate = () => {
-    setEditing(null)
-    setForm({ name: '', color: '#3b82f6', description: '' })
-    setShowForm(true)
-  }
-
-  const openEdit = (cat: Category) => {
-    setEditing(cat)
-    setForm({ name: cat.name, color: cat.color, description: cat.description || '' })
-    setShowForm(true)
-  }
+  const openCreate = () => { setEditing(null); setForm({ name: '', color: '#3b82f6', description: '' }); setShowForm(true) }
+  const openEdit = (cat: Category) => { setEditing(cat); setForm({ name: cat.name, color: cat.color, description: cat.description || '' }); setShowForm(true) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile?.orgId) return
     try {
-      if (editing) {
-        await updateCategory(profile.orgId, editing.id, form)
-        toast.success('Categoría actualizada')
-      } else {
-        await createCategory(profile.orgId, form)
-        toast.success('Categoría creada')
-      }
-      setShowForm(false)
-      load()
-    } catch {
-      toast.error('Error al guardar')
-    }
+      if (editing) { await updateCategory(profile.orgId, editing.id, form); toast.success('Categoría actualizada') }
+      else { await createCategory(profile.orgId, form); toast.success('Categoría creada') }
+      setShowForm(false); load()
+    } catch { toast.error('Error al guardar') }
   }
 
   const handleDelete = async (id: string) => {
     if (!profile?.orgId) return
     const cat = categories.find(c => c.id === id)
-    if (cat?.isSystem) {
-      toast.error('Esta categoría del sistema no puede eliminarse')
-      return
-    }
+    if (cat?.isSystem) { toast.error('Esta categoría del sistema no puede eliminarse'); return }
     const clients = await getClientsByCategory(profile.orgId, id)
-    if (clients.length > 0) {
-      toast.error(`No puedes eliminar esta categoría: ${clients.length} cliente(s) la usan`)
-      return
-    }
+    if (clients.length > 0) { toast.error(`No puedes eliminar: ${clients.length} cliente(s) la usan`); return }
     if (!confirm('¿Eliminar esta categoría?')) return
     await deleteCategory(profile.orgId, id)
     toast.success('Categoría eliminada')
@@ -85,74 +61,42 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Categorías</h1>
-          <p className="text-gray-500 text-sm mt-1">Organiza tus clientes por categorías</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Categorías</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Organiza tus clientes por categorías</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={18} /> Nueva categoría
+        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+          <Plus size={17} /> Nueva categoría
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-gray-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : categories.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
-          <p className="text-gray-400">No hay categorías. Crea la primera.</p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
+          <p className="text-slate-400 dark:text-slate-500">No hay categorías. Crea la primera.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map(cat => {
             const isEliminados = cat.isSystem && cat.systemKey === 'eliminados'
             return (
-              <div
-                key={cat.id}
-                className={`bg-white border rounded-xl p-5 flex items-center gap-4 transition-all ${
-                  isEliminados
-                    ? 'border-red-200 bg-red-50/30 hover:border-red-300'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                }`}
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}
-                >
-                  {isEliminados
-                    ? <Trash size={18} style={{ color: cat.color }} />
-                    : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }} />
-                  }
+              <div key={cat.id} className={`bg-white dark:bg-slate-900 border rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md ${isEliminados ? 'border-red-200 dark:border-red-900/50' : 'border-slate-100 dark:border-slate-800'}`}>
+                <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}>
+                  {isEliminados ? <Trash size={18} style={{ color: cat.color }} /> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900">{cat.name}</p>
-                    {isEliminados && (
-                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
-                        Auto-elimina en 14 días
-                      </span>
-                    )}
+                    <p className="font-black text-slate-900 dark:text-white">{cat.name}</p>
+                    {isEliminados && <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold">Auto-elimina 14d</span>}
                   </div>
-                  {cat.description && (
-                    <p className="text-sm text-gray-400 truncate">{cat.description}</p>
-                  )}
+                  {cat.description && <p className="text-sm text-slate-400 dark:text-slate-500 truncate">{cat.description}</p>}
                 </div>
                 {!isEliminados && (
                   <div className="flex gap-1">
-                    <button
-                      onClick={() => openEdit(cat)}
-                      className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <button onClick={() => openEdit(cat)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"><Pencil size={15} /></button>
+                    <button onClick={() => handleDelete(cat.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><Trash2 size={15} /></button>
                   </div>
                 )}
               </div>
@@ -165,41 +109,23 @@ export default function CategoriesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelClass}>Nombre *</label>
-            <input
-              required
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className={inputClass}
-              placeholder="Ej: VIP, Interesado, Comprador..."
-            />
+            <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} placeholder="Ej: VIP, Interesado..." />
           </div>
           <div>
             <label className={labelClass}>Descripción</label>
-            <input
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className={inputClass}
-              placeholder="Descripción opcional"
-            />
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={inputClass} placeholder="Descripción opcional" />
           </div>
           <div>
             <label className={labelClass}>Color</label>
             <div className="flex flex-wrap gap-2">
               {COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, color: c }))}
-                  className={`w-8 h-8 rounded-full transition-transform ${form.color === c ? 'scale-125 ring-2 ring-offset-2' : ''}`}
-                  style={{ backgroundColor: c, ...(form.color === c ? { ringColor: c } : {}) }}
-                />
+                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+                  className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? 'scale-125 ring-2 ring-offset-2 ring-blue-400' : ''}`}
+                  style={{ backgroundColor: c }} />
               ))}
             </div>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2.5 rounded-lg transition-colors"
-          >
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition-colors">
             {editing ? 'Actualizar' : 'Crear categoría'}
           </button>
         </form>

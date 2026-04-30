@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
+import { Building2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
@@ -26,62 +27,45 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">
-            <span className="text-gray-900">1</span>CRM
-          </h1>
-          <p className="text-gray-500 mt-2 text-sm">Sistema de gestión de clientes</p>
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/30 mx-auto mb-4">
+            <Building2 size={32} />
+          </div>
+          <h1 className="text-3xl font-black text-slate-900">NEXO CRM</h1>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Multi-Business OS</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Iniciar sesión</h2>
-
+        <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-sm">
+          <h2 className="text-xl font-black text-slate-900 mb-6">Iniciar sesión</h2>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Correo electrónico
-              </label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Correo electrónico</label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
+                type="email" value={email} onChange={e => setEmail(e.target.value)} required
                 placeholder="tu@email.com"
-                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Contraseña
-              </label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Contraseña</label>
               <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
+                type="password" value={password} onChange={e => setPassword(e.target.value)} required
                 placeholder="••••••••"
-                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors mt-2"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:scale-[1.02] mt-2">
               {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-gray-400 text-xs mt-6">
-          1CRM — Todos los derechos reservados
-        </p>
+        <p className="text-center text-slate-400 text-xs mt-6">NEXO CRM — Todos los derechos reservados</p>
       </div>
     </div>
   )

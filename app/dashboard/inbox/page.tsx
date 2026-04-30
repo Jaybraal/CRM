@@ -99,13 +99,13 @@ export default function InboxPage() {
     <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* ── Panel izquierdo ─────────────────────────────── */}
-      <div className={`flex-col w-full lg:w-80 xl:w-96 bg-white border-r border-gray-200 flex-shrink-0 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+      <div className={`flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-shrink-0 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <Inbox size={18} className="text-gray-600" />
-            <h1 className="font-bold text-gray-900 text-base">Inbox</h1>
+            <Inbox size={18} className="text-slate-600 dark:text-slate-300" />
+            <h1 className="font-bold text-slate-900 dark:text-white text-base">Inbox</h1>
             {totalUnread > 0 && (
               <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                 {totalUnread > 99 ? '99+' : totalUnread}
@@ -115,24 +115,26 @@ export default function InboxPage() {
         </div>
 
         {/* Búsqueda */}
-        <div className="px-3 py-2 border-b border-gray-100">
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar conversación..."
-              className="w-full pl-8 pr-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-gray-200 transition-colors"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:bg-slate-200 dark:focus:bg-slate-700 transition-colors"
             />
           </div>
         </div>
 
         {/* Filtros */}
-        <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100">
+        <div className="flex gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
           {[{ value: 'unread', label: '● No leídos' }, { value: 'all', label: 'Todos' }].map(f => (
             <button key={f.value} onClick={() => setFilter(f.value as 'unread' | 'all')}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filter === f.value
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}>
               {f.label}
             </button>
@@ -143,12 +145,12 @@ export default function InboxPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-center px-4">
-              <Inbox size={32} className="text-gray-300" />
-              <p className="text-sm text-gray-400">
+              <Inbox size={32} className="text-slate-300 dark:text-slate-600" />
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 {filter === 'unread' ? 'No hay mensajes sin leer' : 'Sin conversaciones aún'}
               </p>
             </div>
@@ -157,13 +159,13 @@ export default function InboxPage() {
               <button
                 key={client.id}
                 onClick={() => { setSelectedId(client.id); setShowMobileChat(true) }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-50 text-left ${selectedId === client.id ? 'bg-[#f0f2f5]' : ''}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-left ${selectedId === client.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
               >
                 {/* Avatar con dot de categoría */}
                 <div className="relative">
                   <Avatar name={client.name} size={46} />
                   {client.categoryId && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900"
                       style={{ backgroundColor: getCategoryColor(client.categoryId) }} />
                   )}
                 </div>
@@ -171,7 +173,7 @@ export default function InboxPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                       {client.name}
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -180,19 +182,19 @@ export default function InboxPage() {
                           {client.unreadCount! > 99 ? '99+' : client.unreadCount}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-gray-400">{formatLastTime(client.lastMessageAt)}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{formatLastTime(client.lastMessageAt)}</span>
                       )}
                     </div>
                   </div>
 
                   {/* Preview del último mensaje */}
-                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
                     {client.lastMessage || formatPhone(client.phone) || formatPhone(client.whatsappPhone) || 'Sin teléfono'}
                   </p>
 
                   {/* Agente asignado */}
                   {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
-                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
                       {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
                     </p>
                   )}
@@ -208,22 +210,22 @@ export default function InboxPage() {
         {selectedClient ? (
           <>
             {/* Header del chat */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
               <button
                 onClick={() => setShowMobileChat(false)}
-                className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+                className="lg:hidden p-1.5 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <ArrowLeft size={20} />
               </button>
               <Avatar name={selectedClient.name} size={38} />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{selectedClient.name}</p>
-                <p className="text-xs text-gray-500 leading-tight mt-0.5">
+                <p className="font-semibold text-slate-900 dark:text-white text-sm leading-tight truncate">{selectedClient.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
                   {formatPhone(selectedClient.phone) || formatPhone(selectedClient.whatsappPhone) || (selectedClient.isLid ? 'Número privado' : 'Sin teléfono')}
                 </p>
               </div>
               <Link
                 href={`/dashboard/clients/${selectedClient.id}`}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
                 title="Ver perfil completo">
                 <User size={18} />
               </Link>
@@ -234,9 +236,9 @@ export default function InboxPage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center bg-[#f0f2f5]">
-            <Inbox size={40} className="text-gray-300" />
-            <p className="text-sm text-gray-400">Selecciona una conversación</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center bg-slate-50 dark:bg-slate-900">
+            <Inbox size={40} className="text-slate-300 dark:text-slate-600" />
+            <p className="text-sm text-slate-400 dark:text-slate-500">Selecciona una conversación</p>
           </div>
         )}
       </div>

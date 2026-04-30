@@ -83,73 +83,73 @@ export default function GlobalSearch() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
         title="Buscar (Ctrl+K)"
       >
         <Search size={16} />
         <span className="flex-1 text-left">Buscar...</span>
-        <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">⌘K</span>
+        <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-1.5 py-0.5 rounded font-mono">⌘K</span>
       </button>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4" onClick={() => setOpen(false)}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)}>
       <div
-        className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-          <Search size={18} className="text-gray-400 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+          <Search size={18} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar clientes, tareas, oportunidades..."
-            className="flex-1 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+            className="flex-1 text-sm text-slate-900 dark:text-white bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setQuery('')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
               <X size={16} />
             </button>
           )}
-          <kbd className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">ESC</kbd>
+          <kbd className="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">ESC</kbd>
         </div>
 
         {/* Results */}
         <div className="max-h-96 overflow-y-auto">
           {loading && (
             <div className="flex justify-center py-8">
-              <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
           {!loading && q && !hasResults && (
-            <div className="py-10 text-center text-sm text-gray-400">Sin resultados para "{query}"</div>
+            <div className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">Sin resultados para "{query}"</div>
           )}
 
           {!loading && !q && (
-            <div className="py-8 text-center text-sm text-gray-400">Escribe para buscar...</div>
+            <div className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Escribe para buscar...</div>
           )}
 
           {filteredClients.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+              <div className="px-4 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 Clientes
               </div>
               {filteredClients.map(c => (
                 <button
                   key={c.id}
                   onClick={() => navigate(`/dashboard/clients/${c.id}`)}
-                  className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 transition-colors"
+                  className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-100 dark:border-slate-800/50 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Users size={14} className="text-gray-500" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Users size={14} className="text-slate-500 dark:text-slate-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{c.email || c.phone || c.status}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{c.name}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{c.email || c.phone || c.status}</p>
                   </div>
                 </button>
               ))}
@@ -158,21 +158,21 @@ export default function GlobalSearch() {
 
           {filteredTasks.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+              <div className="px-4 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 Tareas
               </div>
               {filteredTasks.map(t => (
                 <button
                   key={t.id}
                   onClick={() => navigate('/dashboard/tasks')}
-                  className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 transition-colors"
+                  className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-100 dark:border-slate-800/50 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckSquare size={14} className={t.completed ? 'text-green-500' : 'text-gray-500'} />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CheckSquare size={14} className={t.completed ? 'text-green-500' : 'text-slate-500 dark:text-slate-400'} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
-                    <p className="text-xs text-gray-400">{t.completed ? 'Completada' : 'Pendiente'}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{t.title}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{t.completed ? 'Completada' : 'Pendiente'}</p>
                   </div>
                 </button>
               ))}
@@ -181,7 +181,7 @@ export default function GlobalSearch() {
 
           {filteredDeals.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+              <div className="px-4 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 Oportunidades
               </div>
               {filteredDeals.map(d => {
@@ -190,14 +190,14 @@ export default function GlobalSearch() {
                   <button
                     key={d.id}
                     onClick={() => navigate('/dashboard/pipeline')}
-                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 transition-colors"
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-100 dark:border-slate-800/50 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <FolderKanban size={14} className="text-gray-500" />
+                    <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
+                      <FolderKanban size={14} className="text-slate-500 dark:text-slate-400" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{client?.name || 'Sin cliente'}</p>
-                      <p className="text-xs text-gray-400">{d.stage} {d.value ? `· $${d.value.toLocaleString()}` : ''}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{client?.name || 'Sin cliente'}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{d.stage} {d.value ? `· $${d.value.toLocaleString()}` : ''}</p>
                     </div>
                   </button>
                 )
@@ -207,9 +207,9 @@ export default function GlobalSearch() {
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2.5 border-t border-gray-100 flex gap-4 text-xs text-gray-400">
-          <span><kbd className="bg-gray-100 px-1 rounded">↵</kbd> seleccionar</span>
-          <span><kbd className="bg-gray-100 px-1 rounded">ESC</kbd> cerrar</span>
+        <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex gap-4 text-xs text-slate-400 dark:text-slate-500">
+          <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1 rounded">↵</kbd> seleccionar</span>
+          <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1 rounded">ESC</kbd> cerrar</span>
         </div>
       </div>
     </div>

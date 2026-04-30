@@ -16,6 +16,9 @@ interface Props {
   onSuccess: () => void
 }
 
+const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+
 export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT_STATUSES, existing, onSuccess }: Props) {
   const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -56,7 +59,6 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
       const isMovingToEliminados = eliminados && form.categoryId === eliminados.id
       const wasAlreadyInEliminados = existing?.categoryId === eliminados?.id
 
-      // movedToCategoryAt: solo se asigna la primera vez que entra a ELIMINADOS
       const movedToCategoryAt = isMovingToEliminados && !wasAlreadyInEliminados
         ? new Date()
         : isMovingToEliminados && wasAlreadyInEliminados
@@ -89,63 +91,59 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-      {/* Nombre */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre *</label>
+        <label className={labelClass}>Nombre *</label>
         <input
           required
           value={form.name}
           onChange={e => set('name', e.target.value)}
-          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+          className={inputClass}
           placeholder="Nombre completo"
         />
       </div>
 
-      {/* Email + Teléfono */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <label className={labelClass}>Email</label>
           <input
             type="email"
             value={form.email}
             onChange={e => set('email', e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+            className={inputClass}
             placeholder="correo@ejemplo.com"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Teléfono</label>
+          <label className={labelClass}>Teléfono</label>
           <input
             value={form.phone}
             onChange={e => set('phone', e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+            className={inputClass}
             placeholder="+1 234 567 8900"
           />
         </div>
       </div>
 
-      {/* WhatsApp */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className={labelClass}>
           WhatsApp del cliente
-          <span className="ml-1 text-xs text-gray-400 font-normal">(con código de país, ej: +52 55 1234 5678)</span>
+          <span className="ml-1 text-xs text-slate-400 font-normal">(con código de país, ej: +52 55 1234 5678)</span>
         </label>
         <input
           value={form.whatsappPhone}
           onChange={e => set('whatsappPhone', e.target.value)}
-          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+          className={inputClass}
           placeholder="+52 55 1234 5678"
         />
       </div>
 
-      {/* Categoría + Estado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Categoría</label>
+          <label className={labelClass}>Categoría</label>
           <select
             value={form.categoryId}
             onChange={e => set('categoryId', e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+            className={inputClass}
           >
             <option value="">Sin categoría</option>
             {categories.map(c => (
@@ -154,11 +152,11 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado</label>
+          <label className={labelClass}>Estado</label>
           <select
             value={form.status}
             onChange={e => set('status', e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500"
+            className={inputClass}
           >
             {clientStatuses.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -167,48 +165,45 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
         </div>
       </div>
 
-      {/* Tags */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Etiquetas</label>
+        <label className={labelClass}>Etiquetas</label>
         <div className="flex gap-2 mb-2">
           <input
             value={tagInput}
             onChange={e => setTagInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 text-sm focus:outline-none focus:border-gray-500"
+            className={inputClass}
             placeholder="Escribe y presiona Enter"
           />
-          <button type="button" onClick={addTag} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
+          <button type="button" onClick={addTag} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
             +
           </button>
         </div>
         {form.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {form.tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full">
+              <span key={tag} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                 {tag}
-                <button type="button" onClick={() => removeTag(tag)}><X size={11} /></button>
+                <button type="button" onClick={() => removeTag(tag)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={11} /></button>
               </span>
             ))}
           </div>
         )}
       </div>
 
-      {/* Notas */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Notas</label>
+        <label className={labelClass}>Notas</label>
         <textarea
           value={form.notes}
           onChange={e => set('notes', e.target.value)}
           rows={3}
-          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500 resize-none"
+          className={`${inputClass} resize-none`}
           placeholder="Notas adicionales..."
         />
       </div>
 
-      {/* Fotos */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Fotos</label>
+        <label className={labelClass}>Fotos</label>
         <PhotoUploader
           orgId={profile?.orgId || ''}
           folder="clients"
@@ -220,7 +215,7 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors"
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors shadow-lg shadow-blue-500/20"
       >
         {loading ? 'Guardando...' : existing ? 'Actualizar cliente' : 'Crear cliente'}
       </button>

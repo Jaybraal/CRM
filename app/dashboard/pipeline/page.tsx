@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getDeals, getClients, updateDeal, createDeal, deleteDeal, getOrganization } from '@/lib/firestore'
 import type { Deal, Client, PipelineStage } from '@/types'
 import Modal from '@/components/ui/Modal'
-import { Plus, Pencil, Trash2, GripVertical, ArrowRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const DEFAULT_STAGES: PipelineStage[] = [
@@ -16,8 +16,8 @@ const DEFAULT_STAGES: PipelineStage[] = [
   { id: 'closed_lost', name: 'Perdido', order: 4, color: '#ef4444' },
 ]
 
-const inputClass = 'w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:border-gray-500'
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
+const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
 const emptyForm = { clientId: '', stage: 'new', value: '', notes: '' }
 
 export default function PipelinePage() {
@@ -31,7 +31,6 @@ export default function PipelinePage() {
   const [dragDeal, setDragDeal] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
-  // Mobile move modal
   const [moveDeal, setMoveDeal] = useState<Deal | null>(null)
 
   const load = async () => {
@@ -47,20 +46,11 @@ export default function PipelinePage() {
 
   const getClientName = (id: string) => clients.find(c => c.id === id)?.name || 'Sin cliente'
 
-  const openCreate = () => {
-    setEditDeal(null)
-    setForm(emptyForm)
-    setShowForm(true)
-  }
+  const openCreate = () => { setEditDeal(null); setForm(emptyForm); setShowForm(true) }
 
   const openEdit = (deal: Deal) => {
     setEditDeal(deal)
-    setForm({
-      clientId: deal.clientId,
-      stage: deal.stage,
-      value: deal.value?.toString() || '',
-      notes: deal.notes || '',
-    })
+    setForm({ clientId: deal.clientId, stage: deal.stage, value: deal.value?.toString() || '', notes: deal.notes || '' })
     setShowForm(true)
   }
 
@@ -85,29 +75,16 @@ export default function PipelinePage() {
     setSaving(true)
     try {
       if (editDeal) {
-        await updateDeal(profile.orgId, editDeal.id, {
-          stage: form.stage,
-          value: form.value ? parseFloat(form.value) : undefined,
-          notes: form.notes,
-        })
+        await updateDeal(profile.orgId, editDeal.id, { stage: form.stage, value: form.value ? parseFloat(form.value) : undefined, notes: form.notes })
         toast.success('Oportunidad actualizada')
       } else {
-        await createDeal(profile.orgId, {
-          clientId: form.clientId,
-          stage: form.stage,
-          value: form.value ? parseFloat(form.value) : undefined,
-          notes: form.notes,
-          assignedTo: profile.uid,
-        })
+        await createDeal(profile.orgId, { clientId: form.clientId, stage: form.stage, value: form.value ? parseFloat(form.value) : undefined, notes: form.notes, assignedTo: profile.uid })
         toast.success('Oportunidad creada')
       }
       setShowForm(false)
       load()
-    } catch {
-      toast.error('Error al guardar')
-    } finally {
-      setSaving(false)
-    }
+    } catch { toast.error('Error al guardar') }
+    finally { setSaving(false) }
   }
 
   const handleDelete = async (dealId: string) => {
@@ -115,89 +92,75 @@ export default function PipelinePage() {
     await deleteDeal(profile.orgId, dealId)
     setDeals(prev => prev.filter(d => d.id !== dealId))
     setShowForm(false)
-    toast.success('Oportunidad eliminada')
+    toast.success('Eliminada')
   }
 
-  const totalPipeline = deals
-    .filter(d => d.stage !== 'closed_lost')
-    .reduce((s, d) => s + (d.value ?? 0), 0)
+  const totalPipeline = deals.filter(d => d.stage !== 'closed_lost').reduce((s, d) => s + (d.value ?? 0), 0)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pipeline de ventas</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {deals.length} oportunidades · ${totalPipeline.toLocaleString()} en pipeline
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Pipeline</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            {deals.length} oportunidades · <span className="text-blue-600 font-bold">${totalPipeline.toLocaleString()}</span> en pipeline
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors self-start sm:self-auto"
-        >
-          <Plus size={18} /> Nueva oportunidad
+        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105 self-start sm:self-auto">
+          <Plus size={17} /> Nueva oportunidad
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-gray-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {stages.map(stage => {
             const stageDeals = deals.filter(d => d.stage === stage.id)
             const total = stageDeals.reduce((s, d) => s + (d.value ?? 0), 0)
-
             return (
               <div
                 key={stage.id}
-                className="flex-shrink-0 w-72 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden"
+                className="flex-shrink-0 w-72 bg-slate-100 dark:bg-slate-900/50 rounded-2xl overflow-hidden"
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); if (dragDeal) handleDrop(stage.id, dragDeal) }}
               >
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
-                    <span className="font-semibold text-gray-800 text-sm">{stage.name}</span>
-                    <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full">{stageDeals.length}</span>
+                    <span className="font-black text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{stage.name}</span>
+                    <span className="bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full font-bold">{stageDeals.length}</span>
                   </div>
-                  {total > 0 && <span className="text-xs text-gray-400">${total.toLocaleString()}</span>}
+                  {total > 0 && <span className="text-xs font-bold text-slate-400">${total.toLocaleString()}</span>}
                 </div>
 
-                <div className="p-3 space-y-3 min-h-32">
+                <div className="p-3 space-y-2 min-h-32">
                   {stageDeals.map(deal => (
                     <div
                       key={deal.id}
                       draggable
                       onDragStart={() => setDragDeal(deal.id)}
                       onDragEnd={() => setDragDeal(null)}
-                      className="bg-white border border-gray-200 rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-gray-300 hover:shadow-sm transition-all group"
+                      className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-md transition-all group"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-900 flex-1">{getClientName(deal.clientId)}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white flex-1">{getClientName(deal.clientId)}</p>
                         <div className="flex items-center gap-0.5">
-                          {/* Mobile: move button */}
-                          <button
-                            onClick={() => setMoveDeal(deal)}
-                            className="sm:hidden p-1 text-gray-400 hover:text-gray-700 rounded transition-all"
-                            title="Mover a otra etapa"
-                          >
+                          <button onClick={() => setMoveDeal(deal)} className="sm:hidden p-1 text-slate-400 hover:text-blue-600 rounded transition-all">
                             <ArrowRight size={13} />
                           </button>
-                          <button
-                            onClick={() => openEdit(deal)}
-                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-700 rounded transition-all"
-                          >
+                          <button onClick={() => openEdit(deal)} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-slate-400 hover:text-blue-600 rounded transition-all">
                             <Pencil size={13} />
                           </button>
                         </div>
                       </div>
                       {deal.value !== undefined && (
-                        <p className="text-xs font-semibold text-gray-700 mt-1">${deal.value.toLocaleString()}</p>
+                        <p className="text-xs font-black text-blue-600 mt-1">${deal.value.toLocaleString()}</p>
                       )}
                       {deal.notes && (
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">{deal.notes}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 line-clamp-2">{deal.notes}</p>
                       )}
                     </div>
                   ))}
@@ -208,27 +171,20 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Mobile move stage modal */}
       {moveDeal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setMoveDeal(null)}>
-          <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-sm">Mover a etapa</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{getClientName(moveDeal.clientId)}</p>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setMoveDeal(null)}>
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-black text-slate-900 dark:text-white text-sm">Mover a etapa</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{getClientName(moveDeal.clientId)}</p>
             </div>
             <div className="p-2">
               {stages.map(stage => (
-                <button
-                  key={stage.id}
-                  onClick={() => handleMoveToStage(moveDeal, stage.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                    moveDeal.stage === stage.id ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-50 text-gray-800'
-                  }`}
-                  disabled={moveDeal.stage === stage.id}
-                >
+                <button key={stage.id} onClick={() => handleMoveToStage(moveDeal, stage.id)} disabled={moveDeal.stage === stage.id}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${moveDeal.stage === stage.id ? 'bg-slate-50 dark:bg-slate-800 text-slate-400' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
-                  <span className="text-sm font-medium flex-1">{stage.name}</span>
-                  {moveDeal.stage === stage.id && <span className="text-xs text-gray-400">Actual</span>}
+                  <span className="text-sm font-bold flex-1">{stage.name}</span>
+                  {moveDeal.stage === stage.id && <span className="text-xs text-slate-400">Actual</span>}
                 </button>
               ))}
             </div>
@@ -236,20 +192,14 @@ export default function PipelinePage() {
         </div>
       )}
 
-      <Modal
-        open={showForm}
-        onClose={() => setShowForm(false)}
-        title={editDeal ? 'Editar oportunidad' : 'Nueva oportunidad'}
-        size="sm"
-      >
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editDeal ? 'Editar oportunidad' : 'Nueva oportunidad'} size="sm">
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className={labelClass}>Cliente *</label>
             {editDeal ? (
-              <p className="text-gray-900 font-medium py-1">{getClientName(editDeal.clientId)}</p>
+              <p className="text-slate-900 dark:text-white font-bold py-1">{getClientName(editDeal.clientId)}</p>
             ) : (
-              <select required value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}
-                className={inputClass}>
+              <select required value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))} className={inputClass}>
                 <option value="">Seleccionar cliente</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -257,34 +207,25 @@ export default function PipelinePage() {
           </div>
           <div>
             <label className={labelClass}>Etapa</label>
-            <select value={form.stage} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))}
-              className={inputClass}>
+            <select value={form.stage} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))} className={inputClass}>
               {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
             <label className={labelClass}>Valor estimado ($)</label>
-            <input type="number" min="0" step="0.01" value={form.value}
-              onChange={e => setForm(f => ({ ...f, value: e.target.value }))}
-              className={inputClass} placeholder="0.00" />
+            <input type="number" min="0" step="0.01" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className={inputClass} placeholder="0.00" />
           </div>
           <div>
             <label className={labelClass}>Notas</label>
-            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              rows={2} className={`${inputClass} resize-none`} />
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={`${inputClass} resize-none`} />
           </div>
           <div className="flex gap-3 pt-1">
             {editDeal && (
-              <button
-                type="button"
-                onClick={() => handleDelete(editDeal.id)}
-                className="flex items-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg text-sm transition-colors"
-              >
+              <button type="button" onClick={() => handleDelete(editDeal.id)} className="flex items-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm font-bold transition-colors">
                 <Trash2 size={15} /> Eliminar
               </button>
             )}
-            <button type="submit" disabled={saving}
-              className="flex-1 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+            <button type="submit" disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
               {saving ? 'Guardando...' : editDeal ? 'Guardar cambios' : 'Crear oportunidad'}
             </button>
           </div>

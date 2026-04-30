@@ -15,8 +15,7 @@ interface ModalProps {
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md', variant = 'light' }: ModalProps) {
   useEffect(() => {
-    if (open) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
+    document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
 
@@ -32,17 +31,17 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   const isDark = variant === 'dark'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60">
-      <div className={`w-full ${sizeClass} ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border rounded-t-2xl sm:rounded-xl shadow-xl flex flex-col max-h-[92svh] sm:max-h-[90vh]`}>
-        <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-          <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
-          <button onClick={onClose} className={`transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
-            <X size={20} />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-sm">
+      <div className={`w-full ${sizeClass} border rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92svh] sm:max-h-[90vh] ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+        <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
+          <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{title}</h2>
+          <button onClick={onClose} className={`p-1.5 rounded-xl transition-colors ${isDark ? 'text-slate-500 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+            <X size={18} />
           </button>
         </div>
         <div className="p-6 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className={`px-6 py-4 border-t shrink-0 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`px-6 py-4 border-t shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
             {footer}
           </div>
         )}

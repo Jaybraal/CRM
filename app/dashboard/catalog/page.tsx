@@ -9,8 +9,8 @@ import Modal from '@/components/ui/Modal'
 import { Plus, Pencil, Trash2, ShoppingBag, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const inputClass = 'w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-gray-900 focus:outline-none focus:border-gray-500 text-sm'
-const labelClass = 'block text-xs font-medium text-gray-600 mb-1'
+const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
 
 const emptyForm = { title: '', description: '', price: '', available: true, photos: [] as string[], specs: {} as Record<string, string> }
 
@@ -118,14 +118,14 @@ export default function CatalogPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Catálogo</h1>
-          <p className="text-gray-500 text-sm mt-1">{items.length} producto{items.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Catálogo</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{items.length} producto{items.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Link público */}
           <button
             onClick={copyPublicLink}
-            className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-sm transition-colors"
           >
             {copiedLink ? <Copy size={16} className="text-green-500" /> : <Copy size={16} />}
             {copiedLink ? 'Copiado' : 'Link público'}
@@ -134,14 +134,14 @@ export default function CatalogPage() {
             href={publicUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-sm transition-colors"
           >
             <ExternalLink size={16} /> Ver catálogo
           </a>
           {canEdit && (
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all"
             >
               <Plus size={18} /> Nuevo producto
             </button>
@@ -152,15 +152,15 @@ export default function CatalogPage() {
       {/* Grid de productos */}
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-16 text-center">
-          <ShoppingBag size={40} className="mx-auto text-gray-300 mb-4" />
-          <p className="font-medium text-gray-700">Sin productos todavía</p>
-          <p className="text-sm text-gray-400 mt-1">Agrega tu primer producto al catálogo</p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-16 text-center">
+          <ShoppingBag size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+          <p className="font-bold text-slate-700 dark:text-slate-300">Sin productos todavía</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Agrega tu primer producto al catálogo</p>
           {canEdit && (
-            <button onClick={openCreate} className="mt-4 inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm">
+            <button onClick={openCreate} className="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all">
               <Plus size={16} /> Agregar producto
             </button>
           )}
@@ -168,20 +168,20 @@ export default function CatalogPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {items.map(item => (
-            <div key={item.id} className={`bg-white border rounded-xl overflow-hidden transition-all hover:shadow-md ${item.available ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+            <div key={item.id} className={`bg-white dark:bg-slate-900 border rounded-2xl overflow-hidden transition-all hover:shadow-md ${item.available ? 'border-slate-100 dark:border-slate-800' : 'border-slate-100 dark:border-slate-800 opacity-60'}`}>
               {/* Foto */}
-              <div className="aspect-square bg-gray-50 relative">
+              <div className="aspect-square bg-slate-50 dark:bg-slate-800 relative">
                 {item.photos.length > 0 ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.photos[0]} alt={item.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <ShoppingBag size={32} className="text-gray-300" />
+                    <ShoppingBag size={32} className="text-slate-300 dark:text-slate-600" />
                   </div>
                 )}
                 {!item.available && (
-                  <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                    <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded-full font-medium">No disponible</span>
+                  <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/60 flex items-center justify-center">
+                    <span className="bg-slate-800 dark:bg-slate-700 text-white text-xs px-2 py-1 rounded-full font-bold">No disponible</span>
                   </div>
                 )}
                 {item.photos.length > 1 && (
@@ -193,35 +193,35 @@ export default function CatalogPage() {
 
               {/* Info */}
               <div className="p-3">
-                <p className="font-semibold text-gray-900 truncate">{item.title}</p>
+                <p className="font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
                 {item.description && (
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{item.description}</p>
                 )}
                 {item.price != null && (
-                  <p className="text-base font-bold text-gray-900 mt-2">
+                  <p className="text-base font-black text-slate-900 dark:text-white mt-2">
                     ${item.price.toLocaleString('es')}
                   </p>
                 )}
 
                 {/* Acciones */}
                 {canEdit && (
-                  <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <button
                       onClick={() => toggleAvailable(item)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     >
                       {item.available ? <EyeOff size={13} /> : <Eye size={13} />}
                       {item.available ? 'Ocultar' : 'Mostrar'}
                     </button>
                     <button
                       onClick={() => openEdit(item)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     >
                       <Pencil size={13} /> Editar
                     </button>
                     <button
                       onClick={() => handleDelete(item)}
-                      className="flex items-center justify-center p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="flex items-center justify-center p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -242,11 +242,11 @@ export default function CatalogPage() {
         footer={
           <div className="flex gap-2">
             <button type="button" onClick={() => setShowForm(false)}
-              className="flex-1 py-2 border border-gray-200 text-gray-600 rounded text-xs hover:bg-gray-50 transition-colors">
+              className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs transition-colors">
               Cancelar
             </button>
             <button form="catalog-form" type="submit" disabled={saving}
-              className="flex-1 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded text-xs font-medium transition-colors">
+              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 transition-all">
               {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
             </button>
           </div>
@@ -284,12 +284,12 @@ export default function CatalogPage() {
             <div>
               <label className={labelClass}>Precio</label>
               <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs">$</span>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  className={inputClass + ' pl-6'}
+                  className={inputClass + ' pl-7'}
                   value={form.price}
                   onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
                   placeholder="0"
@@ -301,7 +301,7 @@ export default function CatalogPage() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, available: !f.available }))}
-                className={`w-full h-7 rounded transition-colors flex items-center justify-center text-xs font-medium ${form.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                className={`w-full h-10 rounded-xl transition-colors flex items-center justify-center text-xs font-bold ${form.available ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
               >
                 {form.available ? 'Sí' : 'No'}
               </button>

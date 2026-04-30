@@ -10,21 +10,21 @@ import ServiceWorkerRegister from '@/components/ui/ServiceWorkerRegister'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '1CRM',
-  description: 'Sistema CRM profesional con WhatsApp integrado',
+  title: 'NEXO CRM',
+  description: 'Sistema CRM profesional multi-negocio con WhatsApp integrado',
   manifest: '/manifest.json',
   other: {
     'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-status-bar-style': 'default',
-    'apple-mobile-web-app-title': '1CRM',
+    'apple-mobile-web-app-title': 'NEXO CRM',
   },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-white text-gray-900 antialiased`}>
+      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
         <AuthProvider>
           <ServiceWorkerRegister />
           {children}

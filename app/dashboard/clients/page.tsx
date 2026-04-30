@@ -183,13 +183,13 @@ export default function ClientsPage() {
 
       {/* ── Left panel: contact list ─────────────────────────────── */}
       <div className={`
-        flex-col w-full lg:w-80 xl:w-96 bg-white border-r border-gray-200 flex-shrink-0
+        flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-shrink-0
         ${showMobileChat ? 'hidden lg:flex' : 'flex'}
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-gray-900 text-base">Chats</h1>
+            <h1 className="font-bold text-slate-900 dark:text-white text-base">Chats</h1>
             {totalUnread > 0 && (
               <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                 {totalUnread > 99 ? '99+' : totalUnread}
@@ -199,39 +199,41 @@ export default function ClientsPage() {
           <div className="flex items-center gap-0.5">
             <button onClick={() => importRef.current?.click()} disabled={importing}
               title="Importar CSV"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               <Upload size={16} />
             </button>
             <button onClick={exportCSV} title="Exportar CSV"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               <Download size={16} />
             </button>
             <button onClick={() => setShowForm(true)} title="Nuevo cliente"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               <Plus size={16} />
             </button>
           </div>
         </div>
 
         {/* Search */}
-        <div className="px-3 py-2 border-b border-gray-100">
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               placeholder="Buscar contacto..."
-              className="w-full pl-8 pr-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-gray-200 transition-colors"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:bg-slate-200 dark:focus:bg-slate-700 transition-colors"
             />
           </div>
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1.5 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-slate-800 overflow-x-auto scrollbar-none">
           {[{ value: '', label: 'Todos' }, { value: '__unread__', label: '● No leídos' }, ...clientStatuses].map(s => (
             <button key={s.value} onClick={() => handleFilterChange(s.value)}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
-                filterStatus === s.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filterStatus === s.value
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}>
               {s.label}
             </button>
@@ -242,10 +244,10 @@ export default function ClientsPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">
               {search ? 'Sin resultados' : 'No hay contactos'}
             </div>
           ) : (
@@ -253,15 +255,15 @@ export default function ClientsPage() {
               <button
                 key={client.id}
                 onClick={() => handleSelectClient(client)}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-50 text-left ${
-                  selectedId === client.id ? 'bg-[#f0f2f5]' : ''
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-left ${
+                  selectedId === client.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                 }`}
               >
                 {/* Avatar */}
                 <div className="relative">
                   <Avatar name={client.name} size={46} />
                   {client.categoryId && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900"
                       style={{ backgroundColor: getCategoryColor(client.categoryId) }} />
                   )}
                 </div>
@@ -269,29 +271,29 @@ export default function ClientsPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-gray-900' : 'text-gray-700'}`}>{client.name}</span>
+                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{client.name}</span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {(client.unreadCount ?? 0) > 0 ? (
                         <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                           {client.unreadCount! > 99 ? '99+' : client.unreadCount}
                         </span>
                       ) : client.lastMessageAt ? (
-                        <span className="text-[10px] text-gray-400">{formatLastTime(client.lastMessageAt)}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{formatLastTime(client.lastMessageAt)}</span>
                       ) : null}
                     </div>
                   </div>
                   {/* Preview último mensaje (estilo inbox) */}
-                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
                     {client.lastMessage || getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
                   </p>
                   {/* Teléfono secundario solo si hay lastMessage */}
                   {client.lastMessage && (
-                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
                       {getDisplayPhone(client) || (client.isLid ? 'Número privado' : '')}
                     </p>
                   )}
                   {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
-                    <p className="text-[10px] text-gray-400 truncate">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
                       {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
                     </p>
                   )}
@@ -304,7 +306,7 @@ export default function ClientsPage() {
         {filtered.length > visibleCount && (
           <button
             onClick={() => setVisibleCount(v => v + 50)}
-            className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100">
+            className="w-full py-3 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-t border-slate-100 dark:border-slate-800">
             Ver más ({filtered.length - visibleCount} restantes)
           </button>
         )}
@@ -319,16 +321,16 @@ export default function ClientsPage() {
         {selectedClient ? (
           <>
             {/* Chat header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
               <button
                 onClick={() => setShowMobileChat(false)}
-                className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+                className="lg:hidden p-1.5 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <ArrowLeft size={20} />
               </button>
               <Avatar name={selectedClient.name} size={38} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{selectedClient.name}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white text-sm leading-tight truncate">{selectedClient.name}</p>
                   <select
                     value={selectedClient.status}
                     onChange={async (e) => {
@@ -339,7 +341,7 @@ export default function ClientsPage() {
                         setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
                       } catch { toast.error('Error al cambiar estado') }
                     }}
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-gray-600 focus:outline-none focus:border-gray-400 cursor-pointer"
+                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 cursor-pointer"
                     style={{ maxWidth: '100px' }}
                   >
                     {clientStatuses.map(s => (
@@ -347,13 +349,13 @@ export default function ClientsPage() {
                     ))}
                   </select>
                 </div>
-                <p className="text-xs text-gray-500 leading-tight mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
                   {getDisplayPhone(selectedClient) || (selectedClient.isLid ? 'Número privado' : 'Sin teléfono')}
                 </p>
               </div>
               <Link
                 href={`/dashboard/clients/${selectedClient.id}`}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
                 title="Ver perfil completo">
                 <User size={18} />
               </Link>
@@ -366,14 +368,14 @@ export default function ClientsPage() {
           </>
         ) : (
           /* Empty state */
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-400 select-none">
-            <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-5">
-              <MessageCircle size={40} className="text-gray-300" />
+          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 select-none">
+            <div className="w-24 h-24 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5">
+              <MessageCircle size={40} className="text-slate-300 dark:text-slate-600" />
             </div>
-            <p className="font-semibold text-gray-500 text-lg">Bienvenido a Chats</p>
-            <p className="text-sm mt-1.5 text-gray-400">Selecciona un contacto para abrir la conversación</p>
+            <p className="font-semibold text-slate-500 dark:text-slate-400 text-lg">Bienvenido a Chats</p>
+            <p className="text-sm mt-1.5 text-slate-400 dark:text-slate-500">Selecciona un contacto para abrir la conversación</p>
             <button onClick={() => setShowForm(true)}
-              className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-full transition-colors">
+              className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
               <Plus size={16} /> Nuevo contacto
             </button>
           </div>

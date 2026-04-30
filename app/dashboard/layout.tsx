@@ -2,6 +2,7 @@
 
 import AuthGuard from '@/components/auth/AuthGuard'
 import Sidebar from '@/components/layout/Sidebar'
+import TopBar from '@/components/layout/TopBar'
 import { useNotifications } from '@/hooks/useNotifications'
 import { usePathname } from 'next/navigation'
 
@@ -12,21 +13,27 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
   if (isFullHeightPage) {
     return (
-      <div className="flex bg-gray-50" style={{ height: '100dvh' }}>
+      <div className="flex bg-slate-50 dark:bg-slate-950" style={{ height: '100dvh' }}>
         <Sidebar />
-        <main className="flex-1 min-w-0 lg:ml-64 pt-16 lg:pt-0 overflow-hidden flex flex-col">
-          {children}
-        </main>
+        <div className="flex-1 min-w-0 lg:ml-72 pt-16 lg:pt-0 flex flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-hidden flex flex-col">
+            {children}
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
       <Sidebar />
-      <main className="flex-1 min-w-0 lg:ml-64 pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8 overflow-x-hidden">
-        {children}
-      </main>
+      <div className="flex-1 min-w-0 lg:ml-72 pt-16 lg:pt-0 flex flex-col">
+        <TopBar />
+        <main className="flex-1 px-4 pb-6 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
