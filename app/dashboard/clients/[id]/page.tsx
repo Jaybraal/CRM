@@ -281,11 +281,7 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Tabs */}
-<<<<<<< HEAD
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-=======
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit flex-wrap">
->>>>>>> origin/main
         <button onClick={() => setTab('chat')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'chat' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
           <MessageCircle size={15} /> Chat
