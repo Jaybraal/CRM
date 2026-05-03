@@ -6,8 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Users, FolderKanban, LayoutDashboard, Tag,
   CheckSquare, Settings, LogOut, ShieldCheck, Menu, X,
-  Send, BarChart3, CalendarDays, Instagram, ShoppingBag,
-  MessageSquare, Building2
+  Send, BarChart3, CalendarDays, Instagram, ShoppingBag, Building2
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -22,7 +21,6 @@ type NavItem = {
 const NAV_GROUPS: NavItem[][] = [
   [
     { href: '/dashboard',            label: 'Dashboard',   icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/inbox',      label: 'Bandeja',     icon: MessageSquare,   roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
     { href: '/dashboard/clients',    label: 'Clientes',    icon: Users,           roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
     { href: '/dashboard/pipeline',   label: 'Pipeline',    icon: FolderKanban,    roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
     { href: '/dashboard/tasks',      label: 'Tareas',      icon: CheckSquare,     roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
