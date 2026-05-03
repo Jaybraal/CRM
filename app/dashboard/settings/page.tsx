@@ -11,7 +11,7 @@ import InstagramConnect from '@/components/settings/InstagramConnect'
 import {
   Building2, MessageCircle, Instagram, Copy, CheckCircle, Plus, Trash2,
   GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag,
-  Webhook as WebhookIcon, CreditCard, FormInput, ExternalLink
+  Webhook as WebhookIcon, CreditCard, FormInput, ExternalLink, Clock
 } from 'lucide-react'
 
 const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
@@ -92,6 +92,8 @@ export default function SettingsPage() {
   const [savingForm, setSavingForm] = useState(false)
   const [cleaningPhones, setCleaningPhones] = useState(false)
   const [cleaningFakes, setCleaningFakes] = useState(false)
+  const [businessHours, setBusinessHours] = useState({ days: [1, 2, 3, 4, 5], openTime: '08:00', closeTime: '18:00', slotMinutes: 60 })
+  const [savingBusinessHours, setSavingBusinessHours] = useState(false)
 
   const DEFAULT_STAGES: PipelineStage[] = [
     { id: 'new', name: 'Nuevo', order: 0, color: '#6b7280' },
@@ -137,6 +139,7 @@ export default function SettingsPage() {
         setAutoReply({ enabled: o.settings.autoReply?.enabled || false, message: o.settings.autoReply?.message || '' })
         setWindowMsg({ enabled: o.settings.windowMessage?.enabled || false, message: o.settings.windowMessage?.message || '', delayHours: o.settings.windowMessage?.delayHours ?? 23 })
         setQualForm({ enabled: o.settings.qualificationForm?.enabled || false, questions: o.settings.qualificationForm?.questions || [], completionMessage: o.settings.qualificationForm?.completionMessage || '' })
+        if (o.settings.businessHours) setBusinessHours(o.settings.businessHours as typeof businessHours)
       }
       setTemplates(tmpl)
     }).catch(e => console.error(e)).finally(() => setLoading(false))
@@ -147,6 +150,16 @@ export default function SettingsPage() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Error desconocido')
     return data
+  }
+
+  const handleSaveBusinessHours = async () => {
+    if (!profile?.orgId) return
+    setSavingBusinessHours(true)
+    try {
+      await callApi({ action: 'save_business_hours', ...businessHours })
+      toast.success('Horario guardado')
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error') }
+    finally { setSavingBusinessHours(false) }
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -317,44 +330,117 @@ export default function SettingsPage() {
 
       {/* ── GENERAL ─────────────────────────────────────── */}
       {activeTab === 'general' && (
-        <form onSubmit={handleSave} className="space-y-4">
-          <Card>
-            <SectionHeader icon={Building2} title="Información de la organización" />
-            <div>
-              <label className={labelClass}>Nombre de la organización</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} placeholder="Mi empresa" />
-            </div>
-            <div>
-              <label className={labelClass}>Industria / Sector</label>
-              <input value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} className={inputClass} placeholder="Ej: Agencia de vehículos, Inmobiliaria..." />
-            </div>
-            <div>
-              <label className={labelClass}>Número de WhatsApp del negocio</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+</span>
-                <input value={form.whatsappNumber} onChange={e => setForm(f => ({ ...f, whatsappNumber: e.target.value.replace(/\D/g, '') }))} className={inputClass + ' pl-6'} placeholder="5491112345678" />
+        <div className="space-y-4">
+          <form onSubmit={handleSave} className="space-y-4">
+            <Card>
+              <SectionHeader icon={Building2} title="Información de la organización" />
+              <div>
+                <label className={labelClass}>Nombre de la organización</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} placeholder="Mi empresa" />
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Código de país + número, sin espacios ni +</p>
+              <div>
+                <label className={labelClass}>Industria / Sector</label>
+                <input value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} className={inputClass} placeholder="Ej: Agencia de vehículos, Inmobiliaria..." />
+              </div>
+              <div>
+                <label className={labelClass}>Número de WhatsApp del negocio</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+</span>
+                  <input value={form.whatsappNumber} onChange={e => setForm(f => ({ ...f, whatsappNumber: e.target.value.replace(/\D/g, '') }))} className={inputClass + ' pl-6'} placeholder="5491112345678" />
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Código de país + número, sin espacios ni +</p>
+              </div>
+              <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
+                {saving ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </Card>
+
+            {/* Plan */}
+            <Card>
+              <SectionHeader icon={CreditCard} title="Plan actual" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-black text-slate-900 dark:text-white capitalize">{org?.plan || 'Trial'}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Para cambiar de plan contacta al administrador</p>
+                </div>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-3 py-1 rounded-full font-bold capitalize border border-slate-200 dark:border-slate-700">
+                  {org?.plan}
+                </span>
+              </div>
+            </Card>
+          </form>
+
+          {/* Horario de Atención */}
+          <Card>
+            <SectionHeader icon={Clock} title="Horario de atención" desc="Define los días y horas en que se aceptan citas desde tu web" />
+            <div>
+              <label className={labelClass}>Días disponibles</label>
+              <div className="flex flex-wrap gap-2">
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d, i) => {
+                  const active = businessHours.days.includes(i)
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setBusinessHours(prev => ({
+                        ...prev,
+                        days: active ? prev.days.filter(x => x !== i) : [...prev.days, i].sort(),
+                      }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                        active
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
-              {saving ? 'Guardando...' : 'Guardar cambios'}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Hora apertura</label>
+                <input
+                  type="time"
+                  value={businessHours.openTime}
+                  onChange={e => setBusinessHours(prev => ({ ...prev, openTime: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Hora cierre</label>
+                <input
+                  type="time"
+                  value={businessHours.closeTime}
+                  onChange={e => setBusinessHours(prev => ({ ...prev, closeTime: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Duración de cada cita</label>
+              <select
+                value={businessHours.slotMinutes}
+                onChange={e => setBusinessHours(prev => ({ ...prev, slotMinutes: Number(e.target.value) }))}
+                className={inputClass}
+              >
+                <option value={30}>30 minutos</option>
+                <option value={60}>1 hora</option>
+                <option value={90}>1.5 horas</option>
+                <option value={120}>2 horas</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveBusinessHours}
+              disabled={savingBusinessHours}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors"
+            >
+              {savingBusinessHours ? 'Guardando...' : 'Guardar horario'}
             </button>
           </Card>
-
-          {/* Plan */}
-          <Card>
-            <SectionHeader icon={CreditCard} title="Plan actual" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-black text-slate-900 dark:text-white capitalize">{org?.plan || 'Trial'}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Para cambiar de plan contacta al administrador</p>
-              </div>
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-3 py-1 rounded-full font-bold capitalize border border-slate-200 dark:border-slate-700">
-                {org?.plan}
-              </span>
-            </div>
-          </Card>
-        </form>
+        </div>
       )}
 
       {/* ── CONEXIONES ──────────────────────────────────── */}

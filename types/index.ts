@@ -55,6 +55,12 @@ export interface Organization {
       message: string
       delayHours: number  // horas desde el primer mensaje del cliente
     }
+    businessHours?: {
+      days: number[]       // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+      openTime: string     // "08:00"
+      closeTime: string    // "18:00"
+      slotMinutes: number  // 30 | 60
+    }
   }
 }
 

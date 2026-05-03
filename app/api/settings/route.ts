@@ -107,6 +107,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'save_business_hours') {
+      const { days, openTime, closeTime, slotMinutes } = body
+      await adminDb.doc(`organizations/${orgId}`).set(
+        { settings: { businessHours: { days, openTime, closeTime, slotMinutes: Number(slotMinutes) || 60 } } },
+        { merge: true }
+      )
+      return NextResponse.json({ ok: true })
+    }
+
     if (action === 'save_ig_tokens') {
       const { ig_token, ig_page_id } = body
       if (!ig_token || !ig_page_id) return NextResponse.json({ error: 'Faltan ig_token o ig_page_id' }, { status: 400 })
