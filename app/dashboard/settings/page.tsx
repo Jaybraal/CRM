@@ -335,6 +335,21 @@ export default function SettingsPage() {
             <Card>
               <SectionHeader icon={Building2} title="Información de la organización" />
               <div>
+                <label className={labelClass}>ID de organización</label>
+                <div className="flex items-center gap-2">
+                  <input readOnly value={profile?.orgId || ''} className={inputClass + ' font-mono text-xs text-slate-500 cursor-default select-all'} />
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(profile?.orgId || ''); toast.success('ID copiado') }}
+                    className="flex-shrink-0 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                    title="Copiar ID"
+                  >
+                    <Copy size={14} className="text-slate-500" />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Úsalo en musaweb como NEXT_PUBLIC_CRM_ORG_ID</p>
+              </div>
+              <div>
                 <label className={labelClass}>Nombre de la organización</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} placeholder="Mi empresa" />
               </div>
