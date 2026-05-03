@@ -4,6 +4,28 @@ import { adminDb } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
+// GET /api/settings?orgId=X&action=get_ig_status
+export async function GET(req: NextRequest) {
+  try {
+    const orgId = req.nextUrl.searchParams.get('orgId')
+    const action = req.nextUrl.searchParams.get('action')
+
+    if (!orgId) return NextResponse.json({ error: 'orgId requerido' }, { status: 400 })
+
+    if (action === 'get_ig_status') {
+      const snap = await adminDb.doc(`org_tokens/${orgId}`).get()
+      const data = snap.exists ? snap.data() : null
+      const configured = !!(data?.ig_token && data?.ig_page_id && data.ig_token !== '' && data.ig_page_id !== '')
+      return NextResponse.json({ configured })
+    }
+
+    return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
 // POST /api/settings — guardar plantilla o respuesta automática
 export async function POST(req: NextRequest) {
   try {

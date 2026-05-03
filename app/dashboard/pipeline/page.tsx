@@ -18,7 +18,7 @@ const DEFAULT_STAGES: PipelineStage[] = [
 
 const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
 const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
-const emptyForm = { clientId: '', stage: 'new', value: '', notes: '' }
+const emptyForm = { clientId: '', stage: 'new', value: '', probability: '', closeDate: '', notes: '' }
 
 export default function PipelinePage() {
   const { profile } = useAuth()
@@ -30,7 +30,7 @@ export default function PipelinePage() {
   const [editDeal, setEditDeal] = useState<Deal | null>(null)
   const [dragDeal, setDragDeal] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState<{ clientId: string; stage: string; value: string; probability: string; closeDate: string; notes: string }>(emptyForm)
   const [moveDeal, setMoveDeal] = useState<Deal | null>(null)
 
   const load = async () => {
@@ -50,7 +50,17 @@ export default function PipelinePage() {
 
   const openEdit = (deal: Deal) => {
     setEditDeal(deal)
-    setForm({ clientId: deal.clientId, stage: deal.stage, value: deal.value?.toString() || '', notes: deal.notes || '' })
+    const closeDateStr = deal.closeDate
+      ? (() => { const d = deal.closeDate instanceof Date ? deal.closeDate : new Date((deal.closeDate as unknown as { seconds: number }).seconds * 1000); return d.toISOString().slice(0, 10) })()
+      : ''
+    setForm({
+      clientId: deal.clientId,
+      stage: deal.stage,
+      value: deal.value?.toString() || '',
+      probability: deal.probability?.toString() || '',
+      closeDate: closeDateStr,
+      notes: deal.notes || '',
+    })
     setShowForm(true)
   }
 
@@ -75,10 +85,24 @@ export default function PipelinePage() {
     setSaving(true)
     try {
       if (editDeal) {
-        await updateDeal(profile.orgId, editDeal.id, { stage: form.stage, value: form.value ? parseFloat(form.value) : undefined, notes: form.notes })
+        await updateDeal(profile.orgId, editDeal.id, {
+          stage: form.stage,
+          value: form.value ? parseFloat(form.value) : undefined,
+          probability: form.probability ? parseInt(form.probability) : undefined,
+          closeDate: form.closeDate ? new Date(form.closeDate) as unknown as Date : undefined,
+          notes: form.notes,
+        })
         toast.success('Oportunidad actualizada')
       } else {
-        await createDeal(profile.orgId, { clientId: form.clientId, stage: form.stage, value: form.value ? parseFloat(form.value) : undefined, notes: form.notes, assignedTo: profile.uid })
+        await createDeal(profile.orgId, {
+          clientId: form.clientId,
+          stage: form.stage,
+          value: form.value ? parseFloat(form.value) : undefined,
+          probability: form.probability ? parseInt(form.probability) : undefined,
+          closeDate: form.closeDate ? new Date(form.closeDate) as unknown as Date : undefined,
+          notes: form.notes,
+          assignedTo: profile.uid,
+        })
         toast.success('Oportunidad creada')
       }
       setShowForm(false)
@@ -156,9 +180,19 @@ export default function PipelinePage() {
                           </button>
                         </div>
                       </div>
-                      {deal.value !== undefined && (
-                        <p className="text-xs font-black text-blue-600 mt-1">${deal.value.toLocaleString()}</p>
-                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {deal.value !== undefined && (
+                          <p className="text-xs font-black text-blue-600">${deal.value.toLocaleString()}</p>
+                        )}
+                        {deal.probability !== undefined && (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{deal.probability}%</span>
+                        )}
+                        {deal.closeDate && (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
+                            {(() => { const d = deal.closeDate instanceof Date ? deal.closeDate : new Date((deal.closeDate as unknown as {seconds:number}).seconds*1000); return d.toLocaleDateString('es',{day:'numeric',month:'short'}) })()}
+                          </span>
+                        )}
+                      </div>
                       {deal.notes && (
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 line-clamp-2">{deal.notes}</p>
                       )}
@@ -176,7 +210,7 @@ export default function PipelinePage() {
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-black text-slate-900 dark:text-white text-sm">Mover a etapa</h3>
-              <p className="text-xs text-slate-500 mt-0.5">{getClientName(moveDeal.clientId)}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{getClientName(moveDeal.clientId)}</p>
             </div>
             <div className="p-2">
               {stages.map(stage => (
@@ -211,9 +245,19 @@ export default function PipelinePage() {
               {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Valor estimado ($)</label>
+              <input type="number" min="0" step="0.01" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className={inputClass} placeholder="0.00" />
+            </div>
+            <div>
+              <label className={labelClass}>Probabilidad (%)</label>
+              <input type="number" min="0" max="100" value={form.probability} onChange={e => setForm(f => ({ ...f, probability: e.target.value }))} className={inputClass} placeholder="0-100" />
+            </div>
+          </div>
           <div>
-            <label className={labelClass}>Valor estimado ($)</label>
-            <input type="number" min="0" step="0.01" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className={inputClass} placeholder="0.00" />
+            <label className={labelClass}>Fecha est. de cierre</label>
+            <input type="date" value={form.closeDate} onChange={e => setForm(f => ({ ...f, closeDate: e.target.value }))} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Notas</label>

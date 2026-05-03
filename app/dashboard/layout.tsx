@@ -13,7 +13,11 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
   if (isFullHeightPage) {
     return (
+<<<<<<< HEAD
       <div className="flex bg-slate-50 dark:bg-slate-950" style={{ height: '100dvh' }}>
+=======
+      <div className="flex bg-slate-50" style={{ height: '100dvh' }}>
+>>>>>>> origin/main
         <Sidebar />
         <div className="flex-1 min-w-0 lg:ml-72 pt-16 lg:pt-0 flex flex-col overflow-hidden">
           <TopBar />
@@ -26,7 +30,11 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
+<<<<<<< HEAD
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
+=======
+    <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
+>>>>>>> origin/main
       <Sidebar />
       <div className="flex-1 min-w-0 lg:ml-72 pt-16 lg:pt-0 flex flex-col">
         <TopBar />

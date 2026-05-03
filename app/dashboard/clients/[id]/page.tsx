@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers } from '@/lib/firestore'
+import { getClient, getOrganization, updateClient, getCategories, getTasks, getDeals, getOrgUsers, getEmailThreads } from '@/lib/firestore'
 import { collection, getDocs, getDoc, doc as firestoreDoc, orderBy, query, deleteField } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Client, Organization, Category, Task, Deal, Message, AppUser, ClientStatus } from '@/types'
+import type { Client, Organization, Category, Task, Deal, Message, AppUser, ClientStatus, EmailThread } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
-import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare, UserCheck } from 'lucide-react'
+import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare, UserCheck, Mail, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface TimelineEvent {
@@ -33,7 +33,10 @@ export default function ClientDetailPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [clientStatuses, setClientStatuses] = useState<ClientStatus[]>(DEFAULT_CLIENT_STATUSES)
   const [agents, setAgents] = useState<AppUser[]>([])
-  const [tab, setTab] = useState<'chat' | 'info' | 'activity'>('chat')
+  const [tab, setTab] = useState<'chat' | 'info' | 'activity' | 'email'>('chat')
+  const [emailThreads, setEmailThreads] = useState<EmailThread[]>([])
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '' })
+  const [sendingEmail, setSendingEmail] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [reassigning, setReassigning] = useState(false)
@@ -80,6 +83,9 @@ export default function ClientDetailPage() {
       }
       setLoading(false)
     }).catch(() => setLoading(false))
+
+    // Load email threads
+    getEmailThreads(profile.orgId, id).then(setEmailThreads).catch(() => {})
 
     // Load timeline data
     const loadTimeline = async () => {
@@ -176,6 +182,39 @@ export default function ClientDetailPage() {
     }
   }
 
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!client?.email) { toast.error('Este cliente no tiene email registrado'); return }
+    if (!profile?.orgId) return
+    setSendingEmail(true)
+    try {
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId: profile.orgId,
+          clientId: client.id,
+          toEmail: client.email,
+          toName: client.name,
+          subject: emailForm.subject,
+          body: emailForm.body,
+          fromName: profile.displayName,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Email enviado')
+      setEmailForm({ subject: '', body: '' })
+      setEmailThreads(prev => [{
+        id: Date.now().toString(), orgId: profile.orgId!, clientId: client.id,
+        subject: emailForm.subject, fromName: profile.displayName, fromEmail: '',
+        toEmail: client.email!, body: emailForm.body, direction: 'outbound', createdAt: new Date(),
+      }, ...prev])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al enviar email')
+    } finally { setSendingEmail(false) }
+  }
+
   const addTag = () => {
     const t = tagInput.trim()
     if (t && !form.tags.includes(t)) {
@@ -242,7 +281,11 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Tabs */}
+<<<<<<< HEAD
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+=======
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit flex-wrap">
+>>>>>>> origin/main
         <button onClick={() => setTab('chat')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'chat' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
           <MessageCircle size={15} /> Chat
@@ -250,6 +293,10 @@ export default function ClientDetailPage() {
         <button onClick={() => setTab('info')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'info' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
           <User size={15} /> Info
+        </button>
+        <button onClick={() => setTab('email')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+          <Mail size={15} /> Email
         </button>
         <button onClick={() => setTab('activity')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'activity' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
@@ -375,6 +422,61 @@ export default function ClientDetailPage() {
                 )
               })}
           </div>
+        </div>
+      )}
+
+      {tab === 'email' && (
+        <div className="space-y-4">
+          {!client.email && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+              Este cliente no tiene email. Añádelo en la pestaña Info.
+            </div>
+          )}
+          {/* Compose */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <h2 className="font-semibold text-gray-900 text-sm mb-4 flex items-center gap-2"><Send size={14} /> Nuevo email</h2>
+            <form onSubmit={handleSendEmail} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Para</label>
+                <input value={client.email || ''} disabled className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Asunto</label>
+                <input value={emailForm.subject} onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))} required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+                  placeholder="Asunto del email" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Mensaje</label>
+                <textarea value={emailForm.body} onChange={e => setEmailForm(f => ({ ...f, body: e.target.value }))} required rows={5}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-500 resize-none"
+                  placeholder="Escribe tu mensaje..." />
+              </div>
+              <button type="submit" disabled={sendingEmail || !client.email}
+                className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
+                <Send size={14} /> {sendingEmail ? 'Enviando...' : 'Enviar email'}
+              </button>
+            </form>
+          </div>
+          {/* Thread history */}
+          {emailThreads.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+              <h2 className="font-semibold text-gray-900 text-sm mb-1">Historial de emails</h2>
+              {emailThreads.map(t => {
+                const getD = (d: unknown): Date => d instanceof Date ? d : new Date((d as { seconds: number }).seconds * 1000)
+                return (
+                  <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.direction === 'outbound' ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-gray-900 truncate">{t.subject}</p>
+                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{getD(t.createdAt).toLocaleDateString('es', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                    <p className="text-xs text-gray-400">{t.direction === 'outbound' ? `De: ${t.fromName}` : `De: ${t.fromEmail}`}</p>
+                    <p className="text-xs text-gray-600 mt-1.5 line-clamp-2">{t.body}</p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

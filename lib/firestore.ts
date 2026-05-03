@@ -422,6 +422,105 @@ export async function deleteAppointment(orgId: string, appointmentId: string) {
   await deleteDoc(doc(db, 'organizations', orgId, 'appointments', appointmentId))
 }
 
+// --- Broadcast Campaigns ---
+import type { BroadcastCampaign, Webhook, WebhookEvent, CaptureForm, ActivityLog, EmailThread } from '@/types'
+
+export async function getCampaigns(orgId: string): Promise<BroadcastCampaign[]> {
+  const q = query(collection(db, 'organizations', orgId, 'campaigns'), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as BroadcastCampaign[]
+}
+
+export async function createCampaign(orgId: string, data: Omit<BroadcastCampaign, 'id' | 'orgId' | 'createdAt'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'campaigns'), {
+    ...data, orgId, createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateCampaign(orgId: string, id: string, data: Partial<BroadcastCampaign>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'campaigns', id), data)
+}
+
+// --- Webhooks ---
+export async function getWebhooks(orgId: string): Promise<Webhook[]> {
+  const q = query(collection(db, 'organizations', orgId, 'webhooks'), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as Webhook[]
+}
+
+export async function createWebhook(orgId: string, data: Omit<Webhook, 'id' | 'orgId' | 'createdAt'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'webhooks'), {
+    ...data, orgId, createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateWebhook(orgId: string, id: string, data: Partial<Webhook>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'webhooks', id), data)
+}
+
+export async function deleteWebhook(orgId: string, id: string) {
+  await deleteDoc(doc(db, 'organizations', orgId, 'webhooks', id))
+}
+
+// --- Capture Forms ---
+export async function getCaptureForms(orgId: string): Promise<CaptureForm[]> {
+  const q = query(collection(db, 'organizations', orgId, 'forms'), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as CaptureForm[]
+}
+
+export async function createCaptureForm(orgId: string, data: Omit<CaptureForm, 'id' | 'orgId' | 'createdAt' | 'submissionCount'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'forms'), {
+    ...data, orgId, submissionCount: 0, createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateCaptureForm(orgId: string, id: string, data: Partial<CaptureForm>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'forms', id), data)
+}
+
+export async function deleteCaptureForm(orgId: string, id: string) {
+  await deleteDoc(doc(db, 'organizations', orgId, 'forms', id))
+}
+
+export async function getCaptureFormPublic(orgId: string, formId: string): Promise<CaptureForm | null> {
+  const snap = await getDoc(doc(db, 'organizations', orgId, 'forms', formId))
+  if (!snap.exists()) return null
+  return { id: snap.id, ...snap.data() } as CaptureForm
+}
+
+// --- Activity Log ---
+export async function logActivity(orgId: string, data: Omit<ActivityLog, 'id' | 'orgId' | 'createdAt'>) {
+  await addDoc(collection(db, 'organizations', orgId, 'activity_log'), {
+    ...data, orgId, createdAt: serverTimestamp(),
+  })
+}
+
+export async function getActivityLog(orgId: string, limit_ = 100): Promise<ActivityLog[]> {
+  const q = query(collection(db, 'organizations', orgId, 'activity_log'), orderBy('createdAt', 'desc'), limit(limit_))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as ActivityLog[]
+}
+
+// --- Email threads ---
+export async function getEmailThreads(orgId: string, clientId: string): Promise<EmailThread[]> {
+  const q = query(
+    collection(db, 'organizations', orgId, 'clients', clientId, 'emails'),
+    orderBy('createdAt', 'desc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as EmailThread[]
+}
+
+export async function saveEmailThread(orgId: string, clientId: string, data: Omit<EmailThread, 'id' | 'orgId' | 'clientId' | 'createdAt'>) {
+  await addDoc(collection(db, 'organizations', orgId, 'clients', clientId, 'emails'), {
+    ...data, orgId, clientId, createdAt: serverTimestamp(),
+  })
+}
+
 export async function getAgentStats(orgId: string, uid: string, month: string): Promise<{ messagesSent: number; clientsHandled: number; dealsClosed: number; revenue: number }> {
   // Clients assigned
   const clientsQ = query(
