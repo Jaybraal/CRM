@@ -4,16 +4,28 @@ import { adminDb } from '@/lib/firebase-admin'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
-function corsHeaders() {
+function corsHeaders(allowedOrigin: string) {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders() })
+export async function OPTIONS(
+  req: NextRequest,
+  { params }: { params: Promise<{ orgId: string }> }
+) {
+  const { orgId } = await params
+  try {
+    const snap = await adminDb.doc(`organizations/${orgId}`).get()
+    const websiteUrl: string = (snap.data()?.settings?.websiteUrl || '').replace(/\/$/, '')
+    const origin = websiteUrl || req.headers.get('origin') || '*'
+    return new NextResponse(null, { status: 204, headers: corsHeaders(origin) })
+  } catch {
+    return new NextResponse(null, { status: 204, headers: corsHeaders('*') })
+  }
 }
 
 export async function POST(
@@ -21,6 +33,7 @@ export async function POST(
   { params }: { params: Promise<{ orgId: string }> }
 ) {
   const { orgId } = await params
+  const reqOrigin = req.headers.get('origin') || '*'
 
   try {
     const body = await req.json() as {
@@ -38,21 +51,31 @@ export async function POST(
     const { name, email, phone, whatsappPhone, vehicle, service, notes, date, time } = body
 
     if (!name?.trim() || !date || !time) {
-      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400, headers: corsHeaders() })
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos' },
+        { status: 400, headers: corsHeaders(reqOrigin) }
+      )
     }
 
     const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
     if (!orgSnap.exists) {
-      return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404, headers: corsHeaders() })
+      return NextResponse.json(
+        { error: 'Organización no encontrada' },
+        { status: 404, headers: corsHeaders(reqOrigin) }
+      )
     }
 
-    // Build notes combining vehicle and free notes
+    const settings = orgSnap.data()?.settings || {}
+    const websiteUrl: string = (settings.websiteUrl || '').replace(/\/$/, '')
+    const cors = corsHeaders(websiteUrl || reqOrigin)
+
+    // Build notes
     const noteParts: string[] = []
     if (vehicle?.trim()) noteParts.push(`Vehículo: ${vehicle.trim()}`)
     if (notes?.trim()) noteParts.push(notes.trim())
     const fullNotes = noteParts.join('\n')
 
-    // Create client contact
+    // Create client
     const clientRef = await adminDb.collection(`organizations/${orgId}/clients`).add({
       orgId,
       name: name.trim(),
@@ -70,16 +93,13 @@ export async function POST(
       updatedAt: FieldValue.serverTimestamp(),
     })
 
-    // Build appointment dates
-    const [h, m] = time.split(':').map(Number)
+    // Create appointment
     const startDate = new Date(`${date}T${time}:00`)
-    const endDate = new Date(startDate.getTime() + (orgSnap.data()?.settings?.businessHours?.slotMinutes || 60) * 60 * 1000)
-
-    const apptTitle = service?.trim() || 'Cita desde web'
+    const endDate = new Date(startDate.getTime() + (settings.businessHours?.slotMinutes || 60) * 60 * 1000)
 
     await adminDb.collection(`organizations/${orgId}/appointments`).add({
       orgId,
-      title: apptTitle,
+      title: service?.trim() || 'Cita desde web',
       description: fullNotes,
       clientId: clientRef.id,
       clientName: name.trim(),
@@ -89,7 +109,7 @@ export async function POST(
       createdAt: FieldValue.serverTimestamp(),
     })
 
-    // Fire new_client webhook (non-critical)
+    // Fire webhook (non-critical)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
     if (appUrl) {
       fetch(`${appUrl}/api/webhooks/trigger`, {
@@ -99,9 +119,9 @@ export async function POST(
       }).catch(() => {})
     }
 
-    return NextResponse.json({ ok: true, clientId: clientRef.id }, { headers: corsHeaders() })
+    return NextResponse.json({ ok: true, clientId: clientRef.id }, { headers: cors })
   } catch (e) {
     console.error('[book]', e)
-    return NextResponse.json({ error: String(e) }, { status: 500, headers: corsHeaders() })
+    return NextResponse.json({ error: String(e) }, { status: 500, headers: corsHeaders(reqOrigin) })
   }
 }

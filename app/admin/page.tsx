@@ -280,13 +280,14 @@ export default function AdminPage() {
     ownerName: '', ownerEmail: '', ownerPassword: '',
     durationDays: 30,
     waPhoneNumberId: '', waToken: '', igToken: '',
+    websiteUrl: '',
   })
 
   // Edit
   const [editOrg, setEditOrg] = useState<Organization | null>(null)
   const [editForm, setEditForm] = useState({
     name: '', industry: '', plan: 'trial' as Organization['plan'], durationDays: 0,
-    waPhoneNumberId: '', waToken: '', igToken: '',
+    waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: '',
   })
   const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
   const [loadingTokens, setLoadingTokens] = useState(false)
@@ -330,7 +331,7 @@ export default function AdminPage() {
           ownerId: '',
           plan: createForm.plan,
           accessExpiresAt,
-          settings: { catalogEnabled: false, industry: createForm.industry },
+          settings: { catalogEnabled: false, industry: createForm.industry, websiteUrl: createForm.websiteUrl.trim() },
         }),
       })
       const orgData = await orgRes.json()
@@ -376,7 +377,7 @@ export default function AdminPage() {
 
       toast.success(`"${createForm.orgName}" creada`)
       setShowCreate(false)
-      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30, waPhoneNumberId: '', waToken: '', igToken: '' })
+      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30, waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: '' })
       load()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
@@ -395,7 +396,7 @@ export default function AdminPage() {
       durationDays = Math.max(1, days)
     }
     setEditOrg(org)
-    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays, waPhoneNumberId: '', waToken: '', igToken: '' })
+    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays, waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: org.settings?.websiteUrl || '' })
 
     // Cargar tokens existentes
     setLoadingTokens(true)
@@ -426,6 +427,7 @@ export default function AdminPage() {
           name: editForm.name,
           plan: editForm.plan,
           'settings.industry': editForm.industry,
+          'settings.websiteUrl': editForm.websiteUrl.trim(),
           accessExpiresAt,
         }),
       })
@@ -567,6 +569,8 @@ export default function AdminPage() {
                 className={inputCls} placeholder="Nombre de la organización *" />
               <input autoComplete="off" value={createForm.industry} onChange={e => setCreateForm(f => ({ ...f, industry: e.target.value }))}
                 className={inputCls} placeholder="Industria (ej: Agencia de vehículos)" />
+              <input autoComplete="off" value={createForm.websiteUrl} onChange={e => setCreateForm(f => ({ ...f, websiteUrl: e.target.value }))}
+                className={inputCls} placeholder="URL del sitio web (ej: https://musaweb.up.railway.app)" />
               <select value={createForm.plan} onChange={e => setCreateForm(f => ({ ...f, plan: e.target.value as Organization['plan'] }))}
                 className={inputCls}>
                 <option value="trial">Trial</option>
@@ -627,6 +631,13 @@ export default function AdminPage() {
                 <input autoComplete="off" value={editForm.industry}
                   onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}
                   className={inputCls} placeholder="Industria" />
+              </div>
+              <div>
+                <label className={labelCls}>URL del sitio web vinculado</label>
+                <input autoComplete="off" value={editForm.websiteUrl}
+                  onChange={e => setEditForm(f => ({ ...f, websiteUrl: e.target.value }))}
+                  className={inputCls} placeholder="https://musaweb.up.railway.app" />
+                <p className="text-xs text-gray-600 mt-1">Solo esta URL podrá hacer citas desde la web</p>
               </div>
               <div>
                 <label className={labelCls}>Plan</label>

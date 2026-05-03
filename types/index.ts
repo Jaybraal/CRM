@@ -61,6 +61,7 @@ export interface Organization {
       closeTime: string    // "18:00"
       slotMinutes: number  // 30 | 60
     }
+    websiteUrl?: string    // URL del sitio web vinculado (ej: https://musaweb.up.railway.app)
   }
 }
 

@@ -64,7 +64,7 @@ export default function SettingsPage() {
   const [org, setOrg] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', industry: '', whatsappNumber: '' })
+  const [form, setForm] = useState({ name: '', industry: '', whatsappNumber: '', websiteUrl: '' })
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [newTemplate, setNewTemplate] = useState({ name: '', body: '' })
   const [savingTemplate, setSavingTemplate] = useState(false)
@@ -133,7 +133,7 @@ export default function SettingsPage() {
       setWebhooks(wh); setCaptureForms(forms)
       if (o) {
         setOrg(o)
-        setForm({ name: o.name, industry: o.settings.industry, whatsappNumber: o.settings.whatsappNumber || '' })
+        setForm({ name: o.name, industry: o.settings.industry, whatsappNumber: o.settings.whatsappNumber || '', websiteUrl: o.settings.websiteUrl || '' })
         setStages(o.settings.pipelineStages || DEFAULT_STAGES)
         setClientStatuses(o.settings.clientStatuses || DEFAULT_CLIENT_STATUSES)
         setAutoReply({ enabled: o.settings.autoReply?.enabled || false, message: o.settings.autoReply?.message || '' })
@@ -164,7 +164,7 @@ export default function SettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); if (!profile?.orgId) return; setSaving(true)
-    try { await callApi({ action: 'save_org', name: form.name, industry: form.industry, whatsappNumber: form.whatsappNumber.trim() }); toast.success('Guardado') }
+    try { await callApi({ action: 'save_org', name: form.name, industry: form.industry, whatsappNumber: form.whatsappNumber.trim(), websiteUrl: form.websiteUrl.trim() }); toast.success('Guardado') }
     catch (e) { toast.error(e instanceof Error ? e.message : 'Error') } finally { setSaving(false) }
   }
 
@@ -356,6 +356,16 @@ export default function SettingsPage() {
               <div>
                 <label className={labelClass}>Industria / Sector</label>
                 <input value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} className={inputClass} placeholder="Ej: Agencia de vehículos, Inmobiliaria..." />
+              </div>
+              <div>
+                <label className={labelClass}>URL del sitio web vinculado</label>
+                <input
+                  value={form.websiteUrl}
+                  onChange={e => setForm(f => ({ ...f, websiteUrl: e.target.value }))}
+                  className={inputClass}
+                  placeholder="https://musaweb.up.railway.app"
+                />
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Solo esta URL podrá enviar citas al CRM</p>
               </div>
               <div>
                 <label className={labelClass}>Número de WhatsApp del negocio</label>

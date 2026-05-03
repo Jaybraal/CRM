@@ -3,16 +3,36 @@ export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 
-function corsHeaders() {
+function corsHeaders(allowedOrigin: string) {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders() })
+async function getAllowedOrigin(orgId: string, reqOrigin: string | null): Promise<string> {
+  try {
+    const snap = await adminDb.doc(`organizations/${orgId}`).get()
+    const websiteUrl: string = snap.data()?.settings?.websiteUrl || ''
+    if (!websiteUrl) return reqOrigin || '*'
+    // Normalize: strip trailing slash
+    const registered = websiteUrl.replace(/\/$/, '')
+    const incoming = (reqOrigin || '').replace(/\/$/, '')
+    return incoming === registered ? registered : registered
+  } catch {
+    return reqOrigin || '*'
+  }
+}
+
+export async function OPTIONS(
+  req: NextRequest,
+  { params }: { params: Promise<{ orgId: string }> }
+) {
+  const { orgId } = await params
+  const origin = await getAllowedOrigin(orgId, req.headers.get('origin'))
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) })
 }
 
 export async function GET(
@@ -20,28 +40,33 @@ export async function GET(
   { params }: { params: Promise<{ orgId: string }> }
 ) {
   const { orgId } = await params
+  const reqOrigin = req.headers.get('origin')
   const date = req.nextUrl.searchParams.get('date') // "YYYY-MM-DD"
 
   if (!date) {
-    return NextResponse.json({ slots: [] }, { headers: corsHeaders() })
+    return NextResponse.json({ slots: [] }, { headers: corsHeaders(reqOrigin || '*') })
   }
 
   try {
     const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
     if (!orgSnap.exists) {
-      return NextResponse.json({ slots: [] }, { headers: corsHeaders() })
+      return NextResponse.json({ slots: [] }, { headers: corsHeaders(reqOrigin || '*') })
     }
 
-    const bh = orgSnap.data()?.settings?.businessHours
+    const settings = orgSnap.data()?.settings || {}
+    const websiteUrl: string = (settings.websiteUrl || '').replace(/\/$/, '')
+    const cors = corsHeaders(websiteUrl || reqOrigin || '*')
+
+    const bh = settings.businessHours
     if (!bh) {
-      return NextResponse.json({ slots: [] }, { headers: corsHeaders() })
+      return NextResponse.json({ slots: [] }, { headers: cors })
     }
 
-    // Check day of week (use noon to avoid timezone issues)
+    // Check day of week (noon to avoid timezone issues)
     const dateObj = new Date(`${date}T12:00:00`)
     const dayOfWeek = dateObj.getDay()
     if (!bh.days.includes(dayOfWeek)) {
-      return NextResponse.json({ slots: [] }, { headers: corsHeaders() })
+      return NextResponse.json({ slots: [] }, { headers: cors })
     }
 
     // Generate all slots
@@ -78,9 +103,9 @@ export async function GET(
     )
 
     const available = allSlots.filter(s => !booked.has(s))
-    return NextResponse.json({ slots: available }, { headers: corsHeaders() })
+    return NextResponse.json({ slots: available }, { headers: cors })
   } catch (e) {
     console.error('[slots]', e)
-    return NextResponse.json({ slots: [] }, { headers: corsHeaders() })
+    return NextResponse.json({ slots: [] }, { headers: corsHeaders(reqOrigin || '*') })
   }
 }
