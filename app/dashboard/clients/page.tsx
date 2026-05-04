@@ -177,14 +177,28 @@ export default function ClientsPage() {
     }
   }
 
+  const chatWindowProps = selectedClient ? {
+    client: selectedClient,
+    hasWhatsApp,
+    fitParent: true as const,
+    statusOptions: clientStatuses,
+    currentStatus: selectedClient.status,
+    onStatusChange: async (newStatus: string) => {
+      if (!profile?.orgId) return
+      try {
+        await updateClient(profile.orgId, selectedClient.id, { status: newStatus })
+        setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
+      } catch { toast.error('Error al cambiar estado') }
+    },
+    profileHref: `/dashboard/clients/${selectedClient.id}`,
+    onBack: () => setShowMobileChat(false),
+  } : null
+
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* ── Left panel: contact list ─────────────────────────────── */}
-      <div className={`
-        flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-shrink-0
-        ${showMobileChat ? 'hidden lg:flex' : 'flex'}
-      `}>
+      <div className="flex flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-shrink-0">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -312,32 +326,13 @@ export default function ClientsPage() {
         <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
       </div>
 
-      {/* ── Right panel: chat ────────────────────────────────────── */}
-      <div className={`
-        flex-col flex-1 min-w-0 min-h-0
-        ${showMobileChat ? 'flex' : 'hidden lg:flex'}
-      `}>
-        {selectedClient ? (
+      {/* ── Right panel: desktop only ────────────────────────────── */}
+      <div className="hidden lg:flex flex-col flex-1 min-w-0 min-h-0">
+        {chatWindowProps ? (
           <div className="flex-1 min-h-0 overflow-hidden">
-            <ChatWindow
-              client={selectedClient}
-              hasWhatsApp={hasWhatsApp}
-              fitParent
-              statusOptions={clientStatuses}
-              currentStatus={selectedClient.status}
-              onStatusChange={async (newStatus) => {
-                if (!profile?.orgId) return
-                try {
-                  await updateClient(profile.orgId, selectedClient.id, { status: newStatus })
-                  setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
-                } catch { toast.error('Error al cambiar estado') }
-              }}
-              profileHref={`/dashboard/clients/${selectedClient.id}`}
-              onBack={() => setShowMobileChat(false)}
-            />
+            <ChatWindow {...chatWindowProps} />
           </div>
         ) : (
-          /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 select-none">
             <div className="w-24 h-24 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5">
               <MessageCircle size={40} className="text-slate-300 dark:text-slate-600" />
@@ -351,6 +346,13 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Overlay móvil: pantalla completa al abrir un chat ───── */}
+      {showMobileChat && chatWindowProps && (
+        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col">
+          <ChatWindow {...chatWindowProps} />
+        </div>
+      )}
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Nuevo cliente" size="lg">
         <ClientForm categories={categories} clientStatuses={clientStatuses} existing={null} onSuccess={() => setShowForm(false)} />
