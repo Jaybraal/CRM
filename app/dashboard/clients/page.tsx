@@ -8,8 +8,7 @@ import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import Modal from '@/components/ui/Modal'
 import ClientForm from '@/components/clients/ClientForm'
 import ChatWindow from '@/components/chat/ChatWindow'
-import Link from 'next/link'
-import { Plus, Search, Download, Upload, ArrowLeft, User, MessageCircle } from 'lucide-react'
+import { Plus, Search, Download, Upload, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -319,53 +318,24 @@ export default function ClientsPage() {
         ${showMobileChat ? 'flex' : 'hidden lg:flex'}
       `}>
         {selectedClient ? (
-          <>
-            {/* Chat header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-              <button
-                onClick={() => setShowMobileChat(false)}
-                className="lg:hidden p-1.5 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                <ArrowLeft size={20} />
-              </button>
-              <Avatar name={selectedClient.name} size={38} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-900 dark:text-white text-sm leading-tight truncate">{selectedClient.name}</p>
-                  <select
-                    value={selectedClient.status}
-                    onChange={async (e) => {
-                      const newStatus = e.target.value
-                      if (!profile?.orgId) return
-                      try {
-                        await updateClient(profile.orgId, selectedClient.id, { status: newStatus })
-                        setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
-                      } catch { toast.error('Error al cambiar estado') }
-                    }}
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 cursor-pointer"
-                    style={{ maxWidth: '100px' }}
-                  >
-                    {clientStatuses.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                  {getDisplayPhone(selectedClient) || (selectedClient.isLid ? 'Número privado' : 'Sin teléfono')}
-                </p>
-              </div>
-              <Link
-                href={`/dashboard/clients/${selectedClient.id}`}
-                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
-                title="Ver perfil completo">
-                <User size={18} />
-              </Link>
-            </div>
-
-            {/* Chat messages */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <ChatWindow client={selectedClient} hasWhatsApp={hasWhatsApp} fitParent />
-            </div>
-          </>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ChatWindow
+              client={selectedClient}
+              hasWhatsApp={hasWhatsApp}
+              fitParent
+              statusOptions={clientStatuses}
+              currentStatus={selectedClient.status}
+              onStatusChange={async (newStatus) => {
+                if (!profile?.orgId) return
+                try {
+                  await updateClient(profile.orgId, selectedClient.id, { status: newStatus })
+                  setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: newStatus } : c))
+                } catch { toast.error('Error al cambiar estado') }
+              }}
+              profileHref={`/dashboard/clients/${selectedClient.id}`}
+              onBack={() => setShowMobileChat(false)}
+            />
+          </div>
         ) : (
           /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 select-none">

@@ -5,7 +5,8 @@ import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto, uploadBlob } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown, ShoppingBag } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown, ShoppingBag, ExternalLink, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { getCatalog } from '@/lib/firestore'
 import type { CatalogItem } from '@/types'
 import type { Client as ClientType } from '@/types'
@@ -18,9 +19,14 @@ interface Props {
   hasWhatsApp: boolean
   fitParent?: boolean
   channel?: 'whatsapp' | 'instagram'
+  statusOptions?: { value: string; label: string }[]
+  currentStatus?: string
+  onStatusChange?: (status: string) => void
+  profileHref?: string
+  onBack?: () => void
 }
 
-export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = 'whatsapp' }: Props) {
+export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = 'whatsapp', statusOptions, currentStatus, onStatusChange, profileHref, onBack }: Props) {
   const isInstagram = channel === 'instagram'
   const { profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
@@ -831,38 +837,63 @@ ${messages.map(m => {
   return (
     <div className={`relative flex flex-col overflow-hidden ${fitParent ? 'h-full' : 'h-[calc(100dvh-130px)] sm:h-[calc(100vh-200px)] min-h-[400px] rounded-xl border border-slate-200 dark:border-slate-700'}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#075E54] flex-shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {initials}
+      <div className="flex-shrink-0 bg-[#075E54]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {onBack && (
+              <button onClick={onBack}
+                className="lg:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 transition-colors text-white flex-shrink-0">
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate leading-tight">{client.name}</p>
+              <p className="text-xs text-white/70 truncate leading-tight">
+                {hasWhatsApp
+                  ? (client.phone || client.whatsappPhone
+                      ? `+${(client.phone || client.whatsappPhone)!.replace(/\D/g, '')}`
+                      : 'WhatsApp conectado')
+                  : 'Sin WhatsApp vinculado'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{client.name}</p>
-            <p className="text-xs text-white/70 truncate">
-              {hasWhatsApp
-                ? (client.phone || client.whatsappPhone
-                    ? `+${(client.phone || client.whatsappPhone)!.replace(/\D/g, '')}`
-                    : 'WhatsApp conectado')
-                : 'Sin WhatsApp vinculado'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => { setShowSearch(v => !v); setSearchQuery('') }}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Buscar en chat">
-            <Search size={17} />
-          </button>
-          <button onClick={exportToPDF}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Exportar chat PDF">
-            <Printer size={17} />
-          </button>
-          {hasWhatsApp && (client.phone || client.whatsappPhone) && (
-            <button onClick={handleCall}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-white"
-              title="Llamar por WhatsApp">
-              <Phone size={18} />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {statusOptions && onStatusChange && (
+              <select
+                value={currentStatus || ''}
+                onChange={e => onStatusChange(e.target.value)}
+                onClick={e => e.stopPropagation()}
+                className="text-[11px] font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-full px-2.5 py-1 focus:outline-none cursor-pointer transition-colors mr-1"
+              >
+                {statusOptions.map(s => (
+                  <option key={s.value} value={s.value} className="text-slate-900 bg-white">{s.label}</option>
+                ))}
+              </select>
+            )}
+            {profileHref && (
+              <Link href={profileHref}
+                className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Ver perfil">
+                <ExternalLink size={16} />
+              </Link>
+            )}
+            <button onClick={() => { setShowSearch(v => !v); setSearchQuery('') }}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Buscar">
+              <Search size={17} />
             </button>
-          )}
+            <button onClick={exportToPDF}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Exportar PDF">
+              <Printer size={17} />
+            </button>
+            {hasWhatsApp && (client.phone || client.whatsappPhone) && (
+              <button onClick={handleCall}
+                className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Llamar">
+                <Phone size={18} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1174,8 +1205,8 @@ ${messages.map(m => {
               }}
               rows={1}
               placeholder="Escribe un mensaje"
-              className="flex-1 bg-white dark:bg-slate-800 border-0 rounded-2xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none resize-none shadow-sm"
-              style={{ maxHeight: '120px', overflowY: 'auto' }}
+              className="flex-1 bg-white dark:bg-slate-800 border-0 rounded-2xl px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none resize-none shadow-sm"
+              style={{ maxHeight: '120px', overflowY: 'auto', fontSize: '16px' }}
             />
 
             {/* Mic or Send */}
