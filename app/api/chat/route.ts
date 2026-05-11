@@ -115,7 +115,7 @@ async function executeTool(
 
 async function callGroq(messages: unknown[], withTools = false) {
   const body: Record<string, unknown> = {
-    model: 'llama-3.1-70b-versatile',
+    model: withTools ? 'mixtral-8x7b-32768' : 'llama3-8b-8192',
     messages,
     max_tokens: 1000,
   }
@@ -130,7 +130,11 @@ async function callGroq(messages: unknown[], withTools = false) {
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) throw new Error(`Groq ${res.status}: ${await res.text()}`)
+  if (!res.ok) {
+    const errText = await res.text()
+    console.error(`[/api/chat] Groq ${res.status}:`, errText)
+    throw new Error(`Groq ${res.status}: ${errText}`)
+  }
   return res.json()
 }
 
