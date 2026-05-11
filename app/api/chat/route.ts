@@ -115,7 +115,7 @@ async function executeTool(
 
 async function callGroq(messages: unknown[], withTools = false) {
   const body: Record<string, unknown> = {
-    model: withTools ? 'mixtral-8x7b-32768' : 'llama3-8b-8192',
+    model: withTools ? 'llama-3.3-70b-versatile' : 'llama3-8b-8192',
     messages,
     max_tokens: 1000,
   }
