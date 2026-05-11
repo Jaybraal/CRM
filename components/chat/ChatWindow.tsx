@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto, uploadBlob } from '@/lib/storage'
 import type { Client, Message, WhatsAppTemplate } from '@/types'
-import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown, ShoppingBag, ExternalLink, ArrowLeft } from 'lucide-react'
+import { Send, Paperclip, X, MapPin, Phone, PhoneCall, PhoneMissed, Navigation, Plus, Mic, Square, Play, Pause, FileText, Download, Forward, StickyNote, Search, Printer, Reply, ChevronDown, ShoppingBag, ExternalLink, ArrowLeft, Bot } from 'lucide-react'
 import Link from 'next/link'
 import { getCatalog } from '@/lib/firestore'
 import type { CatalogItem } from '@/types'
@@ -53,6 +53,8 @@ export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = '
   const [showCatalog, setShowCatalog] = useState(false)
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
+  const [summarizing, setSummarizing] = useState(false)
+  const [summary, setSummary] = useState<string | null>(null)
 
   // Voice recording
   const [isRecording, setIsRecording] = useState(false)
@@ -353,6 +355,34 @@ ${messages.map(m => {
   }
 
   const formatRecordTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  const handleSummarize = async () => {
+    const textMessages = messages.filter(m => m.text && !m.isNote).slice(-60)
+    if (textMessages.length === 0) { toast('Sin mensajes de texto para resumir'); return }
+    setSummarizing(true)
+    setSummary(null)
+    const chatText = textMessages.map(m => {
+      const who = m.source === 'internal' ? `Agente` : `Cliente (${client.name})`
+      return `${who}: ${m.text}`
+    }).join('\n')
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: `Resume esta conversación en 3-4 puntos clave. Incluye: qué quiere el cliente, en qué punto está la negociación y si hay alguna acción pendiente.\n\n${chatText}` }],
+          orgId: profile?.orgId,
+          uid: profile?.uid,
+        }),
+      })
+      const data = await res.json()
+      setSummary(data.reply ?? data.error)
+    } catch {
+      toast.error('Error al generar resumen')
+    } finally {
+      setSummarizing(false)
+    }
+  }
 
   const openCatalog = async () => {
     setShowActions(false)
@@ -879,6 +909,14 @@ ${messages.map(m => {
                 <ExternalLink size={16} />
               </Link>
             )}
+            <button
+              onClick={handleSummarize}
+              disabled={summarizing}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-white disabled:opacity-50" title="Resumir con IA">
+              {summarizing
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Bot size={17} />}
+            </button>
             <button onClick={() => { setShowSearch(v => !v); setSearchQuery('') }}
               className="p-2 rounded-full hover:bg-white/10 transition-colors text-white" title="Buscar">
               <Search size={17} />
@@ -912,6 +950,17 @@ ${messages.map(m => {
             <span className="text-xs text-slate-400">{displayMessages.length} resultado{displayMessages.length !== 1 ? 's' : ''}</span>
           )}
           <button onClick={() => { setShowSearch(false); setSearchQuery('') }} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Panel resumen IA */}
+      {summary && (
+        <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex gap-3 flex-shrink-0">
+          <Bot size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex-1 whitespace-pre-wrap">{summary}</p>
+          <button onClick={() => setSummary(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex-shrink-0">
             <X size={14} />
           </button>
         </div>

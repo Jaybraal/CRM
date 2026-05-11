@@ -424,6 +424,49 @@ async function startSession(sessionId, orgId) {
         if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1500))
       }
       if (!sent) console.error(`Mensaje de ${fromName} perdido después de 4 intentos`)
+
+      // Auto-respuesta IA fuera de horario laboral
+      if (text && msgType === 'text' && process.env.GROQ_API_KEY) {
+        try {
+          const orgDoc = await db.collection('organizations').doc(orgId).get()
+          const orgData = orgDoc.data() || {}
+          const settings = orgData.settings || {}
+
+          if (settings.autoReply?.enabled && settings.businessHours) {
+            const bh = settings.businessHours
+            const now = new Date()
+            const day = now.getDay()
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+            const isOpen = bh.days.includes(day) && timeStr >= bh.openTime && timeStr < bh.closeTime
+
+            if (!isOpen) {
+              const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'llama3-8b-8192',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: `Eres el asistente virtual de "${orgData.name || 'este negocio'}". Estamos fuera de horario (${bh.openTime}–${bh.closeTime}). Responde amablemente, informa el horario y recoge lo que necesita el cliente. Máximo 3 líneas. En español.`,
+                    },
+                    { role: 'user', content: text },
+                  ],
+                  max_tokens: 200,
+                }),
+                signal: AbortSignal.timeout(10000),
+              })
+              if (groqRes.ok) {
+                const groqData = await groqRes.json()
+                const reply = groqData.choices?.[0]?.message?.content
+                if (reply) await sock.sendMessage(jid, { text: reply })
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[auto-reply IA]', e.message)
+        }
+      }
     }
   })
 
