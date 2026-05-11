@@ -189,7 +189,6 @@ async function executeTool(name: string, args: Record<string, string>, orgId: st
     const snap = await col('tasks')
       .where('assignedTo', '==', uid)
       .where('completed', '==', false)
-      .orderBy('createdAt', 'desc')
       .limit(10)
       .get()
     const tareas = snap.docs.map(d => {
@@ -202,7 +201,7 @@ async function executeTool(name: string, args: Record<string, string>, orgId: st
 
   // ── Ver pipeline ────────────────────────────────────────────────────────────
   if (name === 'ver_pipeline') {
-    const snap = await col('deals').orderBy('updatedAt', 'desc').limit(20).get()
+    const snap = await col('deals').limit(20).get()
     const deals = await Promise.all(snap.docs.map(async d => {
       const deal = d.data() as Row
       let cliente = 'Sin cliente'
@@ -217,7 +216,7 @@ async function executeTool(name: string, args: Record<string, string>, orgId: st
 
   // ── Ver citas ───────────────────────────────────────────────────────────────
   if (name === 'ver_citas') {
-    const snap = await col('appointments').orderBy('startDate', 'asc').limit(20).get()
+    const snap = await col('appointments').limit(20).get()
     const now = Date.now()
     const limite = args.periodo === 'semana' ? now + 7 * 86400000 : now + 86400000
     const citas = snap.docs
