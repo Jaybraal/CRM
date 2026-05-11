@@ -11,9 +11,16 @@ interface Message {
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
-  crear_tarea:     { label: 'Tarea creada',   icon: <CheckCircle2 size={11} /> },
-  crear_lead:      { label: 'Lead creado',    icon: <UserPlus size={11} /> },
-  buscar_clientes: { label: 'Buscó clientes', icon: <Search size={11} /> },
+  crear_tarea:          { label: 'Tarea creada',       icon: <CheckCircle2 size={11} /> },
+  crear_lead:           { label: 'Lead creado',        icon: <UserPlus size={11} /> },
+  buscar_clientes:      { label: 'Buscó clientes',     icon: <Search size={11} /> },
+  ver_tareas:           { label: 'Tareas consultadas', icon: <CheckCircle2 size={11} /> },
+  ver_pipeline:         { label: 'Pipeline consultado',icon: <Search size={11} /> },
+  ver_citas:            { label: 'Citas consultadas',  icon: <Search size={11} /> },
+  ver_resumen_clientes: { label: 'Resumen clientes',   icon: <Search size={11} /> },
+  completar_tarea:      { label: 'Tarea completada',   icon: <CheckCircle2 size={11} /> },
+  mover_deal:           { label: 'Deal movido',        icon: <CheckCircle2 size={11} /> },
+  agendar_cita:         { label: 'Cita agendada',      icon: <UserPlus size={11} /> },
 }
 
 export default function ChatAssistant() {
