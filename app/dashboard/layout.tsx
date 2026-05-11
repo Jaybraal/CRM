@@ -3,6 +3,7 @@
 import AuthGuard from '@/components/auth/AuthGuard'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
+import ChatAssistant from '@/components/ui/ChatAssistant'
 import { useNotifications } from '@/hooks/useNotifications'
 import { usePathname } from 'next/navigation'
 
@@ -42,6 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <DashboardInner>{children}</DashboardInner>
+      <ChatAssistant />
     </AuthGuard>
   )
 }
