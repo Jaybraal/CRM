@@ -3,6 +3,32 @@ export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 
+const NEXO_DEFAULT_CHANNELS = [
+  { name: 'general', emoji: '#', description: 'Canal general del equipo' },
+  { name: 'ventas',  emoji: '#', description: 'Novedades del área de ventas' },
+  { name: 'soporte', emoji: '#', description: 'Soporte interno y operaciones' },
+]
+
+async function seedNexoChannels(orgId: string) {
+  const now = new Date()
+  const batch = adminDb.batch()
+  for (const ch of NEXO_DEFAULT_CHANNELS) {
+    const ref = adminDb
+      .collection('organizations').doc(orgId)
+      .collection('nexo_connect').doc()
+    batch.set(ref, {
+      name: ch.name,
+      type: 'group',
+      members: [],
+      createdBy: 'system',
+      lastMessage: ch.description,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+  await batch.commit()
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, ownerId, plan, settings, accessExpiresAt } = await req.json()
@@ -14,6 +40,12 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
       ...(accessExpiresAt ? { accessExpiresAt: new Date(accessExpiresAt) } : {}),
     })
+
+    // Sembrar canales Nexo Connect por defecto (no bloquea si falla)
+    seedNexoChannels(ref.id).catch(e =>
+      console.warn('[org/create] seedNexoChannels failed:', e)
+    )
+
     return NextResponse.json({ id: ref.id })
   } catch (err) {
     console.error('Error creating org:', err)

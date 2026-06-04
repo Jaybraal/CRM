@@ -10,7 +10,7 @@ import BaileysQR from '@/components/settings/BaileysQR'
 import InstagramConnect from '@/components/settings/InstagramConnect'
 import {
   Building2, MessageCircle, Instagram, Copy, CheckCircle, Plus, Trash2,
-  GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag,
+  GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag, Users,
   Webhook as WebhookIcon, CreditCard, FormInput, ExternalLink, Clock
 } from 'lucide-react'
 
@@ -464,6 +464,39 @@ export default function SettingsPage() {
             >
               {savingBusinessHours ? 'Guardando...' : 'Guardar horario'}
             </button>
+          </Card>
+
+          {/* Accesos directos — Equipo y Categorías */}
+          <Card>
+            <SectionHeader icon={Building2} title="Gestión del equipo y categorías" desc="Accesos rápidos a las secciones de administración" />
+            <div className="grid grid-cols-2 gap-3">
+              <a
+                href="/dashboard/team"
+                className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group"
+              >
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <Users size={16} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Equipo</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Usuarios y roles</p>
+                </div>
+                <ExternalLink size={14} className="text-slate-400 ml-auto group-hover:text-blue-600 transition-colors" />
+              </a>
+              <a
+                href="/dashboard/categories"
+                className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+              >
+                <div className="p-2 bg-slate-600 rounded-lg">
+                  <Tag size={16} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Categorías</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Etiquetas de clientes</p>
+                </div>
+                <ExternalLink size={14} className="text-slate-400 ml-auto group-hover:text-slate-600 transition-colors" />
+              </a>
+            </div>
           </Card>
         </div>
       )}

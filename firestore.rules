@@ -139,6 +139,19 @@ service cloud.firestore {
         allow read: if isMember(orgId) || isSuperAdmin();
         allow write: if false; // Solo escritura desde servidor (Admin SDK)
       }
+
+      // Nexo Connect — chat interno del equipo
+      match /nexo_connect/{channelId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update: if isMember(orgId) || isSuperAdmin();
+        allow delete: if isManager(orgId) || isSuperAdmin();
+
+        match /messages/{msgId} {
+          allow read: if isMember(orgId) || isSuperAdmin();
+          allow create: if isMember(orgId) || isSuperAdmin();
+          allow update, delete: if false;
+        }
+      }
     }
   }
 }

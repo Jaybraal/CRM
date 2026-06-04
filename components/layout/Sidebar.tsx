@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
-  Users, FolderKanban, LayoutDashboard, Tag,
-  CheckSquare, Settings, LogOut, ShieldCheck, Menu, X,
-  Send, BarChart3, CalendarDays, Instagram, ShoppingBag, Building2
+  LayoutDashboard, Inbox, KanbanSquare, CalendarDays,
+  Package, MessageSquare, Zap, Settings,
+  ShieldCheck, LogOut, Bot, Menu, X, Send
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -15,143 +15,149 @@ type NavItem = {
   label: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   roles: string[]
-  badge?: string
+  badge?: number
 }
 
-const NAV_GROUPS: NavItem[][] = [
+const NAV_SECTIONS: NavItem[][] = [
+  // Core — acciones diarias
   [
-    { href: '/dashboard',            label: 'Dashboard',   icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/clients',    label: 'Clientes',    icon: Users,           roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/pipeline',   label: 'Pipeline',    icon: FolderKanban,    roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/tasks',      label: 'Tareas',      icon: CheckSquare,     roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/calendar',   label: 'Calendario',  icon: CalendarDays,    roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+    { href: '/dashboard',          label: 'Dashboard',    icon: LayoutDashboard, roles: ['super_admin','owner','manager','supervisor','agent'] },
+    { href: '/dashboard/inbox',    label: 'Inbox WA/IG',  icon: Inbox,           roles: ['super_admin','owner','manager','supervisor','agent'], badge: 5 },
+    { href: '/dashboard/pipeline', label: 'Pipeline',     icon: KanbanSquare,    roles: ['super_admin','owner','manager','supervisor','agent'] },
+    { href: '/dashboard/calendar', label: 'Calendario',   icon: CalendarDays,    roles: ['super_admin','owner','manager','supervisor','agent'] },
   ],
+  // Ventas
   [
-    { href: '/dashboard/catalog',    label: 'Catálogo',    icon: ShoppingBag,     roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
-    { href: '/dashboard/broadcast',  label: 'Difusión',    icon: Send,            roles: ['super_admin', 'owner', 'manager'] },
-    { href: '/dashboard/instagram',  label: 'Instagram',   icon: Instagram,       roles: ['super_admin', 'owner', 'manager', 'supervisor', 'agent'] },
+    { href: '/dashboard/catalog',   label: 'Catálogo',   icon: Package, roles: ['super_admin','owner','manager','supervisor','agent'] },
+    { href: '/dashboard/broadcast', label: 'Broadcasts', icon: Send,    roles: ['super_admin','owner','manager'] },
   ],
+  // Equipo
   [
-    { href: '/dashboard/reports',    label: 'Reportes',    icon: BarChart3,       roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
-    { href: '/dashboard/categories', label: 'Categorías',  icon: Tag,             roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
-    { href: '/dashboard/team',       label: 'Equipo',      icon: Users,           roles: ['super_admin', 'owner', 'manager', 'supervisor'] },
-    { href: '/dashboard/settings',   label: 'Ajustes',     icon: Settings,        roles: ['super_admin', 'owner'] },
-    { href: '/admin',                label: 'Super Admin', icon: ShieldCheck,     roles: ['super_admin'] },
+    { href: '/dashboard/nexo', label: 'Nexo Connect', icon: MessageSquare, roles: ['super_admin','owner','manager','supervisor','agent'], badge: 2 },
+  ],
+  // Configuración
+  [
+    { href: '/dashboard/marketplace', label: 'Blueprints',  icon: Zap,        roles: ['super_admin','owner'] },
+    { href: '/dashboard/settings',    label: 'Ajustes',     icon: Settings,   roles: ['super_admin','owner'] },
+    { href: '/admin',                 label: 'Super Admin', icon: ShieldCheck, roles: ['super_admin'] },
   ],
 ]
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      className={`relative w-full flex justify-center p-3 rounded-xl transition-all duration-200 group mb-1 ${
+        active
+          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+      }`}
+    >
+      <item.icon size={20} />
+      {item.badge !== undefined && (
+        <span className="absolute top-1.5 right-1.5 flex h-4 w-4">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
+            {item.badge}
+          </span>
+        </span>
+      )}
+      <span className="absolute left-[4.5rem] bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-slate-700">
+        {item.label}
+      </span>
+    </Link>
+  )
+}
 
 export default function Sidebar() {
   const pathname = usePathname()
   const { profile, signOut } = useAuth()
-  const [open, setOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const initials = profile?.displayName
     ? profile.displayName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'U'
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+  const isActive = (href: string) =>
+    pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
 
+  const SidebarBody = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
       {/* Logo */}
-      <div className="flex items-center justify-between px-5 h-16 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow shadow-blue-500/30 flex-shrink-0">
-            <Building2 size={16} />
-          </div>
-          <span className="text-base font-black text-slate-900 dark:text-white tracking-tight">NEXO</span>
+      <div className="flex justify-center items-center h-16 border-b border-slate-800 flex-shrink-0">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-500/20 select-none">
+          NX
         </div>
-        <button className="lg:hidden text-slate-400 hover:text-slate-600 p-1" onClick={() => setOpen(false)}>
-          <X size={18} />
-        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {NAV_GROUPS.map((group, gi) => {
-          const visible = group.filter(item => profile?.role && item.roles.includes(profile.role))
-          if (visible.length === 0) return null
+      <nav className="flex-1 overflow-y-auto py-3 flex flex-col items-center gap-0 px-3">
+        {NAV_SECTIONS.map((section, si) => {
+          const visible = section.filter(item => profile?.role && item.roles.includes(profile.role))
+          if (!visible.length) return null
           return (
-            <div key={gi}>
-              {gi > 0 && <div className="my-3 border-t border-slate-100 dark:border-slate-800" />}
-              {visible.map(item => {
-                const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon size={16} className={active ? 'text-white' : 'text-slate-400 dark:text-slate-500'} />
-                      {item.label}
-                    </div>
-                    {item.badge && (
-                      <span className={`text-[10px] py-0.5 px-1.5 rounded-full font-bold ${active ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'}`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
+            <div key={si} className="w-full">
+              {si > 0 && <div className="w-8 h-px bg-slate-800 my-2 mx-auto" />}
+              {visible.map(item => (
+                <div key={item.href} onClick={onNavigate}>
+                  <NavLink item={item} active={isActive(item.href)} />
+                </div>
+              ))}
             </div>
           )
         })}
       </nav>
 
-      {/* Footer: user + logout */}
-      <div className="px-3 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
-        <Link
-          href="/dashboard/profile"
-          onClick={() => setOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-            pathname === '/dashboard/profile'
-              ? 'bg-blue-600 text-white'
-              : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-          }`}
-        >
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate leading-tight">{profile?.displayName}</p>
-            <p className="text-[10px] text-slate-400 capitalize leading-tight">{profile?.role?.replace('_', ' ')}</p>
-          </div>
-        </Link>
+      {/* Footer */}
+      <div className="border-t border-slate-800 py-3 flex flex-col items-center gap-1 px-3">
+        <div className="relative group w-full flex justify-center p-3 rounded-xl text-blue-400 cursor-default">
+          <Bot size={18} />
+          <span className="absolute left-[4.5rem] bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-slate-700">
+            Alex IA: Activo
+          </span>
+        </div>
         <button
           onClick={signOut}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          className="relative group w-full flex justify-center p-3 rounded-xl text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-colors"
         >
-          <LogOut size={15} />
-          <span className="text-sm">Cerrar sesión</span>
+          <LogOut size={18} />
+          <span className="absolute left-[4.5rem] bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-slate-700">
+            Cerrar sesión
+          </span>
         </button>
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-md cursor-pointer hover:scale-105 transition-transform select-none">
+          {initials}
+        </div>
       </div>
-    </div>
+    </>
   )
 
   return (
     <>
+      {/* Mobile hamburger */}
       <button
-        onClick={() => setOpen(!open)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 shadow-sm"
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 shadow-lg"
       >
-        {open ? <X size={18} /> : <Menu size={18} />}
+        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      {open && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)} />
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
 
-      <aside className={`lg:hidden fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 dark:border-slate-800 transform transition-transform ${open ? 'translate-x-0' : '-translate-x-full'}`}>
-        <SidebarContent />
+      {/* Mobile drawer */}
+      <aside className={`lg:hidden fixed inset-y-0 left-0 z-40 w-20 bg-slate-900 flex flex-col shadow-2xl transform transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <SidebarBody onNavigate={() => setMobileOpen(false)} />
       </aside>
 
-      <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200 dark:border-slate-800 fixed inset-y-0 left-0">
-        <SidebarContent />
+      {/* Desktop fixed sidebar */}
+      <aside className="hidden lg:flex flex-col w-20 bg-slate-900 fixed inset-y-0 left-0 z-30 shadow-2xl">
+        <SidebarBody />
       </aside>
     </>
   )
