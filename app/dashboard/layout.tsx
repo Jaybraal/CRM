@@ -4,6 +4,7 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import ChatAssistant from '@/components/ui/ChatAssistant'
+import { AlexChatProvider } from '@/context/AlexChatContext'
 import { useNotifications } from '@/hooks/useNotifications'
 import { usePathname } from 'next/navigation'
 
@@ -44,8 +45,10 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <DashboardInner>{children}</DashboardInner>
-      <ChatAssistant />
+      <AlexChatProvider>
+        <DashboardInner>{children}</DashboardInner>
+        <ChatAssistant />
+      </AlexChatProvider>
     </AuthGuard>
   )
 }

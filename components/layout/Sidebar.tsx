@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useAlexChat } from '@/context/AlexChatContext'
 import {
   LayoutDashboard, Inbox, KanbanSquare, CalendarDays,
   Package, MessageSquare, Zap, Settings,
@@ -72,6 +73,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export default function Sidebar() {
   const pathname = usePathname()
   const { profile, signOut } = useAuth()
+  const { toggle: toggleAlex } = useAlexChat()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const initials = profile?.displayName
@@ -110,12 +112,15 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-slate-800 py-3 flex flex-col items-center gap-1 px-3">
-        <div className="relative group w-full flex justify-center p-3 rounded-xl text-blue-400 cursor-default">
+        <button
+          onClick={() => { toggleAlex(); onNavigate?.() }}
+          className="relative group w-full flex justify-center p-3 rounded-xl text-blue-400 hover:bg-slate-800 hover:text-blue-300 transition-colors"
+        >
           <Bot size={18} />
           <span className="absolute left-[4.5rem] bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-slate-700">
-            Alex IA: Activo
+            Alex IA
           </span>
-        </div>
+        </button>
         <button
           onClick={signOut}
           className="relative group w-full flex justify-center p-3 rounded-xl text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-colors"

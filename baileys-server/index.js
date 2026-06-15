@@ -719,8 +719,13 @@ app.get('/status/:sessionId?', (req, res) => {
 
 // 'default' y vacío ya no son sesiones válidas: cada sesión debe ir atada a un
 // orgId real (multi-tenant). Esto evita sesiones compartidas/huérfanas.
+// Además rechazamos palabras reservadas que coinciden con segmentos de ruta
+// (status, qr, connect, reset, ...): un cliente viejo/cacheado que pegue a
+// /api/whatsapp/sessions/status creaba una sesión fantasma "status". Un orgId
+// real (doc id de Firestore) nunca es una de estas palabras.
+const RESERVED_SESSION_IDS = new Set(['default', 'status', 'sessions', 'qr', 'connect', 'reset', 'send', 'debug', 'set-org'])
 function isValidSessionId(sessionId) {
-  return !!sessionId && sessionId !== 'default'
+  return !!sessionId && !RESERVED_SESSION_IDS.has(sessionId)
 }
 
 app.get('/qr/:sessionId?', async (req, res) => {
@@ -1020,6 +1025,9 @@ app.post('/call', async (_req, res) => {
 app.post('/reset/:sessionId?', async (req, res) => {
   const sessionId = req.params.sessionId || 'default'
   const { orgId } = req.body || {}
+  if (!isValidSessionId(sessionId)) {
+    return res.status(400).json({ error: 'sessionId (orgId) requerido' })
+  }
   const s = sessions.get(sessionId)
   try {
     if (s?.sock) { try { s.sock.end(undefined) } catch {} }

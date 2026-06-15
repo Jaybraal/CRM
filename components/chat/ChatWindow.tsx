@@ -1261,9 +1261,9 @@ ${messages.map(m => {
             {/* Mic or Send */}
             {!text.trim() && pendingFiles.length === 0 ? (
               <button
-                onClick={() => toast('🎤 Notas de voz no disponibles por el momento', { duration: 3000 })}
-                className="p-2.5 text-slate-300 dark:text-slate-600 cursor-not-allowed rounded-full flex-shrink-0"
-                title="Notas de voz no disponibles">
+                onClick={startRecording}
+                className="p-2.5 text-slate-500 hover:text-[#075E54] dark:text-slate-300 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full flex-shrink-0 transition-colors"
+                title="Grabar nota de voz">
                 <Mic size={20} />
               </button>
             ) : (

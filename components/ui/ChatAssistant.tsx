@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Bot, CheckCircle2, UserPlus, Search } from 'lucide-react'
+import { X, Send, Bot, CheckCircle2, UserPlus, Search } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useAlexChat } from '@/context/AlexChatContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -25,7 +26,7 @@ const TOOL_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
 
 export default function ChatAssistant() {
   const { profile } = useAuth()
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useAlexChat()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -69,7 +70,7 @@ export default function ChatAssistant() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 right-4 sm:right-6 z-50 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white flex-shrink-0">
             <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
@@ -151,15 +152,6 @@ export default function ChatAssistant() {
           </div>
         </div>
       )}
-
-      {/* FAB */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="fixed bottom-4 right-4 sm:right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-        style={{ width: 52, height: 52 }}
-      >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
-      </button>
     </>
   )
 }
