@@ -59,6 +59,10 @@ async function transcodeToOpus(inputBuffer) {
         '-y', '-i', inFile,
         '-avoid_negative_ts', 'make_zero',
         '-ac', '1',
+        '-ar', '16000',
+        '-c:a', 'libopus',
+        '-b:a', '32k',
+        '-application', 'voip',
         outFile,
       ], { stdio: ['ignore', 'pipe', 'pipe'] })
       let stderr = ''
@@ -87,7 +91,13 @@ const AUTH_CLEAR_CODES = new Set([401, 500])
 const STOP_RECONNECT_CODES = new Set([401, 440, 500])
 
 const CRM_URL = process.env.CRM_URL || 'http://localhost:3000'
-const PORT    = process.env.PORT    || 3001
+const PORT    = process.env.PORT    || 3002
+
+// WhatsApp oculta a muchos remitentes tras un identificador @lid (sistema de
+// privacidad "LID"). El número de teléfono REAL llega aparte (key.senderPn) y a
+// veces solo en el primer mensaje. Memorizamos LID→teléfono para resolver también
+// los mensajes posteriores que llegan sin senderPn.
+const lidToPn = new Map()
 
 const logger = pino({ level: 'silent' })
 
@@ -111,6 +121,13 @@ const db = getFirestore()
 // Guarda creds + keys en Firestore para sobrevivir reinicios
 async function useFirestoreAuthState(sessionId) {
   const docRef = db.collection('whatsapp_sessions').doc(sessionId)
+  // Caché en memoria de las keys. CRÍTICO: tras escanear el QR, Baileys guarda
+  // las creds/keys en Firestore (async) e inmediatamente cierra con 515 para
+  // reiniciar. Si al reconectar leemos de Firestore antes de que la escritura
+  // termine (latencia de red), obtenemos creds viejas → handshake falla → loop.
+  // Con caché en memoria, la reconexión (mismo proceso) siempre lee lo más
+  // fresco; Firestore queda solo como persistencia entre reinicios.
+  const keyCache = new Map()
 
   async function readData(key) {
     try {
@@ -142,20 +159,31 @@ async function useFirestoreAuthState(sessionId) {
         const data = {}
         await Promise.all(
           ids.map(async (id) => {
-            const val = await readData(`${type}-${id}`)
-            if (val) data[id] = val
+            const cacheKey = `${type}-${id}`
+            let val = keyCache.has(cacheKey) ? keyCache.get(cacheKey) : await readData(cacheKey)
+            if (val) {
+              keyCache.set(cacheKey, val)
+              data[id] = val
+            }
           })
         )
         return data
       },
       set: async (data) => {
-        await Promise.all(
-          Object.entries(data).flatMap(([type, ids]) =>
-            Object.entries(ids).map(([id, value]) =>
-              value ? writeData(`${type}-${id}`, value) : removeData(`${type}-${id}`)
-            )
-          )
-        )
+        const tasks = []
+        for (const [type, ids] of Object.entries(data)) {
+          for (const [id, value] of Object.entries(ids)) {
+            const cacheKey = `${type}-${id}`
+            if (value) {
+              keyCache.set(cacheKey, value)       // memoria primero (sin race)
+              tasks.push(writeData(cacheKey, value)) // Firestore para persistencia
+            } else {
+              keyCache.delete(cacheKey)
+              tasks.push(removeData(cacheKey))
+            }
+          }
+        }
+        await Promise.all(tasks)
       },
     },
   }
@@ -163,6 +191,7 @@ async function useFirestoreAuthState(sessionId) {
   const saveCreds = () => writeData('creds', state.creds)
 
   const clearAuth = async () => {
+    keyCache.clear()
     try {
       const authSnap = await docRef.collection('auth').get()
       const batch = db.batch()
@@ -178,8 +207,34 @@ async function useFirestoreAuthState(sessionId) {
 
 // ── Session management ─────────────────────────────────────────
 const sessions = new Map()
+// Caché de auth-state por sesión: garantiza que las reconexiones (mismo proceso)
+// reutilicen las creds/keys en memoria en vez de releerlas de Firestore (que
+// podría estar desactualizado por el lag de escritura → loop de reconexión).
+const authStateCache = new Map()
+// Lock por sesión: garantiza que NUNCA se cree más de un socket a la vez para la
+// misma sesión. Sin esto, el polling del navegador + reconexiones + resets crean
+// sockets duplicados que pelean por la misma cuenta de WhatsApp (conflicto 401/440).
+const starting = new Set()
+let cachedWaVersion = null
 
-async function startSession(sessionId, orgId) {
+async function getAuthState(sessionId) {
+  if (authStateCache.has(sessionId)) return authStateCache.get(sessionId)
+  const st = await useFirestoreAuthState(sessionId)
+  authStateCache.set(sessionId, st)
+  return st
+}
+
+// Descartar el auth-state cacheado (tras logout/reset/401) para que el próximo
+// arranque construya credenciales frescas y genere un QR nuevo.
+function dropAuthState(sessionId) {
+  authStateCache.delete(sessionId)
+}
+
+// force=true lo usan SOLO las reconexiones internas (tras 515/caída de red):
+// deben crear un socket nuevo aunque exista una sesión, para reusar las
+// credenciales recién guardadas. Los llamadores externos (API /connect, polling
+// del QR) NO fuerzan, así evitan crear sockets duplicados.
+async function startSession(sessionId, orgId, force = false) {
   if (sessions.has(sessionId)) {
     const existing = sessions.get(sessionId)
     // Siempre actualizar orgId si se proporciona y no estaba seteado
@@ -188,11 +243,31 @@ async function startSession(sessionId, orgId) {
       db.collection('whatsapp_sessions').doc(sessionId).set({ orgId }, { merge: true }).catch(() => {})
       console.log(`[${sessionId}] orgId seteado en sesión existente: ${orgId}`)
     }
-    if (existing.status === 'open') return existing
-    // No reiniciar si ya hay un QR esperando ser escaneado
-    if (existing.status === 'qr' || existing.status === 'connecting') return existing
     if (!orgId) orgId = existing.orgId
+    if (!force) {
+      if (existing.status === 'open') return existing
+      // No reiniciar si ya hay un QR esperando ser escaneado
+      if (existing.status === 'qr' || existing.status === 'connecting' || existing.status === 'reconnecting') return existing
+    } else {
+      // Reconexión forzada: cerrar el socket viejo antes de crear uno nuevo
+      try { existing.sock?.end?.(undefined) } catch {}
+    }
   }
+
+  // Lock: si ya hay una creación de socket en vuelo para esta sesión, no abrir otra.
+  if (starting.has(sessionId)) {
+    console.log(`[${sessionId}] creación ya en curso, se omite (force: ${force})`)
+    return sessions.get(sessionId)
+  }
+  starting.add(sessionId)
+  try {
+    return await createSocket(sessionId, orgId, force)
+  } finally {
+    starting.delete(sessionId)
+  }
+}
+
+async function createSocket(sessionId, orgId, force) {
 
   // persist orgId in Firestore so we can restore it on restart
   if (orgId) {
@@ -205,11 +280,23 @@ async function startSession(sessionId, orgId) {
     orgId = snap.data()?.orgId || ''
   }
 
-  const { state, saveCreds, clearAuth } = await useFirestoreAuthState(sessionId)
-  const { version } = await fetchLatestBaileysVersion()
+  const { state, saveCreds, clearAuth } = await getAuthState(sessionId)
+  // Obtener la versión de WhatsApp Web UNA sola vez y cachearla. Refetchear en
+  // cada reconexión añade latencia y un punto de fallo. fetchLatestBaileysVersion
+  // ya cae a la versión bundle de Baileys si la red falla.
+  if (!cachedWaVersion) {
+    try {
+      const { version } = await fetchLatestBaileysVersion()
+      cachedWaVersion = version
+      console.log(`Versión WhatsApp Web: ${version?.join('.')}`)
+    } catch (e) {
+      console.warn('No se pudo obtener versión WA, usando la de Baileys:', e.message)
+    }
+  }
 
+  console.log(`[${sessionId}] creando socket (registered: ${!!state.creds?.registered}, force: ${force})`)
   const sock = makeWASocket({
-    version,
+    version: cachedWaVersion,
     auth: state,
     logger,
     printQRInTerminal: false,
@@ -270,6 +357,7 @@ async function startSession(sessionId, orgId) {
       const shouldClearAuth = AUTH_CLEAR_CODES.has(code)
       const shouldStopReconnect = STOP_RECONNECT_CODES.has(code)
       console.log(`Sesion [${sessionId}] cerrada (codigo ${code}, clearAuth: ${shouldClearAuth}, stopReconnect: ${shouldStopReconnect})`)
+      console.log(`[${sessionId}] detalle error:`, lastDisconnect?.error?.message, JSON.stringify(lastDisconnect?.error?.output?.payload || lastDisconnect?.error?.data || {}))
 
       if (shouldStopReconnect) {
         s.status = 'disconnected'
@@ -279,6 +367,7 @@ async function startSession(sessionId, orgId) {
         if (shouldClearAuth) {
           // 401 (loggedOut) o 500 (badSession): auth inválido, borrar
           await s.clearAuth?.()
+          dropAuthState(sessionId)
           console.log(`[${sessionId}] Auth borrado (código ${code}). Requiere QR nuevo.`)
         } else {
           // 440 (connectionReplaced): auth sigue válido, no borrar
@@ -292,13 +381,15 @@ async function startSession(sessionId, orgId) {
         )
         sessions.delete(sessionId)
       } else {
-        // Reconexión infinita con backoff exponencial: 5s→10s→20s→40s→60s (máx)
-        // No hay límite de intentos para errores de red — la sesión siempre se recupera
+        // Reconexión con backoff exponencial: 5s→10s→20s→40s→60s (máx).
+        // 515 (restart required) tras escanear es lo NORMAL: reconectamos con las
+        // credenciales ya guardadas (force=true) → debe abrir sin pedir QR de nuevo.
         s.reconnectCount = (s.reconnectCount || 0) + 1
-        const delay = Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
-        console.log(`[${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount})...`)
-        s.status = 'connecting'
-        setTimeout(() => startSession(sessionId), delay)
+        // El 515 post-emparejamiento es inmediato y esperado: sin backoff la 1ª vez.
+        const delay = code === 515 ? 1000 : Math.min(5000 * Math.pow(2, s.reconnectCount - 1), 60000)
+        console.log(`[${sessionId}] reconectando en ${delay / 1000}s (intento ${s.reconnectCount}, force)...`)
+        s.status = 'reconnecting'
+        setTimeout(() => startSession(sessionId, s.orgId, true).catch(e => console.error(`[${sessionId}] reconexión falló:`, e.message)), delay)
       }
     }
   })
@@ -315,8 +406,22 @@ async function startSession(sessionId, orgId) {
       if (jid === 'status@broadcast') continue
       if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@lid')) continue
 
-      const isLid = jid.endsWith('@lid')
-      const from  = jid.replace('@s.whatsapp.net', '').replace('@lid', '')
+      // Resolver el número REAL aunque WhatsApp enmascare al remitente con @lid.
+      // 1) key.senderPn/participantPn trae el teléfono real (cuando WhatsApp lo envía).
+      // 2) si no viene, lo recuperamos del mapa memorizado para este @lid.
+      const lidIsh = jid.endsWith('@lid')
+      let realPn = String(msg.key.senderPn || msg.key.participantPn || '').replace(/[^\d]/g, '')
+      if (lidIsh) {
+        if (realPn) lidToPn.set(jid, realPn)
+        else realPn = lidToPn.get(jid) || ''
+      }
+      const isLid = lidIsh && !realPn               // sigue siendo LID solo si no pudimos resolverlo
+      const from  = realPn || jid.replace('@s.whatsapp.net', '').replace('@lid', '')
+      // JID que reportamos al CRM: con número real si lo resolvimos; el original sirve para responder.
+      const reportJid = realPn ? `${realPn}@s.whatsapp.net` : jid
+      // Si resolvimos un @lid a número real, avisamos al CRM con el @lid original para
+      // que fusione el historial del cliente "lid_" viejo en el cliente con número real.
+      const resolvedFromLid = (lidIsh && realPn) ? jid : null
       const fromName = msg.pushName || from
       const msgId   = msg.key.id || ''
 
@@ -393,7 +498,7 @@ async function startSession(sessionId, orgId) {
         continue // ignorar reacciones
       } else if (m.protocolMessage) {
         continue // ignorar mensajes de protocolo (ediciones, borrados)
-      } else if (m.senderKeyDistributionMessage || m.messageContextInfo || m.callLogMessag) {
+      } else if (m.senderKeyDistributionMessage || m.messageContextInfo || m.callLogMessage) {
         continue // ignorar mensajes de sistema/señalización
       } else if (!text && msgType === 'text' && !mediaBase64 && !locationData) {
         // Mensaje sin contenido reconocido — ignorar para no crear burbuja vacía
@@ -406,7 +511,7 @@ async function startSession(sessionId, orgId) {
       if (!orgId) continue
 
       // Enviar al CRM secuencialmente con reintentos
-      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid, isLid, location: locationData, sessionId, mediaBase64, mediaMime, msgId })
+      const payload = JSON.stringify({ orgId, from, fromName, text, type: msgType, jid: reportJid, isLid, resolvedFromLid, location: locationData, sessionId, mediaBase64, mediaMime, msgId })
       let sent = false
       for (let attempt = 1; attempt <= 4; attempt++) {
         try {
@@ -444,7 +549,7 @@ async function startSession(sessionId, orgId) {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  model: 'llama3-8b-8192',
+                  model: 'llama-3.3-70b-versatile',
                   messages: [
                     {
                       role: 'system',
@@ -524,8 +629,10 @@ async function restoreActiveSessions() {
     ])
     const allDocs = [...connSnap.docs, ...replSnap.docs]
     if (allDocs.length === 0) {
-      console.log('No hay sesiones previas, iniciando sesion default...')
-      startSession('default')
+      // No arrancamos una sesión "default" inútil: esperamos a que el CRM pida
+      // /connect/:orgId cuando el usuario quiera vincular. Evita QR basura y
+      // sesiones huérfanas que estorbaban la vinculación real.
+      console.log('No hay sesiones previas. Esperando peticiones de conexión del CRM...')
       return
     }
     console.log(`Restaurando ${allDocs.length} sesion(es) (${connSnap.size} connected, ${replSnap.size} replaced)...`)
@@ -534,7 +641,6 @@ async function restoreActiveSessions() {
     }
   } catch (e) {
     console.error('Error leyendo sesiones de Firestore:', e.message)
-    startSession('default')
   }
 }
 
@@ -549,13 +655,22 @@ async function startWatchdog() {
         .get()
       for (const doc of snap.docs) {
         const sessionId = doc.id
-        // No reiniciar si ya hay una sesión activa en memoria
+        // No reiniciar si ya hay una sesión activa/en proceso en memoria
         const existing = sessions.get(sessionId)
-        if (existing && (existing.status === 'open' || existing.status === 'connecting' || existing.status === 'qr')) continue
-        // Verificar que tenga auth guardado (si no, necesita QR nuevo)
-        const authSnap = await db.collection('whatsapp_sessions').doc(sessionId).collection('auth').limit(1).get()
-        if (authSnap.empty) continue
-        console.log(`[watchdog] Reviviendo sesión desconectada: ${sessionId}`)
+        if (existing && existing.status !== 'disconnected') continue
+        if (starting.has(sessionId)) continue
+        // Solo revivir sesiones REALMENTE emparejadas (creds.registered === true).
+        // Una sesión a medio vincular (QR escaneado pero no completado) tiene auth
+        // pero NO está registrada → revivirla solo genera loops. Se ignora.
+        const credsSnap = await db.collection('whatsapp_sessions').doc(sessionId).collection('auth').doc('creds').get()
+        if (!credsSnap.exists) continue
+        let registered = false
+        try {
+          const creds = JSON.parse(credsSnap.data().value, BufferJSON.reviver)
+          registered = !!creds?.registered && !!creds?.me?.id
+        } catch { registered = false }
+        if (!registered) continue
+        console.log(`[watchdog] Reviviendo sesión emparejada: ${sessionId}`)
         startSession(sessionId).catch(e => console.error(`[watchdog] Error reviviendo [${sessionId}]:`, e.message))
       }
     } catch (e) {
@@ -602,8 +717,17 @@ app.get('/status/:sessionId?', (req, res) => {
   res.json({ sessionId, status: s?.status || 'disconnected', connected: s?.status === 'open' })
 })
 
+// 'default' y vacío ya no son sesiones válidas: cada sesión debe ir atada a un
+// orgId real (multi-tenant). Esto evita sesiones compartidas/huérfanas.
+function isValidSessionId(sessionId) {
+  return !!sessionId && sessionId !== 'default'
+}
+
 app.get('/qr/:sessionId?', async (req, res) => {
-  const sessionId = req.params.sessionId || 'default'
+  const sessionId = req.params.sessionId
+  if (!isValidSessionId(sessionId)) {
+    return res.status(400).json({ error: 'sessionId (orgId) requerido', status: 'disconnected' })
+  }
   const s = sessions.get(sessionId)
   if (!s) {
     startSession(sessionId).catch(console.error)
@@ -613,8 +737,11 @@ app.get('/qr/:sessionId?', async (req, res) => {
 })
 
 app.post('/connect/:sessionId?', async (req, res) => {
-  const sessionId = req.params.sessionId || 'default'
+  const sessionId = req.params.sessionId
   const orgId = req.body?.orgId || ''
+  if (!isValidSessionId(sessionId)) {
+    return res.status(400).json({ error: 'sessionId (orgId) requerido', status: 'disconnected' })
+  }
   try {
     const s = sessions.get(sessionId)
     if (s?.status === 'open') {
@@ -641,6 +768,7 @@ app.delete('/session/:sessionId?', async (req, res) => {
     if (s.sock) await s.sock.logout()
   } catch {}
   sessions.delete(sessionId)
+  dropAuthState(sessionId)
   try {
     const authSnap = await db.collection('whatsapp_sessions').doc(sessionId).collection('auth').get()
     const batch = db.batch()
@@ -679,9 +807,9 @@ async function safeSend(sessionId, s, jid, content) {
       (!s.sock?.user && msg !== '')
     if (isConnectionDead) {
       console.error(`[${sessionId}] Conexión muerta detectada. Reconectando...`)
-      s.status = 'connecting'
+      s.status = 'reconnecting'
       s.reconnectCount = (s.reconnectCount || 0) + 1
-      setTimeout(() => startSession(sessionId), 3000)
+      setTimeout(() => startSession(sessionId, s.orgId, true).catch(() => {}), 3000)
     }
     throw e
   }
@@ -747,21 +875,39 @@ app.post('/send-video', async (req, res) => {
     let mime = contentType || 'video/mp4'
     if (FFMPEG && (contentType.includes('webm') || contentType.includes('quicktime'))) {
       try {
-        vidBuffer = await new Promise((resolve, reject) => {
-          const proc = spawn(FFMPEG, [
-            '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
-            '-c:a', 'aac', '-b:a', '128k',
-            '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
-            '-f', 'mp4', 'pipe:1',
-          ], { stdio: ['pipe', 'pipe', 'pipe'] })
-          const chunks = []
-          proc.stdout.on('data', c => chunks.push(c))
-          proc.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error('ffmpeg error')))
-          proc.stdin.on('error', () => {})
-          proc.stdin.end(rawBuffer)
-        })
-        mime = 'video/mp4'
-        console.log(`[${sessionId}] video transcodificado → ${vidBuffer.length} bytes`)
+        const id = randomUUID()
+        const inFile = join(tmpdir(), `wa_vin_${id}`)
+        const outFile = join(tmpdir(), `wa_vout_${id}.mp4`)
+        try {
+          writeFileSync(inFile, rawBuffer)
+          vidBuffer = await new Promise((resolve, reject) => {
+            const proc = spawn(FFMPEG, [
+              '-y', '-i', inFile, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+              '-c:a', 'aac', '-b:a', '128k',
+              outFile,
+            ], { stdio: ['ignore', 'pipe', 'pipe'] })
+            let stderr = ''
+            proc.stderr.on('data', c => { stderr += c.toString() })
+            proc.on('error', reject)
+            proc.on('close', code => {
+              if (code === 0) {
+                try {
+                  const output = readFileSync(outFile)
+                  resolve(output)
+                } catch (e) {
+                  reject(new Error(`No se pudo leer output: ${e.message}`))
+                }
+              } else {
+                reject(new Error(`ffmpeg error: ${stderr.slice(-400)}`))
+              }
+            })
+          })
+          mime = 'video/mp4'
+          console.log(`[${sessionId}] video transcodificado → ${vidBuffer.length} bytes`)
+        } finally {
+          try { unlinkSync(inFile) } catch {}
+          try { unlinkSync(outFile) } catch {}
+        }
       } catch { vidBuffer = rawBuffer }
     }
 
@@ -878,6 +1024,7 @@ app.post('/reset/:sessionId?', async (req, res) => {
   try {
     if (s?.sock) { try { s.sock.end(undefined) } catch {} }
     sessions.delete(sessionId)
+    dropAuthState(sessionId)
   } catch {}
   // Borrar auth de Firestore
   try {

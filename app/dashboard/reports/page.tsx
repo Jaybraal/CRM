@@ -6,6 +6,7 @@ import { getClients, getDeals, getTasks, getOrgUsers } from '@/lib/firestore'
 import type { Client, Deal, Task, AppUser } from '@/types'
 import { TrendingUp, Users, CheckSquare, DollarSign, Target, BarChart3, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, FunnelChart, Funnel, LabelList
@@ -138,7 +139,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Reportes</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Reportes</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Métricas de rendimiento de tu equipo</p>
         </div>
         <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
@@ -152,9 +153,7 @@ export default function ReportsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : (
         <>
           {/* KPI cards */}

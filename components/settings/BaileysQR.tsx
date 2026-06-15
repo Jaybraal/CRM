@@ -12,18 +12,26 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const hasQrRef = useRef(false)
-  const sessionId = orgId || 'default'
+  // La sesión SIEMPRE va atada al orgId real (modelo multi-tenant). Nunca caer a
+  // una sesión 'default' compartida: eso mezclaría WhatsApp entre negocios y
+  // provoca conflictos de sesión (código 440).
+  const sessionId = orgId
 
   const poll = async (forceQrUpdate = false) => {
+    if (!sessionId) return
     try {
       const res = await fetch(`/api/whatsapp/sessions/${sessionId}?orgId=${sessionId}`)
       const data = await res.json()
       const newStatus = data.status as Status
       setStatus(newStatus)
-      if (data.qr && (forceQrUpdate || !hasQrRef.current)) {
+      // Mostrar SIEMPRE el QR vigente del servidor. WhatsApp rota el QR cada
+      // ~20-60s; si mostramos uno viejo (congelado), el escaneo falla. Si el
+      // servidor devuelve null (durante reconexión) mantenemos el último válido.
+      if (data.qr) {
         hasQrRef.current = true
         setFrozenQr(data.qr)
       }
+      void forceQrUpdate
       if (newStatus === 'open') {
         hasQrRef.current = false
         setFrozenQr(null)
@@ -33,11 +41,12 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   }
 
   useEffect(() => {
+    if (!sessionId) return
     poll(true)
-    intervalRef.current = setInterval(() => poll(false), 10000)
+    intervalRef.current = setInterval(() => poll(false), 5000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [sessionId])
 
   const handleDisconnect = async () => {
     if (!confirm('¿Desconectar WhatsApp? Tendrás que escanear el QR de nuevo.')) return
@@ -54,7 +63,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
     setStatus('connecting'); hasQrRef.current = false; setFrozenQr(null)
     if (intervalRef.current) clearInterval(intervalRef.current)
     poll(true)
-    intervalRef.current = setInterval(() => poll(false), 10000)
+    intervalRef.current = setInterval(() => poll(false), 5000)
   }
 
   const handleReset = async () => {
@@ -64,10 +73,24 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
       hasQrRef.current = false; setFrozenQr(null); setStatus('connecting')
       await fetch(`/api/whatsapp/sessions/${sessionId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: sessionId }) })
       if (intervalRef.current) clearInterval(intervalRef.current)
-      setTimeout(() => { poll(true); intervalRef.current = setInterval(() => poll(false), 10000) }, 3000)
+      setTimeout(() => { poll(true); intervalRef.current = setInterval(() => poll(false), 5000) }, 3000)
       toast.success('Sesión reseteada — esperando QR nuevo...')
     } catch { toast.error('Error al resetear') }
     finally { setLoading(false) }
+  }
+
+  if (!sessionId) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center">
+          <WifiOff size={28} className="text-amber-500" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Selecciona un negocio primero</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Elige tu negocio activo en la barra superior para vincular WhatsApp.</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -8,6 +8,7 @@ import PhotoUploader from '@/components/ui/PhotoUploader'
 import Modal from '@/components/ui/Modal'
 import { Plus, Pencil, Trash2, ShoppingBag, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
 const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
@@ -118,7 +119,7 @@ export default function CatalogPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Catálogo</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Catálogo</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{items.length} producto{items.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -151,9 +152,7 @@ export default function CatalogPage() {
 
       {/* Grid de productos */}
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : items.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-16 text-center">
           <ShoppingBag size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />

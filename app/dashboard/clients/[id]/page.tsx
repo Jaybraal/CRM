@@ -11,6 +11,7 @@ import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { ArrowLeft, User, MessageCircle, Save, Activity, CheckSquare, FolderKanban, MessageSquare, UserCheck, Mail, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 interface TimelineEvent {
   id: string
@@ -225,9 +226,7 @@ export default function ClientDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <Spinner />
     )
   }
   if (!client) return <div className="text-center py-20 text-slate-500 dark:text-slate-400">Cliente no encontrado</div>

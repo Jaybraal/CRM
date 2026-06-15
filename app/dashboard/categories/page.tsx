@@ -7,6 +7,7 @@ import type { Category } from '@/types'
 import Modal from '@/components/ui/Modal'
 import { Plus, Pencil, Trash2, Trash } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16','#6366f1']
 
@@ -61,7 +62,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Categorías</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Categorías</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Organiza tus clientes por categorías</p>
         </div>
         <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
@@ -70,9 +71,7 @@ export default function CategoriesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : categories.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-slate-400 dark:text-slate-500">No hay categorías. Crea la primera.</p>

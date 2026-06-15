@@ -6,6 +6,7 @@ import { getOrgUsers, getAllGoalsForMonth, setAgentGoal, getAgentStats } from '@
 import type { AppUser, AgentGoal } from '@/types'
 import { Target, TrendingUp, Users, DollarSign, MessageSquare, Pencil, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 function getMonthKey() {
   const now = new Date()
@@ -87,7 +88,7 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Equipo</h1>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Equipo</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Metas y rendimiento — <span className="capitalize font-medium">{monthLabel}</span></p>
       </div>
 
@@ -109,7 +110,7 @@ export default function TeamPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+        <Spinner />
       ) : rows.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
           <Users size={40} className="mx-auto text-slate-300 mb-3" />

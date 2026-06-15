@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3001').trim()
+const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3002').trim()
 
 // GET /api/whatsapp/status?sessionId=xxx - check session status without triggering connect
 export async function GET(req: NextRequest) {

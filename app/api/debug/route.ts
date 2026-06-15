@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
-const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3001').trim()
+const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3002').trim()
 
 // GET /api/debug — info de entorno + estado de sesiones en Baileys
 export async function GET() {

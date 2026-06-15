@@ -7,6 +7,7 @@ import type { Deal, Client, PipelineStage } from '@/types'
 import Modal from '@/components/ui/Modal'
 import { Plus, Pencil, Trash2, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 const DEFAULT_STAGES: PipelineStage[] = [
   { id: 'new', name: 'Nuevo', order: 0, color: '#6b7280' },
@@ -125,7 +126,7 @@ export default function PipelinePage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Pipeline</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Pipeline</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             {deals.length} oportunidades · <span className="text-blue-600 font-bold">${totalPipeline.toLocaleString()}</span> en pipeline
           </p>
@@ -136,9 +137,7 @@ export default function PipelinePage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {stages.map(stage => {

@@ -10,6 +10,7 @@ import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { AppUser, UserRole, AgentGoal } from '@/types'
 import Modal from '@/components/ui/Modal'
+import { Spinner } from '@/components/ui/primitives'
 import {
   Plus, Mail, Shield, Pencil, Trash2, Phone, Wifi, WifiOff,
   QrCode, Target, ChevronDown, ChevronUp, Check, X,
@@ -270,9 +271,7 @@ export default function UsersPage() {
 
       {/* Users list */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : (
         <div className="space-y-3">
           {rows.map(row => {

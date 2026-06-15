@@ -6,6 +6,7 @@ import { getTasks, updateTask, getAppointments, createAppointment, deleteAppoint
 import type { Task, Appointment } from '@/types'
 import { ChevronLeft, ChevronRight, CheckSquare, AlertCircle, CalendarPlus, Clock, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 function getTs(d: unknown): Date | null {
   if (!d) return null
@@ -166,7 +167,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Calendario</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Calendario</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             {tasksDueThisMonth.length} tareas · {apptsThisMonth.length} citas este mes
             {overdue.length > 0 && <span className="text-red-500 ml-2">· {overdue.length} vencidas</span>}
@@ -181,9 +182,7 @@ export default function CalendarPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : (
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">

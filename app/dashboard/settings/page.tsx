@@ -13,9 +13,7 @@ import {
   GitBranch, Bot, Wrench, ClipboardList, GripVertical, Tag, Users,
   Webhook as WebhookIcon, CreditCard, FormInput, ExternalLink, Clock
 } from 'lucide-react'
-
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
-const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+import { Card, SectionHeader, Toggle, Spinner, PageHeader, inputClass, labelClass } from '@/components/ui/primitives'
 
 type Tab = 'general' | 'conexiones' | 'pipeline' | 'mensajes' | 'avanzado'
 
@@ -26,37 +24,6 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number;
   { id: 'mensajes',   label: 'Mensajes',    icon: Bot },
   { id: 'avanzado',   label: 'Avanzado',    icon: Wrench },
 ]
-
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <div onClick={onToggle}
-      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${on ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
-      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${on ? 'left-5' : 'left-1'}`} />
-    </div>
-  )
-}
-
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5 space-y-4 ${className}`}>
-      {children}
-    </div>
-  )
-}
-
-function SectionHeader({ icon: Icon, title, desc }: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; desc?: string }) {
-  return (
-    <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex-shrink-0">
-        <Icon size={16} className="text-slate-500 dark:text-slate-400" />
-      </div>
-      <div>
-        <h2 className="font-bold text-slate-900 dark:text-white text-sm">{title}</h2>
-        {desc && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{desc}</p>}
-      </div>
-    </div>
-  )
-}
 
 export default function SettingsPage() {
   const { profile } = useAuth()
@@ -297,18 +264,11 @@ export default function SettingsPage() {
 
   const isOwner = profile?.role === 'owner' || profile?.role === 'super_admin'
 
-  if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <Spinner />
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Configuración</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Ajustes de tu organización</p>
-      </div>
+      <PageHeader title="Configuración" subtitle="Ajustes de tu organización" />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl overflow-x-auto">
@@ -332,7 +292,7 @@ export default function SettingsPage() {
       {activeTab === 'general' && (
         <div className="space-y-4">
           <form onSubmit={handleSave} className="space-y-4">
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={Building2} title="Información de la organización" />
               <div>
                 <label className={labelClass}>ID de organización</label>
@@ -379,24 +339,10 @@ export default function SettingsPage() {
                 {saving ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </Card>
-
-            {/* Plan */}
-            <Card>
-              <SectionHeader icon={CreditCard} title="Plan actual" />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-black text-slate-900 dark:text-white capitalize">{org?.plan || 'Trial'}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Para cambiar de plan contacta al administrador</p>
-                </div>
-                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-3 py-1 rounded-full font-bold capitalize border border-slate-200 dark:border-slate-700">
-                  {org?.plan}
-                </span>
-              </div>
-            </Card>
           </form>
 
           {/* Horario de Atención */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={Clock} title="Horario de atención" desc="Define los días y horas en que se aceptan citas desde tu web" />
             <div>
               <label className={labelClass}>Días disponibles</label>
@@ -467,7 +413,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Accesos directos — Equipo y Categorías */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={Building2} title="Gestión del equipo y categorías" desc="Accesos rápidos a las secciones de administración" />
             <div className="grid grid-cols-2 gap-3">
               <a
@@ -504,11 +450,11 @@ export default function SettingsPage() {
       {/* ── CONEXIONES ──────────────────────────────────── */}
       {activeTab === 'conexiones' && (
         <div className="space-y-4">
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={MessageCircle} title="WhatsApp" desc="Escanea el QR con tu teléfono para vincular tu número" />
             <BaileysQR orgId={profile?.orgId || ''} />
           </Card>
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={Instagram} title="Instagram" desc="Conecta tu cuenta para recibir mensajes directos" />
             <InstagramConnect />
           </Card>
@@ -519,7 +465,7 @@ export default function SettingsPage() {
       {activeTab === 'pipeline' && (
         <div className="space-y-4">
           {/* Etapas */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={GitBranch} title="Etapas del pipeline" />
             <div className="space-y-1.5">
               {stages.map(stage => (
@@ -544,7 +490,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Estados de clientes */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={Tag} title="Estados de clientes" desc='Personaliza los estados del campo "Estado" de cada cliente' />
             <div className="space-y-1.5">
               {clientStatuses.map(s => (
@@ -572,7 +518,7 @@ export default function SettingsPage() {
       {activeTab === 'mensajes' && (
         <div className="space-y-4">
           {/* Plantillas */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={MessageCircle} title="Plantillas de WhatsApp" desc="Respuestas rápidas para el chat" />
             {templates.length > 0 && (
               <div className="space-y-1.5">
@@ -600,7 +546,7 @@ export default function SettingsPage() {
 
           {/* Auto-reply */}
           <form onSubmit={handleSaveAutoReply}>
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={Bot} title="Respuesta automática" desc="Se envía al recibir un mensaje nuevo" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={autoReply.enabled} onToggle={() => setAutoReply(a => ({ ...a, enabled: !a.enabled }))} />
@@ -617,7 +563,7 @@ export default function SettingsPage() {
 
           {/* Mensaje de seguimiento */}
           <form onSubmit={handleSaveWindowMsg}>
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={Bot} title="Mensaje de seguimiento automático" desc="Se envía X horas después del primer mensaje (ventana 24h)" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={windowMsg.enabled} onToggle={() => setWindowMsg(w => ({ ...w, enabled: !w.enabled }))} />
@@ -643,7 +589,7 @@ export default function SettingsPage() {
 
           {/* Formulario de calificación */}
           <form onSubmit={handleSaveQualForm}>
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={ClipboardList} title="Formulario de calificación" desc="Se envía por WhatsApp cuando un nuevo contacto escribe" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={qualForm.enabled} onToggle={() => setQualForm(f => ({ ...f, enabled: !f.enabled }))} />
@@ -699,7 +645,7 @@ export default function SettingsPage() {
       {activeTab === 'avanzado' && isOwner && (
         <div className="space-y-4">
           {/* Webhooks */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={WebhookIcon} title="Webhooks salientes" desc="Notifica sistemas externos cuando ocurren eventos" />
             {webhooks.length > 0 && (
               <div className="space-y-1.5">
@@ -739,7 +685,7 @@ export default function SettingsPage() {
 
           {/* Formularios de captura */}
           {(profile?.role === 'owner' || profile?.role === 'super_admin' || profile?.role === 'manager') && (
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={FormInput} title="Formularios de captura" desc="Formularios públicos para capturar leads automáticamente" />
               {captureForms.length > 0 && (
                 <div className="space-y-1.5">
@@ -805,7 +751,7 @@ export default function SettingsPage() {
           )}
 
           {/* Facturación */}
-          <Card>
+          <Card className="space-y-4">
             <SectionHeader icon={CreditCard} title="Planes y facturación" desc="Gestiona tu suscripción" />
             <div className="space-y-2">
               {([
@@ -850,7 +796,7 @@ export default function SettingsPage() {
 
           {/* Mantenimiento */}
           {profile?.role === 'owner' && (
-            <Card>
+            <Card className="space-y-4">
               <SectionHeader icon={Wrench} title="Mantenimiento de datos" desc="Herramientas para limpiar datos incorrectos" />
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

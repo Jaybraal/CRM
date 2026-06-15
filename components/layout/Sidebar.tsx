@@ -22,7 +22,7 @@ const NAV_SECTIONS: NavItem[][] = [
   // Core — acciones diarias
   [
     { href: '/dashboard',          label: 'Dashboard',    icon: LayoutDashboard, roles: ['super_admin','owner','manager','supervisor','agent'] },
-    { href: '/dashboard/inbox',    label: 'Inbox WA/IG',  icon: Inbox,           roles: ['super_admin','owner','manager','supervisor','agent'], badge: 5 },
+    { href: '/dashboard/inbox',    label: 'Inbox WA/IG',  icon: Inbox,           roles: ['super_admin','owner','manager','supervisor','agent'] },
     { href: '/dashboard/pipeline', label: 'Pipeline',     icon: KanbanSquare,    roles: ['super_admin','owner','manager','supervisor','agent'] },
     { href: '/dashboard/calendar', label: 'Calendario',   icon: CalendarDays,    roles: ['super_admin','owner','manager','supervisor','agent'] },
   ],
@@ -33,7 +33,7 @@ const NAV_SECTIONS: NavItem[][] = [
   ],
   // Equipo
   [
-    { href: '/dashboard/nexo', label: 'Nexo Connect', icon: MessageSquare, roles: ['super_admin','owner','manager','supervisor','agent'], badge: 2 },
+    { href: '/dashboard/nexo', label: 'Nexo Connect', icon: MessageSquare, roles: ['super_admin','owner','manager','supervisor','agent'] },
   ],
   // Configuración
   [

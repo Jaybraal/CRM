@@ -71,9 +71,67 @@ async function sendBaileys(baileysUrl: string, to: string, text: string, session
   })
 }
 
+// Fusiona un cliente "lid_" antiguo (creado cuando WhatsApp ocultaba el número
+// tras un @lid) dentro del cliente con número real ya resuelto. Mueve los mensajes,
+// conserva el nombre/etiquetas/agente y borra el cliente viejo. Es best-effort:
+// nunca debe romper la ingesta de mensajes, por eso se llama dentro de try/catch.
+async function mergeLidClientInto(orgId: string, lidJid: string, realClientId: string) {
+  const clientsRef = adminDb.collection(`organizations/${orgId}/clients`)
+
+  // Localizar el cliente viejo por su @lid original (whatsappJid) o por id lid_<num>
+  let oldDoc: FirebaseFirestore.DocumentSnapshot | null = null
+  const byJid = await clientsRef.where('whatsappJid', '==', lidJid).limit(1).get()
+  if (!byJid.empty) {
+    oldDoc = byJid.docs[0]
+  } else {
+    const lidNum = String(lidJid).replace(/@lid$/, '').replace(/\D/g, '')
+    if (lidNum) {
+      const byId = await clientsRef.doc(`lid_${lidNum}`).get()
+      if (byId.exists) oldDoc = byId
+    }
+  }
+  if (!oldDoc || !oldDoc.exists) return
+  if (oldDoc.id === realClientId) return
+
+  const oldData = oldDoc.data() as Record<string, unknown>
+  if (oldData.mergedInto) return // ya fusionado
+
+  const realRef = clientsRef.doc(realClientId)
+  const realSnap = await realRef.get()
+  const realData = (realSnap.data() || {}) as Record<string, unknown>
+
+  // Mover mensajes en lotes, deduplicando por id de documento
+  const oldMsgsRef = adminDb.collection(`organizations/${orgId}/clients/${oldDoc.id}/messages`)
+  const realMsgsRef = adminDb.collection(`organizations/${orgId}/clients/${realClientId}/messages`)
+  const oldMsgs = await oldMsgsRef.get()
+  let batch = adminDb.batch()
+  let ops = 0
+  for (const m of oldMsgs.docs) {
+    batch.set(realMsgsRef.doc(m.id), { ...m.data(), clientId: realClientId }, { merge: true })
+    batch.delete(m.ref)
+    ops += 2
+    if (ops >= 400) { await batch.commit(); batch = adminDb.batch(); ops = 0 }
+  }
+
+  // Conservar el mejor nombre: si el cliente real se llama como un número, usar el del viejo
+  const realName = String(realData.name || '')
+  const oldName = String(oldData.name || '')
+  const realNameIsNumeric = /^\d+$/.test(realName) || realName === ''
+  const carry: Record<string, unknown> = {}
+  if (realNameIsNumeric && oldName && !/^\d+$/.test(oldName)) carry.name = oldName
+  if (Array.isArray(oldData.tags) && oldData.tags.length) carry.tags = FieldValue.arrayUnion(...(oldData.tags as string[]))
+  if (!realData.assignedTo && oldData.assignedTo) carry.assignedTo = oldData.assignedTo
+  if (oldData.notes && !realData.notes) carry.notes = oldData.notes
+  if (Object.keys(carry).length) batch.set(realRef, carry, { merge: true })
+
+  // Marcar el viejo como fusionado y borrarlo
+  batch.delete(oldDoc.ref)
+  await batch.commit()
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { orgId, from, fromName, text, type, jid, isLid, location, callDuration, mediaBase64, mediaMime, msgId } = await req.json()
+    const { orgId, from, fromName, text, type, jid, isLid, resolvedFromLid, location, callDuration, mediaBase64, mediaMime, msgId } = await req.json()
 
     if (!orgId || !from) return NextResponse.json({ ok: true })
 
@@ -133,6 +191,18 @@ export async function POST(req: NextRequest) {
       const clientDoc = clientsSnap.docs[0]
       clientId = clientDoc.id
       clientName = (clientDoc.data() as { name?: string }).name || clientDoc.id
+    }
+
+    // Si el servidor resolvió un @lid a número real, fusionar el historial del
+    // cliente "lid_" viejo dentro de este. Best-effort: nunca rompe la ingesta.
+    if (resolvedFromLid) {
+      try {
+        await mergeLidClientInto(orgId, resolvedFromLid, clientId)
+        const merged = await adminDb.doc(`organizations/${orgId}/clients/${clientId}`).get()
+        clientName = (merged.data() as { name?: string })?.name || clientName
+      } catch (e) {
+        console.error('mergeLidClientInto falló (no crítico):', e)
+      }
     }
 
     // Build message document

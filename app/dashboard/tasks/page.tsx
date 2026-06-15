@@ -7,6 +7,7 @@ import type { Task, Client } from '@/types'
 import Modal from '@/components/ui/Modal'
 import { Plus, CheckCircle, Circle, Trash2, CalendarDays, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
 const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
@@ -87,7 +88,7 @@ export default function TasksPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Tareas</h1>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Tareas</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             <span className="text-blue-600 font-bold">{tasks.filter(t => !t.completed).length}</span> pendientes
           </p>
@@ -113,9 +114,7 @@ export default function TasksPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-slate-400 dark:text-slate-500">No hay tareas en esta vista.</p>

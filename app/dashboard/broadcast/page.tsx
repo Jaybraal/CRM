@@ -6,6 +6,7 @@ import { getClients, getCategories, getOrganization, getWhatsAppTemplates, getCa
 import type { Client, Category, WhatsAppTemplate, BroadcastCampaign } from '@/types'
 import { Send, Users, Filter, Zap, CheckSquare, AlertCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Spinner } from '@/components/ui/primitives'
 
 interface BroadcastResult { clientId: string; name: string; phone: string; success: boolean; error?: string }
 
@@ -81,7 +82,7 @@ export default function BroadcastPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Difusión WhatsApp</h1>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Difusión WhatsApp</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Envía un mensaje masivo a tus clientes</p>
       </div>
 
@@ -96,7 +97,7 @@ export default function BroadcastPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+        <Spinner />
       ) : (
         <>
           {/* Filters */}
