@@ -71,7 +71,7 @@ export default function PublicCatalogPage() {
               <button
                 key={item.id}
                 onClick={() => openItem(item)}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden text-left hover:shadow-md hover:border-gray-300 transition-all active:scale-95"
+                className="bg-white border border-gray-200 rounded-md overflow-hidden text-left hover:shadow-md hover:border-gray-300 transition-all active:scale-95"
               >
                 <div className="aspect-square bg-gray-50">
                   {item.photos.length > 0 ? (
@@ -102,7 +102,7 @@ export default function PublicCatalogPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-white w-full sm:max-w-lg sm:rounded-2xl overflow-hidden max-h-[95vh] flex flex-col"
+            className="bg-white w-full sm:max-w-lg sm:rounded-lg overflow-hidden max-h-[95vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             {/* Carrusel de fotos */}
@@ -179,7 +179,7 @@ export default function PublicCatalogPage() {
                 href={`https://wa.me/${whatsappNumber || ''}?text=${encodeURIComponent(`Hola, me interesa: *${selected.title}*${selected.price != null ? ` ($${selected.price.toLocaleString('es')})` : ''}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#22c55e] text-white py-3 rounded-xl font-semibold text-sm transition-colors"
+                className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#22c55e] text-white py-3 rounded-md font-semibold text-sm transition-colors"
               >
                 <MessageCircle size={18} /> Consultar por WhatsApp
               </a>

@@ -89,7 +89,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="Panel General"
-        subtitle={<>Bienvenido, <span className="text-blue-600 font-bold">{profile?.displayName?.split(' ')[0]}</span></>}
+        subtitle={<>Bienvenido, <span className="text-[#0D7A65] font-bold">{profile?.displayName?.split(' ')[0]}</span></>}
       >
         <Link href="/dashboard/clients">
           <Button><UserPlus size={16} /> Nuevo Cliente</Button>
@@ -104,12 +104,12 @@ export default function DashboardPage() {
           {stats.clients === 0 && (
             <Card>
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                  <Rocket size={20} className="text-blue-600" />
+                <div className="p-2.5 bg-[#F4F5F7] dark:bg-[#0D7A65]/10 rounded-md">
+                  <Rocket size={20} className="text-[#0D7A65]" />
                 </div>
                 <div>
-                  <h2 className="font-black text-slate-900 dark:text-white">Bienvenido a NEXO CRM</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Sigue estos pasos para empezar</p>
+                  <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">Bienvenido a NEXO CRM</h2>
+                  <p className="text-sm text-[#68748D] dark:text-[#9BA5B7]">Sigue estos pasos para empezar</p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -118,12 +118,12 @@ export default function DashboardPage() {
                   { step: 2, label: 'Invita a tu equipo', href: '/dashboard/users', action: 'Ir a Usuarios' },
                   { step: 3, label: 'Conecta WhatsApp Business', href: '/dashboard/settings', action: 'Configuración' },
                 ].map(({ step, label, href, action }) => (
-                  <div key={step} className="flex items-center justify-between py-3 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <div key={step} className="flex items-center justify-between py-3 px-4 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-black flex-shrink-0">{step}</span>
-                      <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{label}</span>
+                      <span className="w-6 h-6 bg-[#0C1224] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{step}</span>
+                      <span className="text-sm text-[#0C1224] dark:text-[#9BA5B7] font-medium">{label}</span>
                     </div>
-                    <Link href={href} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                    <Link href={href} className="text-xs font-bold text-[#0D7A65] hover:text-blue-700 transition-colors">
                       {action} →
                     </Link>
                   </div>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
               value={stats.clients}
               sub={stats.newClientsThisMonth > 0 ? `+${stats.newClientsThisMonth} este mes` : undefined}
               icon={Users}
-              colorClass="text-blue-600 bg-blue-100 dark:bg-blue-900/30"
+              colorClass="text-[#0D7A65] bg-[#0D7A65]/10 dark:bg-[#0D7A65]/10"
             />
             <StatCard
               title="Tareas Pendientes"
@@ -168,8 +168,8 @@ export default function DashboardPage() {
           {/* Pipeline por etapa */}
           <Card padded={false} className="p-6">
             <div className="flex items-center gap-2 mb-6">
-              <Clock size={16} className="text-slate-400" />
-              <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Pipeline por etapa</h2>
+              <Clock size={16} className="text-[#9BA5B7]" />
+              <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Pipeline por etapa</h2>
             </div>
             <div className="space-y-4">
               {STAGES.map(stage => {
@@ -181,14 +181,14 @@ export default function DashboardPage() {
                 const pct = Math.round((value / maxVal) * 100)
                 return (
                   <div key={stage.id} className="flex items-center gap-4">
-                    <div className="w-24 text-xs font-bold text-slate-500 dark:text-slate-400 text-right flex-shrink-0">{stage.name}</div>
-                    <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-2">
+                    <div className="w-24 text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] text-right flex-shrink-0">{stage.name}</div>
+                    <div className="flex-1 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full h-2">
                       <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: stage.color }} />
                     </div>
-                    <div className="w-20 text-xs font-bold text-slate-600 dark:text-slate-300">
-                      {stageDeals.length > 0 ? `$${value.toLocaleString()}` : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    <div className="w-20 text-xs font-bold text-[#68748D] dark:text-[#9BA5B7]">
+                      {stageDeals.length > 0 ? `$${value.toLocaleString()}` : <span className="text-[#9BA5B7] dark:text-[#68748D]">—</span>}
                     </div>
-                    <div className="w-6 text-xs text-slate-400 text-right">{stageDeals.length}</div>
+                    <div className="w-6 text-xs text-[#9BA5B7] text-right">{stageDeals.length}</div>
                   </div>
                 )
               })}
@@ -200,7 +200,7 @@ export default function DashboardPage() {
             <Card padded={false} className="p-6 border-red-200 dark:border-red-900/50">
               <div className="flex items-center gap-2 mb-4">
                 <AlertCircle size={16} className="text-red-500" />
-                <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Tareas Vencidas</h2>
+                <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Tareas Vencidas</h2>
               </div>
               <div className="space-y-2">
                 {overdueTasks.slice(0, 5).map(task => {
@@ -208,8 +208,8 @@ export default function DashboardPage() {
                     ? new Date((task.dueDate as unknown as { seconds: number }).seconds * 1000)
                     : new Date(task.dueDate as unknown as string)
                   return (
-                    <div key={task.id} className="flex items-center justify-between py-2.5 px-4 bg-red-50 dark:bg-red-900/10 rounded-xl">
-                      <p className="text-sm text-slate-800 dark:text-slate-200 font-medium">{task.title}</p>
+                    <div key={task.id} className="flex items-center justify-between py-2.5 px-4 bg-red-50 dark:bg-red-900/10 rounded-md">
+                      <p className="text-sm text-[#0C1224] dark:text-[#E8ECF4] font-medium">{task.title}</p>
                       <span className="text-xs text-red-500 font-bold ml-4 flex-shrink-0">{due.toLocaleDateString('es')}</span>
                     </div>
                   )

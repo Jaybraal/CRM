@@ -5,7 +5,7 @@ import { WifiOff, Copy, CheckCircle, ExternalLink, Save, Eye, EyeOff, Loader2, I
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 
-const inputClass = 'w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 text-sm font-mono transition-all'
+const inputClass = 'w-full bg-gray-50 border border-gray-200 rounded-md px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 text-sm font-mono transition-all'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5'
 
 export default function InstagramConnect() {
@@ -109,7 +109,7 @@ export default function InstagramConnect() {
   if (status === 'connected') {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-xl">
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-md">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md shadow-pink-200">
               <Instagram size={16} className="text-white" />
@@ -127,14 +127,14 @@ export default function InstagramConnect() {
         <div className="flex gap-2">
           <button
             onClick={() => setStatus('disconnected')}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-4 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-4 py-2 rounded-md transition-colors"
           >
             <RefreshCw size={14} /> Actualizar token
           </button>
           <button
             onClick={handleDisconnect}
             disabled={saving}
-            className="flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 border border-red-200 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 border border-red-200 px-4 py-2 rounded-md transition-colors disabled:opacity-50"
           >
             <WifiOff size={14} /> Desconectar
           </button>
@@ -153,13 +153,13 @@ export default function InstagramConnect() {
           href="https://developers.facebook.com/apps"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs text-violet-600 hover:bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-xl transition-colors font-medium"
+          className="flex items-center gap-1.5 text-xs text-violet-600 hover:bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-md transition-colors font-medium"
         >
           <ExternalLink size={12} /> Meta for Developers
         </a>
       </div>
 
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3 space-y-2">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-md px-4 py-3 space-y-2">
         <p className="text-xs font-semibold text-blue-800">Pasos para conectar Instagram DM</p>
         <ol className="list-decimal list-inside space-y-1 text-xs text-blue-700 ml-1">
           <li>Crea o entra a tu app en <strong>Meta for Developers</strong></li>
@@ -178,7 +178,7 @@ export default function InstagramConnect() {
             <button
               type="button"
               onClick={copyWebhook}
-              className="flex items-center gap-1.5 text-sm px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors flex-shrink-0 text-gray-700"
+              className="flex items-center gap-1.5 text-sm px-3 py-2.5 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors flex-shrink-0 text-gray-700"
             >
               {copied ? <CheckCircle size={14} className="text-green-500" /> : <Copy size={14} />}
               {copied ? 'Copiado' : 'Copiar'}
@@ -193,7 +193,7 @@ export default function InstagramConnect() {
             <button
               type="button"
               onClick={copyVerifyToken}
-              className="flex items-center gap-1.5 text-sm px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors flex-shrink-0 text-gray-700"
+              className="flex items-center gap-1.5 text-sm px-3 py-2.5 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors flex-shrink-0 text-gray-700"
             >
               <Copy size={14} /> Copiar
             </button>
@@ -243,7 +243,7 @@ export default function InstagramConnect() {
         <button
           type="submit"
           disabled={saving || !igToken.trim() || !igPageId.trim()}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-xl font-medium text-sm transition-all shadow-md shadow-pink-200/50 disabled:shadow-none disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-md font-medium text-sm transition-all shadow-md shadow-pink-200/50 disabled:shadow-none disabled:cursor-not-allowed"
         >
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
           {saving ? 'Guardando...' : 'Guardar y conectar Instagram'}

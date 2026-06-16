@@ -62,7 +62,7 @@ export default function CaptureFormClient({ orgId, formId }: { orgId: string; fo
 
   if (submitted) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-md w-full text-center shadow-sm">
         <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -76,7 +76,7 @@ export default function CaptureFormClient({ orgId, formId }: { orgId: string; fo
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-lg w-full shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-lg w-full shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{form.name}</h1>
         <p className="text-gray-400 text-sm mb-6">Completa los datos y nos pondremos en contacto</p>
 

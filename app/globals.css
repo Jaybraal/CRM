@@ -1,20 +1,40 @@
 @import "tailwindcss";
 
-/* Enable class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-code), ui-monospace, monospace;
+}
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --border: #E3E6EC;
+  --text-1: #0C1224;
+  --text-2: #68748D;
+  --text-3: #9BA5B7;
+  --jade: #0D7A65;
+  --jade-dim: rgba(13, 122, 101, 0.08);
+  --navy: #0C1224;
+}
+
+.dark {
+  --bg: #080E1C;
+  --surface: #0F1829;
+  --border: #1A2540;
+  --text-1: #E8ECF4;
+  --text-2: #7B8BA5;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.dark body {
-  background: #020617;
-  color: #f1f5f9;
+* {
+  box-sizing: border-box;
 }

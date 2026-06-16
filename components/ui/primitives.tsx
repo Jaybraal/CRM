@@ -2,23 +2,16 @@
 
 import type { ComponentType, ReactNode } from 'react'
 
-/**
- * Primitivos de UI compartidos — una sola fuente de verdad para el diseño del CRM.
- * Antes cada página reinventaba cards, headers, botones y spinners con valores
- * ligeramente distintos. Importar desde aquí mantiene todo consistente y ligero.
- */
-
 type IconType = ComponentType<{ size?: number; className?: string }>
 
-// ── Clases reutilizables para formularios ─────────────────────────────────────
+// ── Formularios ───────────────────────────────────────────────────────────────
 export const inputClass =
-  'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+  'w-full bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded px-3.5 py-2 text-[#0C1224] dark:text-[#E8ECF4] placeholder-[#9BA5B7] focus:outline-none focus:border-[#0D7A65] focus:ring-2 focus:ring-[#0D7A65]/10 text-sm transition-colors'
 
 export const labelClass =
-  'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+  'block text-[10px] font-semibold text-[#68748D] dark:text-[#7B8BA5] uppercase tracking-wider mb-1.5'
 
 // ── Encabezado de página ──────────────────────────────────────────────────────
-// Unifica el título/subtítulo de cada pantalla (antes variaban entre text-2xl y 3xl).
 export function PageHeader({
   title,
   subtitle,
@@ -26,14 +19,14 @@ export function PageHeader({
 }: {
   title: string
   subtitle?: ReactNode
-  children?: ReactNode // acción a la derecha (botón, etc.)
+  children?: ReactNode
 }) {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate">{title}</h1>
+        <h1 className="text-xl font-bold text-[#0C1224] dark:text-[#E8ECF4] truncate tracking-tight">{title}</h1>
         {subtitle && (
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">{subtitle}</p>
+          <p className="text-[#68748D] dark:text-[#7B8BA5] mt-0.5 text-sm">{subtitle}</p>
         )}
       </div>
       {children && <div className="flex-shrink-0">{children}</div>}
@@ -53,7 +46,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm ${
+      className={`bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg ${
         padded ? 'p-5' : ''
       } ${className}`}
     >
@@ -73,13 +66,11 @@ export function SectionHeader({
   desc?: string
 }) {
   return (
-    <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex-shrink-0">
-        <Icon size={16} className="text-slate-500 dark:text-slate-400" />
-      </div>
+    <div className="flex items-center gap-2.5 pb-4 border-b border-[#E3E6EC] dark:border-[#1A2540]">
+      <Icon size={15} className="text-[#68748D] dark:text-[#7B8BA5] flex-shrink-0" />
       <div className="min-w-0">
-        <h2 className="font-bold text-slate-900 dark:text-white text-sm">{title}</h2>
-        {desc && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{desc}</p>}
+        <h2 className="text-xs font-semibold text-[#0C1224] dark:text-[#E8ECF4] uppercase tracking-wider">{title}</h2>
+        {desc && <p className="text-xs text-[#9BA5B7] dark:text-[#7B8BA5] mt-0.5">{desc}</p>}
       </div>
     </div>
   )
@@ -90,11 +81,11 @@ type ButtonVariant = 'primary' | 'secondary' | 'danger'
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20',
+    'bg-[#0C1224] hover:bg-[#1B2B4B] text-white dark:bg-[#0D7A65] dark:hover:bg-[#0B6B57]',
   secondary:
-    'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200',
+    'bg-white dark:bg-transparent border border-[#E3E6EC] dark:border-[#1A2540] text-[#0C1224] dark:text-[#E8ECF4] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]',
   danger:
-    'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20',
+    'bg-[#DC2626] hover:bg-[#B91C1C] text-white',
 }
 
 export function Button({
@@ -110,7 +101,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:pointer-events-none ${BUTTON_VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded text-sm font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none ${BUTTON_VARIANTS[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -135,28 +126,26 @@ export function StatCard({
   alert?: boolean
 }) {
   return (
-    <div
-      className={`bg-white dark:bg-slate-900 p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all ${
-        alert ? 'border-red-200 dark:border-red-900' : 'border-slate-100 dark:border-slate-800'
-      }`}
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2.5 rounded-xl ${colorClass}`}>
-          <Icon size={20} />
-        </div>
+    <div className="relative bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-5 overflow-hidden">
+      <div
+        className="absolute left-0 top-0 bottom-0 w-[3px]"
+        style={{ backgroundColor: alert ? '#DC2626' : '#0D7A65' }}
+      />
+      <div className="flex justify-between items-start mb-3">
+        <p className="text-[10px] font-semibold text-[#68748D] dark:text-[#7B8BA5] uppercase tracking-wider">{title}</p>
         {alert && (
-          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 uppercase tracking-wide">
             Urgente
           </span>
         )}
       </div>
-      <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{title}</p>
-      <h4 className="text-2xl font-black mt-1 text-slate-900 dark:text-white">{value}</h4>
+      <h4 className="text-2xl font-semibold font-mono tabular-nums text-[#0C1224] dark:text-[#E8ECF4] leading-none">{value}</h4>
       {sub && (
-        <p className={`text-xs mt-1 truncate ${alert ? 'text-red-500 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
-          {sub}
-        </p>
+        <p className={`text-xs mt-1.5 ${alert ? 'text-red-500' : 'text-[#68748D] dark:text-[#7B8BA5]'}`}>{sub}</p>
       )}
+      <div className="mt-4">
+        <Icon size={14} className="text-[#9BA5B7] dark:text-[#7B8BA5]" />
+      </div>
     </div>
   )
 }
@@ -166,11 +155,11 @@ export function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) 
   return (
     <div
       onClick={onToggle}
-      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${
-        on ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+      className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${
+        on ? 'bg-[#0D7A65]' : 'bg-[#E3E6EC] dark:bg-[#1A2540]'
       }`}
     >
-      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${on ? 'left-5' : 'left-1'}`} />
+      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${on ? 'left-[18px]' : 'left-0.5'}`} />
     </div>
   )
 }
@@ -179,7 +168,7 @@ export function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) 
 export function Spinner({ className = '' }: { className?: string }) {
   return (
     <div className={`flex justify-center py-16 ${className}`}>
-      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-7 h-7 border-2 border-[#E3E6EC] border-t-[#0D7A65] rounded-full animate-spin" />
     </div>
   )
 }
@@ -198,11 +187,11 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-14 px-6">
-      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl mb-4">
-        <Icon size={24} className="text-slate-400" />
+      <div className="w-10 h-10 flex items-center justify-center mb-4 border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg">
+        <Icon size={18} className="text-[#9BA5B7]" />
       </div>
-      <p className="font-bold text-slate-700 dark:text-slate-200">{title}</p>
-      {desc && <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 max-w-sm">{desc}</p>}
+      <p className="font-semibold text-[#0C1224] dark:text-[#E8ECF4] text-sm">{title}</p>
+      {desc && <p className="text-sm text-[#68748D] dark:text-[#7B8BA5] mt-1 max-w-sm">{desc}</p>}
       {children && <div className="mt-5">{children}</div>}
     </div>
   )

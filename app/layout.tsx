@@ -1,13 +1,25 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'react-hot-toast'
 import ServiceWorkerRegister from '@/components/ui/ServiceWorkerRegister'
 
-const inter = Inter({ subsets: ['latin'] })
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
+})
+
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono-code',
+  display: 'swap',
+  weight: ['400', '600'],
+})
 
 export const metadata: Metadata = {
   title: 'NEXO CRM',
@@ -23,8 +35,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
-      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
+    <html lang="es" className={`${jakarta.variable} ${mono.variable}`}>
+      <body className="font-sans bg-[#F4F5F7] text-[#0C1224] antialiased">
         <AuthProvider>
           <ServiceWorkerRegister />
           {children}

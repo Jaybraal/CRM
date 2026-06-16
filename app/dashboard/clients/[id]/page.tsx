@@ -23,7 +23,7 @@ interface TimelineEvent {
   color: string
 }
 
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const inputClass = 'w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 text-sm transition-colors'
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -119,7 +119,7 @@ export default function ClientDetailPage() {
           sub: m.text ? m.text.substring(0, 80) : m.photos?.length ? `${m.photos.length} foto(s)` : '',
           date: getTs(m.createdAt),
           icon: MessageSquare,
-          color: m.source === 'whatsapp' ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
+          color: m.source === 'whatsapp' ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-[#68748D] dark:text-[#9BA5B7] bg-[#F4F5F7] dark:bg-[#1A2540]',
         })),
         ...tasksData.filter(t => t.clientId === id).map(t => ({
           id: t.id,
@@ -136,7 +136,7 @@ export default function ClientDetailPage() {
           sub: d.value ? `$${d.value.toLocaleString()}` : undefined,
           date: getTs(d.updatedAt),
           icon: FolderKanban,
-          color: d.stage === 'closed_won' ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : d.stage === 'closed_lost' ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : 'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
+          color: d.stage === 'closed_won' ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : d.stage === 'closed_lost' ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : 'text-[#0D7A65] bg-[#F4F5F7] dark:bg-[#0D7A65]/10',
         })),
       ].sort((a, b) => b.date.getTime() - a.date.getTime())
 
@@ -229,7 +229,7 @@ export default function ClientDetailPage() {
       <Spinner />
     )
   }
-  if (!client) return <div className="text-center py-20 text-slate-500 dark:text-slate-400">Cliente no encontrado</div>
+  if (!client) return <div className="text-center py-20 text-[#68748D] dark:text-[#9BA5B7]">Cliente no encontrado</div>
 
   const hasWhatsApp = true // Usa Baileys — siempre activo
   const categoryName = categories.find(c => c.id === client.categoryId)?.name
@@ -237,21 +237,21 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
       <button onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+        className="flex items-center gap-2 text-sm text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-white transition-colors">
         <ArrowLeft size={16} /> Volver a clientes
       </button>
 
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
+      <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-5">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
-            <User size={22} className="text-slate-500 dark:text-slate-400" />
+          <div className="w-12 h-12 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full flex items-center justify-center flex-shrink-0">
+            <User size={22} className="text-[#68748D] dark:text-[#9BA5B7]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black text-slate-900 dark:text-white">{client.name}</h1>
+            <h1 className="text-xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">{client.name}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{client.status}</span>
-              {categoryName && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{categoryName}</span>}
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7]">{client.status}</span>
+              {categoryName && <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7]">{categoryName}</span>}
               {client.whatsappPhone && hasWhatsApp && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">WhatsApp ●</span>
               )}
@@ -259,34 +259,34 @@ export default function ClientDetailPage() {
             {/* Agente asignado */}
             {profile?.role !== 'agent' && agents.length > 0 && (
               <div className="flex items-center gap-2 mt-3">
-                <UserCheck size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                <UserCheck size={14} className="text-[#9BA5B7] dark:text-[#68748D] flex-shrink-0" />
                 <select
                   value={client.assignedTo || ''}
                   onChange={e => handleReassign(e.target.value)}
                   disabled={reassigning}
-                  className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 disabled:opacity-50 transition-colors"
+                  className="text-sm text-[#0C1224] dark:text-[#9BA5B7] bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-2 py-1 focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 disabled:opacity-50 transition-colors"
                 >
                   <option value="">Sin asignar</option>
                   {agents.map(a => <option key={a.uid} value={a.uid}>{a.displayName}</option>)}
                 </select>
-                {reassigning && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+                {reassigning && <div className="w-4 h-4 border-2 border-[#0D7A65] border-t-transparent rounded-full animate-spin" />}
               </div>
             )}
             {profile?.role === 'agent' && client.assignedTo === profile.uid && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 flex items-center gap-1"><UserCheck size={12} /> Asignado a ti</p>
+              <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-2 flex items-center gap-1"><UserCheck size={12} /> Asignado a ti</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-[#F4F5F7] dark:bg-[#1A2540] p-1 rounded-md w-fit">
         <button onClick={() => setTab('chat')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'chat' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'chat' ? 'bg-white dark:bg-[#0F1829] text-[#0C1224] dark:text-[#E8ECF4] shadow-sm' : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200'}`}>
           <MessageCircle size={15} /> Chat
         </button>
         <button onClick={() => setTab('info')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'info' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'info' ? 'bg-white dark:bg-[#0F1829] text-[#0C1224] dark:text-[#E8ECF4] shadow-sm' : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200'}`}>
           <User size={15} /> Info
         </button>
         <button onClick={() => setTab('email')}
@@ -294,7 +294,7 @@ export default function ClientDetailPage() {
           <Mail size={15} /> Email
         </button>
         <button onClick={() => setTab('activity')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'activity' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === 'activity' ? 'bg-white dark:bg-[#0F1829] text-[#0C1224] dark:text-[#E8ECF4] shadow-sm' : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200'}`}>
           <Activity size={15} /> Actividad
         </button>
       </div>
@@ -302,14 +302,14 @@ export default function ClientDetailPage() {
       {tab === 'chat' && <ChatWindow client={client} hasWhatsApp={hasWhatsApp} />}
 
       {tab === 'info' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-5">
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Nombre *</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Nombre *</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Estado</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Estado</label>
               <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={inputClass}>
                 {clientStatuses.map(s => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -317,19 +317,19 @@ export default function ClientDetailPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Email</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Email</label>
               <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputClass} placeholder="correo@ejemplo.com" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Teléfono</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Teléfono</label>
               <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputClass} placeholder="+1 234 567 8900" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">WhatsApp del cliente</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">WhatsApp del cliente</label>
               <input value={form.whatsappPhone} onChange={e => setForm(f => ({ ...f, whatsappPhone: e.target.value }))} className={inputClass} placeholder="+52 55 1234 5678" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Categoría</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Categoría</label>
               <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))} className={inputClass}>
                 <option value="">Sin categoría</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -338,25 +338,25 @@ export default function ClientDetailPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Notas</label>
+            <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Notas</label>
             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               rows={3} className={`${inputClass} resize-none`} placeholder="Notas adicionales..." />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Etiquetas</label>
+            <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1.5">Etiquetas</label>
             <div className="flex gap-2 mb-2">
               <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
                 className={inputClass} placeholder="Escribe y presiona Enter" />
-              <button type="button" onClick={addTag} className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold transition-colors">+</button>
+              <button type="button" onClick={addTag} className="px-3 py-2 bg-[#F4F5F7] dark:bg-[#1A2540] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7] rounded-md text-sm font-bold transition-colors">+</button>
             </div>
             {form.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {form.tags.map(tag => (
-                  <span key={tag} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full">
+                  <span key={tag} className="flex items-center gap-1 text-xs bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7] px-2.5 py-1 rounded-full">
                     {tag}
-                    <button onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }))} className="ml-1 text-slate-400 dark:text-slate-500 hover:text-red-500">×</button>
+                    <button onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }))} className="ml-1 text-[#9BA5B7] dark:text-[#68748D] hover:text-red-500">×</button>
                   </span>
                 ))}
               </div>
@@ -365,10 +365,10 @@ export default function ClientDetailPage() {
 
           {client.photos?.length > 0 && (
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">Fotos</label>
+              <label className="block text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-2">Fotos</label>
               <div className="grid grid-cols-4 gap-2">
                 {client.photos.map((url, i) => (
-                  <img key={i} src={url} alt="" className="aspect-square object-cover rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  <img key={i} src={url} alt="" className="aspect-square object-cover rounded-md border border-[#E3E6EC] dark:border-[#1A2540] cursor-pointer"
                     onClick={() => window.open(url, '_blank')} />
                 ))}
               </div>
@@ -376,7 +376,7 @@ export default function ClientDetailPage() {
           )}
 
           <button onClick={handleSave} disabled={saving}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
+            className="w-full flex items-center justify-center gap-2 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow-lg transition-colors">
             <Save size={16} /> {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
@@ -384,9 +384,9 @@ export default function ClientDetailPage() {
 
       {/* Respuestas del formulario de calificación */}
       {tab === 'info' && qualSession && org?.settings?.qualificationForm?.questions?.length && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 space-y-4">
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2">
+            <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm flex items-center gap-2">
               📋 Formulario de calificación
             </h2>
             <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
@@ -403,15 +403,15 @@ export default function ClientDetailPage() {
               .map((q, i) => {
                 const answer = qualSession.answers?.[q.id]
                 return (
-                  <div key={q.id} className={`rounded-xl p-3 ${answer ? 'bg-slate-50 dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-800/30 opacity-50'}`}>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Pregunta {i + 1}</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{q.text}</p>
+                  <div key={q.id} className={`rounded-md p-3 ${answer ? 'bg-[#F4F5F7] dark:bg-[#1A2540]' : 'bg-[#F4F5F7]/50 dark:bg-[#1A2540]/30 opacity-50'}`}>
+                    <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] mb-1">Pregunta {i + 1}</p>
+                    <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">{q.text}</p>
                     {answer ? (
-                      <p className={`text-sm mt-1.5 font-bold ${q.type === 'phone' ? 'text-green-700 dark:text-green-400' : 'text-slate-900 dark:text-white'}`}>
+                      <p className={`text-sm mt-1.5 font-bold ${q.type === 'phone' ? 'text-green-700 dark:text-green-400' : 'text-[#0C1224] dark:text-[#E8ECF4]'}`}>
                         {q.type === 'phone' ? `📱 ${answer}` : answer}
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 italic">Sin respuesta aún</p>
+                      <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1 italic">Sin respuesta aún</p>
                     )}
                   </div>
                 )
@@ -423,12 +423,12 @@ export default function ClientDetailPage() {
       {tab === 'email' && (
         <div className="space-y-4">
           {!client.email && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-sm text-amber-800">
               Este cliente no tiene email. Añádelo en la pestaña Info.
             </div>
           )}
           {/* Compose */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="bg-white border border-gray-200 rounded-md p-6">
             <h2 className="font-semibold text-gray-900 text-sm mb-4 flex items-center gap-2"><Send size={14} /> Nuevo email</h2>
             <form onSubmit={handleSendEmail} className="space-y-3">
               <div>
@@ -455,12 +455,12 @@ export default function ClientDetailPage() {
           </div>
           {/* Thread history */}
           {emailThreads.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+            <div className="bg-white border border-gray-200 rounded-md p-6 space-y-3">
               <h2 className="font-semibold text-gray-900 text-sm mb-1">Historial de emails</h2>
               {emailThreads.map(t => {
                 const getD = (d: unknown): Date => d instanceof Date ? d : new Date((d as { seconds: number }).seconds * 1000)
                 return (
-                  <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.direction === 'outbound' ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
+                  <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.direction === 'outbound' ? 'bg-gray-50 border-gray-200' : 'bg-[#F4F5F7] border-blue-100'}`}>
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-medium text-gray-900 truncate">{t.subject}</p>
                       <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{getD(t.createdAt).toLocaleDateString('es', { day: 'numeric', month: 'short' })}</span>
@@ -476,12 +476,12 @@ export default function ClientDetailPage() {
       )}
 
       {tab === 'activity' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-6">
-          <h2 className="font-black text-slate-900 dark:text-white text-sm mb-5 flex items-center gap-2">
-            <Activity size={15} className="text-slate-400 dark:text-slate-500" /> Línea de tiempo
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-6">
+          <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm mb-5 flex items-center gap-2">
+            <Activity size={15} className="text-[#9BA5B7] dark:text-[#68748D]" /> Línea de tiempo
           </h2>
           {timeline.length === 0 ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">Sin actividad registrada</p>
+            <p className="text-sm text-[#9BA5B7] dark:text-[#68748D] text-center py-8">Sin actividad registrada</p>
           ) : (
             <div className="space-y-4">
               {timeline.map((event, idx) => (
@@ -490,9 +490,9 @@ export default function ClientDetailPage() {
                     <event.icon size={14} />
                   </div>
                   <div className="flex-1 min-w-0 pt-1">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{event.title}</p>
-                    {event.sub && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{event.sub}</p>}
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">{event.title}</p>
+                    {event.sub && <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] mt-0.5 line-clamp-2">{event.sub}</p>}
+                    <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1">
                       {event.date.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {' · '}
                       {event.date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}

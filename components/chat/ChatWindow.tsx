@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { subscribeToMessages, sendMessage, getWhatsAppTemplates, getClients } from '@/lib/firestore'
 import { uploadMultiplePhotos, uploadPhoto, uploadBlob } from '@/lib/storage'
@@ -13,6 +13,62 @@ import type { Client as ClientType } from '@/types'
 import toast from 'react-hot-toast'
 import { updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+
+function AudioPlayer({ src, isMe }: { src?: string; isMe: boolean }) {
+  const [playing, setPlaying] = useState(false)
+  const [duration, setDuration] = useState(0)
+  const [current, setCurrent] = useState(0)
+  const ref = useRef<HTMLAudioElement | null>(null)
+
+  const toggle = useCallback(() => {
+    if (!ref.current || !src) return
+    playing ? ref.current.pause() : ref.current.play().catch(() => {})
+  }, [playing, src])
+
+  const fmt = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+
+  return (
+    <div className="flex items-center gap-2.5 w-[210px]">
+      <audio
+        ref={ref}
+        src={src}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); setCurrent(0) }}
+        onLoadedMetadata={() => setDuration(ref.current?.duration || 0)}
+        onTimeUpdate={() => setCurrent(ref.current?.currentTime || 0)}
+      />
+      <button
+        onClick={toggle}
+        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white shadow-sm transition-opacity hover:opacity-80 ${isMe ? 'bg-green-600' : 'bg-green-500'}`}
+      >
+        {playing
+          ? <Pause size={13} fill="white" />
+          : <Play size={13} fill="white" className="ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <input
+          type="range"
+          min={0}
+          max={duration || 1}
+          step={0.05}
+          value={current}
+          onChange={e => {
+            const t = Number(e.target.value)
+            setCurrent(t)
+            if (ref.current) ref.current.currentTime = t
+          }}
+          className="w-full h-[3px] cursor-pointer rounded-full accent-green-500"
+        />
+        <span className="text-[10px] text-[#9BA5B7] leading-none self-end">
+          {fmt(current > 0 || playing ? current : duration)}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   client: Client
@@ -709,16 +765,16 @@ ${messages.map(m => {
 
   const MessageTicks = ({ status }: { status?: string }) => {
     if (!status || status === 'sending') {
-      return <span className="text-[10px] text-slate-400 ml-0.5 animate-pulse">●</span>
+      return <span className="text-[10px] text-[#9BA5B7] ml-0.5 animate-pulse">●</span>
     }
     if (status === 'sent') {
-      return <span className="text-[10px] text-slate-400 ml-0.5">✓</span>
+      return <span className="text-[10px] text-[#9BA5B7] ml-0.5">✓</span>
     }
     if (status === 'delivered') {
-      return <span className="text-[10px] text-slate-400 ml-0.5">✓✓</span>
+      return <span className="text-[10px] text-[#9BA5B7] ml-0.5">✓✓</span>
     }
     if (status === 'read') {
-      return <span className="text-[10px] text-blue-500 ml-0.5">✓✓</span>
+      return <span className="text-[10px] text-[#0D7A65] ml-0.5">✓✓</span>
     }
     return null
   }
@@ -731,22 +787,22 @@ ${messages.map(m => {
     // Nota interna
     if (msg.isNote) {
       return (
-        <div className="rounded-xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] bg-amber-50 border border-amber-200 shadow-sm">
+        <div className="rounded-md px-3 py-2 max-w-[75vw] sm:max-w-[340px] bg-amber-50 border border-amber-200 shadow-sm">
           <div className="flex items-center gap-1 mb-1">
             <StickyNote size={11} className="text-amber-500" />
             <span className="text-[10px] text-amber-600 font-semibold">Nota interna · {msg.senderName}</span>
           </div>
-          <p className="text-sm text-slate-800 whitespace-pre-wrap">{msg.text}</p>
-          <span className="text-[10px] text-slate-400 block text-right mt-1">{formatTime(msg.createdAt as Date)}</span>
+          <p className="text-sm text-[#0C1224] whitespace-pre-wrap">{msg.text}</p>
+          <span className="text-[10px] text-[#9BA5B7] block text-right mt-1">{formatTime(msg.createdAt as Date)}</span>
         </div>
       )
     }
 
     // Bloque de reply (cita) que aparece dentro del mensaje
     const ReplyBlock = msg.replyTo ? (
-      <div className={`rounded-lg px-2 py-1.5 mb-1.5 text-xs border-l-2 ${isMe ? 'bg-[#c5e8b0] border-green-500' : 'bg-slate-100 border-slate-400'}`}>
-        <p className="font-semibold text-slate-700">{msg.replyTo.senderName}</p>
-        <p className="text-slate-500 truncate">{msg.replyTo.text || `[${msg.replyTo.type || 'media'}]`}</p>
+      <div className={`rounded-lg px-2 py-1.5 mb-1.5 text-xs border-l-2 ${isMe ? 'bg-[#c5e8b0] border-green-500' : 'bg-[#F4F5F7] border-slate-400'}`}>
+        <p className="font-semibold text-[#0C1224]">{msg.replyTo.senderName}</p>
+        <p className="text-[#68748D] truncate">{msg.replyTo.text || `[${msg.replyTo.type || 'media'}]`}</p>
       </div>
     ) : null
 
@@ -755,13 +811,13 @@ ${messages.map(m => {
       const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`
       return (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className={`flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer hover:opacity-90 transition-opacity max-w-[260px] ${isMe ? 'bg-[#DCF8C6]' : 'bg-white'}`}>
+          className={`flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer hover:opacity-90 transition-opacity max-w-[260px] ${isMe ? 'bg-[#DCF8C6]' : 'bg-white'}`}>
           <div className={`p-2 rounded-full ${isMe ? 'bg-green-300/40' : 'bg-green-100'}`}>
             <MapPin size={18} className="text-green-700" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-900">{name || 'Ubicación'}</p>
-            <p className="text-xs text-slate-500">{lat.toFixed(4)}, {lng.toFixed(4)}</p>
+            <p className="text-sm font-medium text-[#0C1224]">{name || 'Ubicación'}</p>
+            <p className="text-xs text-[#68748D]">{lat.toFixed(4)}, {lng.toFixed(4)}</p>
             <p className="text-xs text-green-600 mt-0.5">Ver en Maps →</p>
           </div>
         </a>
@@ -772,13 +828,13 @@ ${messages.map(m => {
       const missed = msg.callDuration === -1 || msg.callDuration == null
       const Icon = missed ? PhoneMissed : PhoneCall
       return (
-        <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 max-w-[220px] ${isMe ? 'bg-[#DCF8C6]' : 'bg-white'}`}>
+        <div className={`flex items-center gap-3 rounded-lg px-4 py-3 max-w-[220px] ${isMe ? 'bg-[#DCF8C6]' : 'bg-white'}`}>
           <Icon size={18} className={missed ? 'text-red-500' : 'text-green-600'} />
           <div>
-            <p className="text-sm font-medium text-slate-900">
+            <p className="text-sm font-medium text-[#0C1224]">
               {missed ? 'Llamada perdida' : `Llamada${msg.callDuration ? ` · ${msg.callDuration}s` : ''}`}
             </p>
-            <p className="text-xs text-slate-400">{isMe ? 'Saliente' : 'Entrante'}</p>
+            <p className="text-xs text-[#9BA5B7]">{isMe ? 'Saliente' : 'Entrante'}</p>
           </div>
         </div>
       )
@@ -786,20 +842,14 @@ ${messages.map(m => {
 
     // Audio/voice message
     if (msg.type === 'audio' || (msg.photos?.length === 1 && isAudioUrl(msg.photos[0]))) {
-      const durSec = msg.audioDuration
-      const durLabel = durSec ? `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, '0')}` : ''
       return (
-        <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
-          <div className="flex items-center gap-2 py-1">
-            <Mic size={16} className="text-green-600 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <audio src={msg.photos?.[0]} controls className="h-8 w-full" style={{ maxWidth: '220px' }} />
-              {durLabel && <p className="text-[10px] text-slate-400 mt-0.5">{durLabel}</p>}
-            </div>
+        <div className={`rounded-lg px-3 pt-2.5 pb-2 shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+          <div className="flex items-center gap-2">
+            <Mic size={15} className="text-green-600 flex-shrink-0 mb-3" />
+            <AudioPlayer src={msg.photos?.[0]} isMe={isMe} />
           </div>
-          {msg.text && msg.text !== '🎤 Nota de voz' && <p className="text-sm leading-relaxed text-slate-900 whitespace-pre-wrap mt-1">{msg.text}</p>}
-          <div className="flex items-center justify-end gap-0.5 mt-1">
-            <span className="text-[10px] text-slate-400">{formatTime(msg.createdAt as Date)}</span>
+          <div className="flex items-center justify-end gap-0.5 mt-0.5">
+            <span className="text-[10px] text-[#9BA5B7]">{formatTime(msg.createdAt as Date)}</span>
             {isMe && <MessageTicks status={msg.status} />}
           </div>
         </div>
@@ -809,19 +859,19 @@ ${messages.map(m => {
     // Document message
     if (msg.type === 'document' && msg.photos?.length === 1) {
       return (
-        <div className={`rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[300px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+        <div className={`rounded-lg px-3 py-2 max-w-[75vw] sm:max-w-[300px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
           <a href={msg.photos[0]} target="_blank" rel="noopener noreferrer" download={msg.text || 'archivo'}
             className="flex items-center gap-2 py-1 hover:opacity-80 transition-opacity">
-            <div className={`p-2 rounded-lg ${isMe ? 'bg-green-300/40' : 'bg-slate-100'}`}>
-              <FileText size={18} className="text-slate-700" />
+            <div className={`p-2 rounded-lg ${isMe ? 'bg-green-300/40' : 'bg-[#F4F5F7]'}`}>
+              <FileText size={18} className="text-[#0C1224]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{msg.text || 'Documento'}</p>
-              <p className="text-xs text-blue-500 flex items-center gap-1"><Download size={10} /> Descargar</p>
+              <p className="text-sm font-medium text-[#0C1224] truncate">{msg.text || 'Documento'}</p>
+              <p className="text-xs text-[#0D7A65] flex items-center gap-1"><Download size={10} /> Descargar</p>
             </div>
           </a>
           <div className="flex items-center justify-end gap-0.5 mt-1">
-            <span className="text-[10px] text-slate-400">{formatTime(msg.createdAt as Date)}</span>
+            <span className="text-[10px] text-[#9BA5B7]">{formatTime(msg.createdAt as Date)}</span>
             {isMe && <MessageTicks status={msg.status} />}
           </div>
         </div>
@@ -829,15 +879,15 @@ ${messages.map(m => {
     }
 
     return (
-      <div className={`group relative rounded-2xl px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
+      <div className={`group relative rounded-lg px-3 py-2 max-w-[75vw] sm:max-w-[340px] shadow-sm ${isMe ? 'bg-[#DCF8C6] rounded-tr-sm' : 'bg-white rounded-tl-sm'}`}>
         <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
           <button onClick={() => setReplyToMsg(msg)}
-            className="bg-white border border-slate-200 rounded-full p-1 shadow-sm" title="Responder">
-            <Reply size={12} className="text-slate-500" />
+            className="bg-white border border-[#E3E6EC] rounded-full p-1 shadow-sm" title="Responder">
+            <Reply size={12} className="text-[#68748D]" />
           </button>
           <button onClick={() => setForwardMsg(msg)}
-            className="bg-white border border-slate-200 rounded-full p-1 shadow-sm" title="Reenviar">
-            <Forward size={12} className="text-slate-500" />
+            className="bg-white border border-[#E3E6EC] rounded-full p-1 shadow-sm" title="Reenviar">
+            <Forward size={12} className="text-[#68748D]" />
           </button>
         </div>
         {ReplyBlock}
@@ -855,9 +905,9 @@ ${messages.map(m => {
             )}
           </div>
         )}
-        {msg.text && <p className="text-sm leading-relaxed text-slate-900 whitespace-pre-wrap">{msg.text}</p>}
+        {msg.text && <p className="text-sm leading-relaxed text-[#0C1224] whitespace-pre-wrap">{msg.text}</p>}
         <div className="flex items-center justify-end gap-0.5 mt-1">
-          <span className="text-[10px] text-slate-400">{formatTime(msg.createdAt as Date)}</span>
+          <span className="text-[10px] text-[#9BA5B7]">{formatTime(msg.createdAt as Date)}</span>
           {isMe && <MessageTicks status={msg.status} />}
         </div>
       </div>
@@ -865,7 +915,7 @@ ${messages.map(m => {
   }
 
   return (
-    <div className={`relative flex flex-col overflow-hidden ${fitParent ? 'h-full' : 'h-[calc(100dvh-130px)] sm:h-[calc(100vh-200px)] min-h-[400px] rounded-xl border border-slate-200 dark:border-slate-700'}`}>
+    <div className={`relative flex flex-col overflow-hidden ${fitParent ? 'h-full' : 'h-[calc(100dvh-130px)] sm:h-[calc(100vh-200px)] min-h-[400px] rounded-md border border-[#E3E6EC] dark:border-[#1A2540]'}`}>
       {/* Header */}
       <div className="flex-shrink-0 bg-[#075E54]">
         <div className="flex items-center justify-between px-4 py-3">
@@ -899,7 +949,7 @@ ${messages.map(m => {
                 className="text-[11px] font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-full px-2.5 py-1 focus:outline-none cursor-pointer transition-colors mr-1"
               >
                 {statusOptions.map(s => (
-                  <option key={s.value} value={s.value} className="text-slate-900 bg-white">{s.label}</option>
+                  <option key={s.value} value={s.value} className="text-[#0C1224] bg-white">{s.label}</option>
                 ))}
               </select>
             )}
@@ -937,19 +987,19 @@ ${messages.map(m => {
 
       {/* Barra de búsqueda */}
       {showSearch && (
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-3 py-2 flex items-center gap-2 flex-shrink-0">
-          <Search size={14} className="text-slate-400 flex-shrink-0" />
+        <div className="bg-white dark:bg-[#0F1829] border-b border-[#E3E6EC] dark:border-[#1A2540] px-3 py-2 flex items-center gap-2 flex-shrink-0">
+          <Search size={14} className="text-[#9BA5B7] flex-shrink-0" />
           <input
             autoFocus
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Buscar en esta conversación..."
-            className="flex-1 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none bg-transparent"
+            className="flex-1 text-sm text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400 focus:outline-none bg-transparent"
           />
           {searchQuery && (
-            <span className="text-xs text-slate-400">{displayMessages.length} resultado{displayMessages.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-[#9BA5B7]">{displayMessages.length} resultado{displayMessages.length !== 1 ? 's' : ''}</span>
           )}
-          <button onClick={() => { setShowSearch(false); setSearchQuery('') }} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+          <button onClick={() => { setShowSearch(false); setSearchQuery('') }} className="text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200">
             <X size={14} />
           </button>
         </div>
@@ -957,10 +1007,10 @@ ${messages.map(m => {
 
       {/* Panel resumen IA */}
       {summary && (
-        <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex gap-3 flex-shrink-0">
-          <Bot size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex-1 whitespace-pre-wrap">{summary}</p>
-          <button onClick={() => setSummary(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex-shrink-0">
+        <div className="bg-[#F4F5F7] dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex gap-3 flex-shrink-0">
+          <Bot size={15} className="text-[#0D7A65] dark:text-[#0D7A65] flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-[#0C1224] dark:text-[#9BA5B7] leading-relaxed flex-1 whitespace-pre-wrap">{summary}</p>
+          <button onClick={() => setSummary(null)} className="text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200 flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -987,9 +1037,9 @@ ${messages.map(m => {
             <div className="w-16 h-16 rounded-full bg-[#075E54] flex items-center justify-center">
               <span className="text-white text-2xl font-bold">W</span>
             </div>
-            <p className="text-sm text-slate-500">Sin mensajes aún</p>
+            <p className="text-sm text-[#68748D]">Sin mensajes aún</p>
             {templates.length > 0 && (
-              <p className="text-xs text-slate-400">Escribe <span className="font-mono font-bold">/</span> para ver plantillas</p>
+              <p className="text-xs text-[#9BA5B7]">Escribe <span className="font-mono font-bold">/</span> para ver plantillas</p>
             )}
           </div>
         )}
@@ -999,7 +1049,7 @@ ${messages.map(m => {
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-0.5`}>
                 {!isMe && !msg.isNote && (
-                  <span className="text-[10px] text-slate-500 px-1">{client.name}</span>
+                  <span className="text-[10px] text-[#68748D] px-1">{client.name}</span>
                 )}
                 {renderMessage(msg)}
               </div>
@@ -1011,13 +1061,13 @@ ${messages.map(m => {
 
       {/* Preview fotos pendientes */}
       {pendingPreviews.length > 0 && (
-        <div className="px-3 py-2 flex gap-2 flex-wrap bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <div className="px-3 py-2 flex gap-2 flex-wrap bg-white dark:bg-[#0F1829] border-t border-[#E3E6EC] dark:border-[#1A2540] flex-shrink-0">
           {pendingPreviews.map((p, i) => (
             <div key={i} className="relative w-14 h-14">
               {p.isVideo ? (
-                <video src={p.src} className="w-full h-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" muted />
+                <video src={p.src} className="w-full h-full object-cover rounded-lg border border-[#E3E6EC] dark:border-[#1A2540]" muted />
               ) : (
-                <img src={p.src} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                <img src={p.src} alt="" className="w-full h-full object-cover rounded-lg border border-[#E3E6EC] dark:border-[#1A2540]" />
               )}
               <button onClick={() => removePending(i)}
                 className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5">
@@ -1025,31 +1075,31 @@ ${messages.map(m => {
               </button>
             </div>
           ))}
-          <p className="w-full text-xs text-slate-400 mt-0.5">{pendingPreviews.length} archivo{pendingPreviews.length > 1 ? 's' : ''}</p>
+          <p className="w-full text-xs text-[#9BA5B7] mt-0.5">{pendingPreviews.length} archivo{pendingPreviews.length > 1 ? 's' : ''}</p>
         </div>
       )}
 
       {/* Popup plantillas */}
       {showTemplates && (
-        <div className="absolute bottom-[72px] left-0 right-0 mx-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-20 overflow-hidden max-h-56 flex flex-col">
-          <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+        <div className="absolute bottom-[72px] left-0 right-0 mx-3 bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm z-20 overflow-hidden max-h-56 flex flex-col">
+          <div className="px-4 py-2.5 border-b border-[#E3E6EC] dark:border-[#1A2540] flex items-center justify-between bg-[#F4F5F7] dark:bg-[#1A2540]/50">
+            <p className="text-xs font-bold text-[#68748D] dark:text-[#9BA5B7]">
               Respuestas rápidas{templateQuery ? ` · "${templateQuery}"` : ''}
             </p>
             <button onClick={() => { setShowTemplates(false); setTemplateQuery('') }}>
-              <X size={14} className="text-slate-400" />
+              <X size={14} className="text-[#9BA5B7]" />
             </button>
           </div>
           <div className="overflow-y-auto">
             {filteredTemplates.length === 0 ? (
-              <p className="text-xs text-slate-400 px-4 py-3">Sin resultados para &ldquo;{templateQuery}&rdquo;</p>
+              <p className="text-xs text-[#9BA5B7] px-4 py-3">Sin resultados para &ldquo;{templateQuery}&rdquo;</p>
             ) : (
               filteredTemplates.map(t => (
                 <button key={t.id} type="button"
                   onClick={() => applyTemplate(t)}
-                  className="w-full text-left px-4 py-3 hover:bg-[#075E54]/5 active:bg-[#075E54]/10 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors">
+                  className="w-full text-left px-4 py-3 hover:bg-[#075E54]/5 active:bg-[#075E54]/10 border-b border-[#E3E6EC] dark:border-[#1A2540] last:border-0 transition-colors">
                   <p className="text-sm font-semibold text-[#075E54]">/{t.name}</p>
-                  <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{t.body}</p>
+                  <p className="text-xs text-[#68748D] line-clamp-2 mt-0.5">{t.body}</p>
                 </button>
               ))
             )}
@@ -1060,14 +1110,14 @@ ${messages.map(m => {
       {/* Modal ubicación */}
       {showLocationModal && (
         <div className="absolute inset-0 bg-black/40 z-20 flex items-end justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-5 w-full max-w-sm space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-black text-slate-900 dark:text-white">Enviar ubicación</h3>
+              <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">Enviar ubicación</h3>
               <button onClick={() => { setShowLocationModal(false); setLocationCoords(null); setLocationName('') }}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><X size={18} /></button>
+                className="text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200"><X size={18} /></button>
             </div>
             <button onClick={handleGetGps} disabled={gettingGps}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-colors ${
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-md text-sm font-medium transition-colors ${
                 locationCoords
                   ? 'bg-green-50 border border-green-200 text-green-700'
                   : 'bg-[#075E54] text-white hover:bg-[#064d45]'
@@ -1079,12 +1129,12 @@ ${messages.map(m => {
                   : <><Navigation size={16} /> Usar mi ubicación GPS</>
               }
             </button>
-            {locationCoords && <p className="text-xs text-slate-500 dark:text-slate-400 text-center -mt-2">{locationCoords.lat.toFixed(5)}, {locationCoords.lng.toFixed(5)}</p>}
+            {locationCoords && <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] text-center -mt-2">{locationCoords.lat.toFixed(5)}, {locationCoords.lng.toFixed(5)}</p>}
             <input value={locationName} onChange={e => setLocationName(e.target.value)}
               placeholder="Nombre del lugar (opcional)"
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#075E54] dark:placeholder-slate-400" />
+              className="w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-3 text-sm text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#075E54] dark:placeholder-slate-400" />
             <button onClick={handleSendLocation} disabled={sending || !locationCoords}
-              className="w-full bg-[#075E54] hover:bg-[#064d45] disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-colors">
+              className="w-full bg-[#075E54] hover:bg-[#064d45] disabled:opacity-40 text-white font-semibold py-3 rounded-md text-sm transition-colors">
               {sending ? 'Enviando...' : 'Enviar ubicación'}
             </button>
           </div>
@@ -1093,25 +1143,25 @@ ${messages.map(m => {
 
       {/* Menú acciones */}
       {showActions && (
-        <div className="absolute bottom-[72px] left-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-10 overflow-hidden">
+        <div className="absolute bottom-[72px] left-3 bg-white dark:bg-[#0F1829] rounded-lg shadow-sm border border-[#E3E6EC] dark:border-[#1A2540] z-10 overflow-hidden">
           <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-700 transition-colors text-sm text-slate-700 dark:text-slate-300">
+            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] active:bg-[#F4F5F7] dark:active:bg-slate-700 transition-colors text-sm text-[#0C1224] dark:text-[#9BA5B7]">
             <Paperclip size={18} className="text-[#075E54]" />
             Adjuntar archivos
           </button>
           <button type="button" onClick={() => { setShowLocationModal(true); setShowActions(false) }}
-            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-700 transition-colors text-sm text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800">
+            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] active:bg-[#F4F5F7] dark:active:bg-slate-700 transition-colors text-sm text-[#0C1224] dark:text-[#9BA5B7] border-t border-[#E3E6EC] dark:border-[#1A2540]">
             <MapPin size={18} className="text-[#075E54]" />
             Enviar ubicación
           </button>
           {/* Botón "Enviar producto" desactivado temporalmente — catálogo inactivo */}
           <button type="button" onClick={openCatalog}
-            className="hidden items-center gap-3 w-full px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800">
+            className="hidden items-center gap-3 w-full px-5 py-3.5 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors text-sm text-[#0C1224] dark:text-[#9BA5B7] border-t border-[#E3E6EC] dark:border-[#1A2540]">
             <ShoppingBag size={18} className="text-[#075E54]" />
             Enviar producto
           </button>
           <button type="button" onClick={() => { setNoteMode(v => !v); setShowActions(false) }}
-            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 active:bg-amber-100 transition-colors text-sm text-amber-700 dark:text-amber-400 border-t border-slate-100 dark:border-slate-800">
+            className="flex items-center gap-3 w-full px-5 py-3.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 active:bg-amber-100 transition-colors text-sm text-amber-700 dark:text-amber-400 border-t border-[#E3E6EC] dark:border-[#1A2540]">
             <StickyNote size={18} className="text-amber-500" />
             Nota interna
           </button>
@@ -1120,26 +1170,26 @@ ${messages.map(m => {
 
       {/* Modal catálogo */}
       {showCatalog && (
-        <div className="absolute inset-0 z-20 bg-white dark:bg-slate-900 flex flex-col">
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-            <button onClick={() => setShowCatalog(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
-              <X size={18} className="text-slate-600 dark:text-slate-300" />
+        <div className="absolute inset-0 z-20 bg-white dark:bg-[#0F1829] flex flex-col">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E3E6EC] dark:border-[#1A2540]">
+            <button onClick={() => setShowCatalog(false)} className="p-1.5 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-md">
+              <X size={18} className="text-[#68748D] dark:text-[#9BA5B7]" />
             </button>
-            <h3 className="font-black text-slate-900 dark:text-white flex-1">Enviar producto</h3>
+            <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] flex-1">Enviar producto</h3>
           </div>
-          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540]">
             <input
               value={catalogSearch}
               onChange={e => setCatalogSearch(e.target.value)}
               placeholder="Buscar producto..."
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 text-slate-900 dark:text-white placeholder-slate-400"
+              className="w-full px-3 py-2 text-sm bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md focus:outline-none focus:border-[#0D7A65] text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400"
             />
           </div>
           <div className="flex-1 overflow-y-auto p-3">
             {catalogItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <ShoppingBag size={32} className="text-slate-300 dark:text-slate-600 mb-2" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">No hay productos disponibles</p>
+                <ShoppingBag size={32} className="text-[#9BA5B7] dark:text-[#68748D] mb-2" />
+                <p className="text-sm text-[#68748D] dark:text-[#9BA5B7]">No hay productos disponibles</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -1149,22 +1199,22 @@ ${messages.map(m => {
                     <button
                       key={item.id}
                       onClick={() => sendCatalogItem(item)}
-                      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-left hover:border-blue-400 hover:shadow-sm transition-all active:scale-95"
+                      className="bg-white dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md overflow-hidden text-left hover:border-[#0D7A65] hover:shadow-sm transition-all active:scale-95"
                     >
-                      <div className="aspect-square bg-slate-50 dark:bg-slate-700">
+                      <div className="aspect-square bg-[#F4F5F7] dark:bg-[#1A2540]">
                         {item.photos[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={item.photos[0]} alt={item.title} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag size={20} className="text-slate-300 dark:text-slate-600" />
+                            <ShoppingBag size={20} className="text-[#9BA5B7] dark:text-[#68748D]" />
                           </div>
                         )}
                       </div>
                       <div className="p-2">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
+                        <p className="text-xs font-bold text-[#0C1224] dark:text-[#E8ECF4] truncate">{item.title}</p>
                         {item.price != null && (
-                          <p className="text-xs font-bold text-blue-600 mt-0.5">${item.price.toLocaleString('es')}</p>
+                          <p className="text-xs font-bold text-[#0D7A65] mt-0.5">${item.price.toLocaleString('es')}</p>
                         )}
                       </div>
                     </button>
@@ -1177,13 +1227,13 @@ ${messages.map(m => {
 
       {/* Banner reply */}
       {replyToMsg && (
-        <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-2 flex items-center gap-3 flex-shrink-0">
+        <div className="bg-[#F4F5F7] dark:bg-[#1A2540] border-t border-[#E3E6EC] dark:border-[#1A2540] px-4 py-2 flex items-center gap-3 flex-shrink-0">
           <Reply size={14} className="text-[#075E54] flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-semibold text-[#075E54]">{replyToMsg.senderName}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{replyToMsg.text || `[${replyToMsg.type || 'media'}]`}</p>
+            <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] truncate">{replyToMsg.text || `[${replyToMsg.type || 'media'}]`}</p>
           </div>
-          <button onClick={() => setReplyToMsg(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+          <button onClick={() => setReplyToMsg(null)} className="text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200">
             <X size={14} />
           </button>
         </div>
@@ -1199,18 +1249,18 @@ ${messages.map(m => {
       )}
 
       {/* Barra de input */}
-      <div className={`px-2 py-2 flex items-end gap-2 border-t border-slate-200 dark:border-slate-700 flex-shrink-0 ${noteMode ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-[#F0F2F5] dark:bg-slate-800'}`}>
+      <div className={`px-2 py-2 flex items-end gap-2 border-t border-[#E3E6EC] dark:border-[#1A2540] flex-shrink-0 ${noteMode ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-[#F0F2F5] dark:bg-[#1A2540]'}`}>
         <input ref={fileInputRef} type="file" multiple accept="image/*,video/*"
           className="hidden" onChange={e => handleFiles(e.target.files)} />
 
         {/* Voice recording UI */}
         {isRecording || audioBlob ? (
-          <div className="flex items-center gap-2 flex-1 bg-white rounded-2xl px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2 flex-1 bg-white rounded-lg px-3 py-2 shadow-sm">
             {isRecording ? (
               <>
                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
                 <span className="text-sm text-red-600 font-medium flex-1">{formatRecordTime(recordingTime)}</span>
-                <button onClick={cancelRecording} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                <button onClick={cancelRecording} className="p-1.5 text-[#9BA5B7] hover:text-[#0C1224] rounded-full hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]">
                   <X size={18} />
                 </button>
                 <button onClick={stopRecording} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600">
@@ -1219,11 +1269,11 @@ ${messages.map(m => {
               </>
             ) : audioBlob ? (
               <>
-                <button onClick={togglePlayback} className="p-1.5 text-[#075E54] hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">
+                <button onClick={togglePlayback} className="p-1.5 text-[#075E54] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-full">
                   {playingAudio ? <Pause size={18} /> : <Play size={18} />}
                 </button>
-                <span className="text-sm text-slate-600 dark:text-slate-300 flex-1">{formatRecordTime(recordingTime)}</span>
-                <button onClick={cancelRecording} className="p-1.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                <span className="text-sm text-[#68748D] dark:text-[#9BA5B7] flex-1">{formatRecordTime(recordingTime)}</span>
+                <button onClick={cancelRecording} className="p-1.5 text-[#9BA5B7] hover:text-red-500 rounded-full hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]">
                   <X size={18} />
                 </button>
                 <button onClick={sendVoiceNote} disabled={sending}
@@ -1238,7 +1288,7 @@ ${messages.map(m => {
             {/* Botón + para acciones */}
             <button type="button"
               onClick={() => setShowActions(v => !v)}
-              className={`p-2.5 rounded-full transition-colors flex-shrink-0 ${showActions ? 'bg-[#075E54] text-white' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              className={`p-2.5 rounded-full transition-colors flex-shrink-0 ${showActions ? 'bg-[#075E54] text-white' : 'text-[#68748D] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540]'}`}
               title="Más opciones">
               <Plus size={20} className={showActions ? 'rotate-45 transition-transform' : 'transition-transform'} />
             </button>
@@ -1254,7 +1304,7 @@ ${messages.map(m => {
               }}
               rows={1}
               placeholder="Escribe un mensaje"
-              className="flex-1 bg-white dark:bg-slate-800 border-0 rounded-2xl px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none resize-none shadow-sm"
+              className="flex-1 bg-white dark:bg-[#1A2540] border-0 rounded-lg px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400 focus:outline-none resize-none shadow-sm"
               style={{ maxHeight: '120px', overflowY: 'auto', fontSize: '16px' }}
             />
 
@@ -1262,7 +1312,7 @@ ${messages.map(m => {
             {!text.trim() && pendingFiles.length === 0 ? (
               <button
                 onClick={startRecording}
-                className="p-2.5 text-slate-500 hover:text-[#075E54] dark:text-slate-300 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full flex-shrink-0 transition-colors"
+                className="p-2.5 text-[#68748D] hover:text-[#075E54] dark:text-[#9BA5B7] dark:hover:text-white hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] rounded-full flex-shrink-0 transition-colors"
                 title="Grabar nota de voz">
                 <Mic size={20} />
               </button>
@@ -1282,15 +1332,15 @@ ${messages.map(m => {
       {/* Modal reenviar mensaje */}
       {forwardMsg && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => { setForwardMsg(null); setForwardSearch('') }}>
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-black text-slate-900 dark:text-white text-sm">Reenviar a...</h3>
+          <div className="w-full max-w-sm bg-white dark:bg-[#0F1829] rounded-lg shadow-sm border border-[#E3E6EC] dark:border-[#1A2540] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-[#E3E6EC] dark:border-[#1A2540]">
+              <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm">Reenviar a...</h3>
               <input
                 autoFocus
                 value={forwardSearch}
                 onChange={e => setForwardSearch(e.target.value)}
                 placeholder="Buscar contacto..."
-                className="mt-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-sm focus:outline-none text-slate-900 dark:text-white placeholder-slate-400"
+                className="mt-2 w-full bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full px-4 py-2 text-sm focus:outline-none text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400"
               />
             </div>
             <div className="max-h-72 overflow-y-auto p-2">
@@ -1299,18 +1349,18 @@ ${messages.map(m => {
                 .slice(0, 20)
                 .map(c => (
                   <button key={c.id} onClick={() => handleForward(c)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 flex-shrink-0">
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] text-left transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-[#E3E6EC] dark:bg-[#1A2540] flex items-center justify-center text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] flex-shrink-0">
                       {c.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{c.phone || c.whatsappPhone || ''}</p>
+                      <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4] truncate">{c.name}</p>
+                      <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] truncate">{c.phone || c.whatsappPhone || ''}</p>
                     </div>
                   </button>
                 ))}
               {allClients.filter(c => c.id !== client.id && (!forwardSearch || c.name.toLowerCase().includes(forwardSearch.toLowerCase()))).length === 0 && (
-                <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-6">Sin contactos</p>
+                <p className="text-center text-sm text-[#9BA5B7] dark:text-[#68748D] py-6">Sin contactos</p>
               )}
             </div>
           </div>

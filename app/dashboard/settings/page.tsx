@@ -82,9 +82,9 @@ export default function SettingsPage() {
     text: 'Texto', phone: 'Teléfono', yes_no: 'Sí/No', number: 'Número',
   }
   const questionTypeBadge: Record<QualificationQuestionType, string> = {
-    text: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
+    text: 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7]',
     phone: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-    yes_no: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+    yes_no: 'bg-[#0D7A65]/10 dark:bg-[#0D7A65]/10 text-blue-700 dark:text-[#0D7A65]',
     number: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
   }
 
@@ -271,15 +271,15 @@ export default function SettingsPage() {
       <PageHeader title="Configuración" subtitle="Ajustes de tu organización" />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl overflow-x-auto">
+      <div className="flex gap-1 bg-[#F4F5F7] dark:bg-[#1A2540]/60 p-1 rounded-md overflow-x-auto">
         {TABS.filter(t => t.id !== 'avanzado' || isOwner).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0 ${
               activeTab === tab.id
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                ? 'bg-white dark:bg-[#0F1829] text-[#0C1224] dark:text-[#E8ECF4] shadow-sm'
+                : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200'
             }`}
           >
             <tab.icon size={13} />
@@ -297,17 +297,17 @@ export default function SettingsPage() {
               <div>
                 <label className={labelClass}>ID de organización</label>
                 <div className="flex items-center gap-2">
-                  <input readOnly value={profile?.orgId || ''} className={inputClass + ' font-mono text-xs text-slate-500 cursor-default select-all'} />
+                  <input readOnly value={profile?.orgId || ''} className={inputClass + ' font-mono text-xs text-[#68748D] cursor-default select-all'} />
                   <button
                     type="button"
                     onClick={() => { navigator.clipboard.writeText(profile?.orgId || ''); toast.success('ID copiado') }}
-                    className="flex-shrink-0 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                    className="flex-shrink-0 p-2.5 bg-[#F4F5F7] dark:bg-[#1A2540] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] rounded-md transition-colors"
                     title="Copiar ID"
                   >
-                    <Copy size={14} className="text-slate-500" />
+                    <Copy size={14} className="text-[#68748D]" />
                   </button>
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Úsalo en musaweb como NEXT_PUBLIC_CRM_ORG_ID</p>
+                <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1">Úsalo en musaweb como NEXT_PUBLIC_CRM_ORG_ID</p>
               </div>
               <div>
                 <label className={labelClass}>Nombre de la organización</label>
@@ -325,17 +325,17 @@ export default function SettingsPage() {
                   className={inputClass}
                   placeholder="https://musaweb.up.railway.app"
                 />
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Solo esta URL podrá enviar citas al CRM</p>
+                <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1">Solo esta URL podrá enviar citas al CRM</p>
               </div>
               <div>
                 <label className={labelClass}>Número de WhatsApp del negocio</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BA5B7] text-sm">+</span>
                   <input value={form.whatsappNumber} onChange={e => setForm(f => ({ ...f, whatsappNumber: e.target.value.replace(/\D/g, '') }))} className={inputClass + ' pl-6'} placeholder="5491112345678" />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Código de país + número, sin espacios ni +</p>
+                <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1">Código de país + número, sin espacios ni +</p>
               </div>
-              <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={saving} className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow-lg transition-colors">
                 {saving ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </Card>
@@ -359,8 +359,8 @@ export default function SettingsPage() {
                       }))}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                         active
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                          ? 'bg-[#0C1224] text-white border-[#0D7A65]'
+                          : 'bg-white dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] border-[#E3E6EC] dark:border-[#1A2540] hover:border-[#0D7A65]'
                       }`}
                     >
                       {d}
@@ -406,7 +406,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleSaveBusinessHours}
               disabled={savingBusinessHours}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-colors"
+              className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow-lg transition-colors"
             >
               {savingBusinessHours ? 'Guardando...' : 'Guardar horario'}
             </button>
@@ -418,29 +418,29 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <a
                 href="/dashboard/team"
-                className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group"
+                className="flex items-center gap-3 p-4 bg-[#F4F5F7] dark:bg-[#0D7A65]/10 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-[#0D7A65]/10 dark:hover:bg-blue-900/40 transition-colors group"
               >
-                <div className="p-2 bg-blue-600 rounded-lg">
+                <div className="p-2 bg-[#0C1224] rounded-lg">
                   <Users size={16} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Equipo</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Usuarios y roles</p>
+                  <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Equipo</p>
+                  <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">Usuarios y roles</p>
                 </div>
-                <ExternalLink size={14} className="text-slate-400 ml-auto group-hover:text-blue-600 transition-colors" />
+                <ExternalLink size={14} className="text-[#9BA5B7] ml-auto group-hover:text-[#0D7A65] transition-colors" />
               </a>
               <a
                 href="/dashboard/categories"
-                className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                className="flex items-center gap-3 p-4 bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors group"
               >
                 <div className="p-2 bg-slate-600 rounded-lg">
                   <Tag size={16} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Categorías</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Etiquetas de clientes</p>
+                  <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Categorías</p>
+                  <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">Etiquetas de clientes</p>
                 </div>
-                <ExternalLink size={14} className="text-slate-400 ml-auto group-hover:text-slate-600 transition-colors" />
+                <ExternalLink size={14} className="text-[#9BA5B7] ml-auto group-hover:text-[#68748D] transition-colors" />
               </a>
             </div>
           </Card>
@@ -469,21 +469,21 @@ export default function SettingsPage() {
             <SectionHeader icon={GitBranch} title="Etapas del pipeline" />
             <div className="space-y-1.5">
               {stages.map(stage => (
-                <div key={stage.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div key={stage.id} className="flex items-center justify-between py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
-                    <span className="text-sm text-slate-800 dark:text-slate-200">{stage.name}</span>
+                    <span className="text-sm text-[#0C1224] dark:text-[#E8ECF4]">{stage.name}</span>
                   </div>
-                  <button onClick={() => handleDeleteStage(stage.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <button onClick={() => handleDeleteStage(stage.id)} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                     <Trash2 size={13} />
                   </button>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleAddStage} className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <input value={newStage.name} onChange={e => setNewStage(s => ({ ...s, name: e.target.value }))} className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Nueva etapa" />
-              <input type="color" value={newStage.color} onChange={e => setNewStage(s => ({ ...s, color: e.target.value }))} className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-slate-50 dark:bg-slate-800 flex-shrink-0" />
-              <button type="submit" disabled={savingStage || !newStage.name} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow shadow-blue-500/20 transition-colors flex-shrink-0">
+            <form onSubmit={handleAddStage} className="flex gap-2 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
+              <input value={newStage.name} onChange={e => setNewStage(s => ({ ...s, name: e.target.value }))} className="flex-1 bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-3 py-2 text-sm text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] transition-colors" placeholder="Nueva etapa" />
+              <input type="color" value={newStage.color} onChange={e => setNewStage(s => ({ ...s, color: e.target.value }))} className="w-10 h-10 rounded-md border border-[#E3E6EC] dark:border-[#1A2540] cursor-pointer p-1 bg-[#F4F5F7] dark:bg-[#1A2540] flex-shrink-0" />
+              <button type="submit" disabled={savingStage || !newStage.name} className="px-4 py-2 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md shadow transition-colors flex-shrink-0">
                 <Plus size={15} />
               </button>
             </form>
@@ -494,19 +494,19 @@ export default function SettingsPage() {
             <SectionHeader icon={Tag} title="Estados de clientes" desc='Personaliza los estados del campo "Estado" de cada cliente' />
             <div className="space-y-1.5">
               {clientStatuses.map(s => (
-                <div key={s.value} className="flex items-center gap-2 py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                  <span className="text-xs font-mono text-slate-400 w-24 flex-shrink-0 truncate">{s.value}</span>
+                <div key={s.value} className="flex items-center gap-2 py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
+                  <span className="text-xs font-mono text-[#9BA5B7] w-24 flex-shrink-0 truncate">{s.value}</span>
                   <input defaultValue={s.label} onBlur={e => { if (e.target.value.trim() !== s.label) handleRenameStatus(s.value, e.target.value) }}
-                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" />
-                  <button onClick={() => handleDeleteStatus(s.value)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    className="flex-1 bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg px-3 py-1.5 text-sm text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] transition-colors" />
+                  <button onClick={() => handleDeleteStatus(s.value)} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                     <Trash2 size={13} />
                   </button>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleAddStatus} className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <input value={newStatus.label} onChange={e => setNewStatus(s => ({ ...s, label: e.target.value }))} className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder='Nuevo estado (ej: "En proceso")' />
-              <button type="submit" disabled={savingStatuses || !newStatus.label.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow shadow-blue-500/20 transition-colors flex-shrink-0">
+            <form onSubmit={handleAddStatus} className="flex gap-2 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
+              <input value={newStatus.label} onChange={e => setNewStatus(s => ({ ...s, label: e.target.value }))} className="flex-1 bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-3 py-2 text-sm text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] transition-colors" placeholder='Nuevo estado (ej: "En proceso")' />
+              <button type="submit" disabled={savingStatuses || !newStatus.label.trim()} className="px-4 py-2 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md shadow transition-colors flex-shrink-0">
                 <Plus size={15} />
               </button>
             </form>
@@ -523,22 +523,22 @@ export default function SettingsPage() {
             {templates.length > 0 && (
               <div className="space-y-1.5">
                 {templates.map(t => (
-                  <div key={t.id} className="flex items-start justify-between gap-3 py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <div key={t.id} className="flex items-start justify-between gap-3 py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.body}</p>
+                      <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">{t.name}</p>
+                      <p className="text-xs text-[#9BA5B7] mt-0.5 line-clamp-1">{t.body}</p>
                     </div>
-                    <button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
+                    <button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <form onSubmit={handleSaveTemplate} className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <form onSubmit={handleSaveTemplate} className="space-y-2 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
               <input value={newTemplate.name} onChange={e => setNewTemplate(t => ({ ...t, name: e.target.value }))} className={inputClass} placeholder='Nombre (ej: "Bienvenida")' />
               <textarea value={newTemplate.body} onChange={e => setNewTemplate(t => ({ ...t, body: e.target.value }))} rows={2} className={`${inputClass} resize-none`} placeholder="Texto del mensaje..." />
-              <button type="submit" disabled={savingTemplate || !newTemplate.name || !newTemplate.body} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={savingTemplate || !newTemplate.name || !newTemplate.body} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md shadow transition-colors">
                 <Plus size={14} /> Guardar plantilla
               </button>
             </form>
@@ -550,12 +550,12 @@ export default function SettingsPage() {
               <SectionHeader icon={Bot} title="Respuesta automática" desc="Se envía al recibir un mensaje nuevo" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={autoReply.enabled} onToggle={() => setAutoReply(a => ({ ...a, enabled: !a.enabled }))} />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{autoReply.enabled ? 'Activada' : 'Desactivada'}</span>
+                <span className="text-sm text-[#0C1224] dark:text-[#9BA5B7]">{autoReply.enabled ? 'Activada' : 'Desactivada'}</span>
               </label>
               {autoReply.enabled && (
                 <textarea value={autoReply.message} onChange={e => setAutoReply(a => ({ ...a, message: e.target.value }))} rows={3} className={`${inputClass} resize-none`} placeholder="Ej: Gracias por contactarnos. En breve te atendemos..." />
               )}
-              <button type="submit" disabled={savingAutoReply} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={savingAutoReply} className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow transition-colors">
                 {savingAutoReply ? 'Guardando...' : 'Guardar'}
               </button>
             </Card>
@@ -567,7 +567,7 @@ export default function SettingsPage() {
               <SectionHeader icon={Bot} title="Mensaje de seguimiento automático" desc="Se envía X horas después del primer mensaje (ventana 24h)" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={windowMsg.enabled} onToggle={() => setWindowMsg(w => ({ ...w, enabled: !w.enabled }))} />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{windowMsg.enabled ? 'Activado' : 'Desactivado'}</span>
+                <span className="text-sm text-[#0C1224] dark:text-[#9BA5B7]">{windowMsg.enabled ? 'Activado' : 'Desactivado'}</span>
               </label>
               {windowMsg.enabled && (
                 <>
@@ -575,13 +575,13 @@ export default function SettingsPage() {
                     <label className={labelClass}>Horas de espera</label>
                     <div className="flex items-center gap-3">
                       <input type="number" min={1} max={23} value={windowMsg.delayHours} onChange={e => setWindowMsg(w => ({ ...w, delayHours: Math.min(23, Math.max(1, Number(e.target.value))) }))} className={`${inputClass} w-24`} />
-                      <span className="text-sm text-slate-500 dark:text-slate-400">horas (máx. 23)</span>
+                      <span className="text-sm text-[#68748D] dark:text-[#9BA5B7]">horas (máx. 23)</span>
                     </div>
                   </div>
                   <textarea value={windowMsg.message} onChange={e => setWindowMsg(w => ({ ...w, message: e.target.value }))} rows={3} className={`${inputClass} resize-none`} placeholder="Ej: ¡Hola! ¿Tienes alguna pregunta?" />
                 </>
               )}
-              <button type="submit" disabled={savingWindowMsg} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={savingWindowMsg} className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow transition-colors">
                 {savingWindowMsg ? 'Guardando...' : 'Guardar'}
               </button>
             </Card>
@@ -593,25 +593,25 @@ export default function SettingsPage() {
               <SectionHeader icon={ClipboardList} title="Formulario de calificación" desc="Se envía por WhatsApp cuando un nuevo contacto escribe" />
               <label className="flex items-center gap-3 cursor-pointer">
                 <Toggle on={qualForm.enabled} onToggle={() => setQualForm(f => ({ ...f, enabled: !f.enabled }))} />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{qualForm.enabled ? 'Activado' : 'Desactivado'}</span>
+                <span className="text-sm text-[#0C1224] dark:text-[#9BA5B7]">{qualForm.enabled ? 'Activado' : 'Desactivado'}</span>
               </label>
               {qualForm.questions.length > 0 && (
                 <div className="space-y-1.5">
                   {qualForm.questions.map((q, i) => (
-                    <div key={q.id} className="flex items-center gap-3 py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                      <GripVertical size={14} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
-                      <span className="text-xs text-slate-400 font-mono w-4 flex-shrink-0">{i + 1}.</span>
-                      <p className="flex-1 text-sm text-slate-800 dark:text-slate-200 truncate">{q.text}</p>
+                    <div key={q.id} className="flex items-center gap-3 py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
+                      <GripVertical size={14} className="text-[#9BA5B7] dark:text-[#68748D] flex-shrink-0" />
+                      <span className="text-xs text-[#9BA5B7] font-mono w-4 flex-shrink-0">{i + 1}.</span>
+                      <p className="flex-1 text-sm text-[#0C1224] dark:text-[#E8ECF4] truncate">{q.text}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${questionTypeBadge[q.type]}`}>{questionTypeLabel[q.type]}</span>
                       {q.autoTag && <Tag size={12} className="text-orange-500 flex-shrink-0" />}
-                      <button type="button" onClick={() => setQualForm(f => ({ ...f, questions: f.questions.filter(x => x.id !== q.id).map((x, idx) => ({ ...x, order: idx })) }))} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
+                      <button type="button" onClick={() => setQualForm(f => ({ ...f, questions: f.questions.filter(x => x.id !== q.id).map((x, idx) => ({ ...x, order: idx })) }))} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
                         <Trash2 size={12} />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
-              <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-2 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
                 <input value={newQuestion.text} onChange={e => setNewQuestion(q => ({ ...q, text: e.target.value }))} placeholder="Nueva pregunta..." className={inputClass} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion(e) } }} />
                 <div className="flex gap-2">
                   <select value={newQuestion.type} onChange={e => setNewQuestion(q => ({ ...q, type: e.target.value as QualificationQuestionType }))} className={`${inputClass} flex-1`}>
@@ -620,12 +620,12 @@ export default function SettingsPage() {
                     <option value="yes_no">Sí / No</option>
                     <option value="number">Número</option>
                   </select>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap cursor-pointer">
-                    <input type="checkbox" checked={newQuestion.autoTag} onChange={e => setNewQuestion(q => ({ ...q, autoTag: e.target.checked }))} className="w-4 h-4 rounded border-slate-300" />
+                  <label className="flex items-center gap-1.5 text-xs text-[#68748D] dark:text-[#9BA5B7] whitespace-nowrap cursor-pointer">
+                    <input type="checkbox" checked={newQuestion.autoTag} onChange={e => setNewQuestion(q => ({ ...q, autoTag: e.target.checked }))} className="w-4 h-4 rounded border-[#E3E6EC]" />
                     <Tag size={12} className="text-orange-500" /> Etiqueta
                   </label>
                 </div>
-                <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()} className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-sm rounded-xl hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 transition-colors">
+                <button type="button" onClick={handleAddQuestion} disabled={!newQuestion.text.trim()} className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-[#E3E6EC] dark:border-slate-600 text-[#68748D] dark:text-[#9BA5B7] text-sm rounded-md hover:border-[#0D7A65] hover:text-[#0D7A65] disabled:opacity-40 transition-colors">
                   <Plus size={14} /> Añadir pregunta
                 </button>
               </div>
@@ -633,7 +633,7 @@ export default function SettingsPage() {
                 <label className={labelClass}>Mensaje al finalizar</label>
                 <textarea value={qualForm.completionMessage} onChange={e => setQualForm(f => ({ ...f, completionMessage: e.target.value }))} rows={2} className={`${inputClass} resize-none`} placeholder="Ej: ¡Gracias! En breve te contactamos." />
               </div>
-              <button type="submit" disabled={savingQualForm} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={savingQualForm} className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md shadow transition-colors">
                 {savingQualForm ? 'Guardando...' : 'Guardar formulario'}
               </button>
             </Card>
@@ -650,16 +650,16 @@ export default function SettingsPage() {
             {webhooks.length > 0 && (
               <div className="space-y-1.5">
                 {webhooks.map(wh => (
-                  <div key={wh.id} className="flex items-start gap-3 py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <div key={wh.id} className="flex items-start gap-3 py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">{wh.url}</p>
+                      <p className="text-sm font-mono text-[#0C1224] dark:text-[#9BA5B7] truncate">{wh.url}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {wh.events.map(ev => <span key={ev} className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded">{ev}</span>)}
+                        {wh.events.map(ev => <span key={ev} className="text-xs bg-[#E3E6EC] dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] px-1.5 py-0.5 rounded">{ev}</span>)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Toggle on={wh.active} onToggle={() => { if (profile?.orgId) { updateWebhook(profile.orgId, wh.id, { active: !wh.active }); setWebhooks(prev => prev.map(w => w.id === wh.id ? { ...w, active: !w.active } : w)) } }} />
-                      <button onClick={() => { if (profile?.orgId) { deleteWebhook(profile.orgId, wh.id); setWebhooks(prev => prev.filter(w => w.id !== wh.id)) } }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                      <button onClick={() => { if (profile?.orgId) { deleteWebhook(profile.orgId, wh.id); setWebhooks(prev => prev.filter(w => w.id !== wh.id)) } }} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -667,17 +667,17 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
-            <form onSubmit={handleAddWebhook} className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <form onSubmit={handleAddWebhook} className="space-y-3 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
               <input value={newWebhook.url} onChange={e => setNewWebhook(w => ({ ...w, url: e.target.value }))} className={inputClass} placeholder="https://mi-sistema.com/webhook" />
               <div className="flex flex-wrap gap-3">
                 {WEBHOOK_EVENTS.map(ev => (
                   <label key={ev.value} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={newWebhook.events.includes(ev.value)} onChange={e => setNewWebhook(w => ({ ...w, events: e.target.checked ? [...w.events, ev.value] : w.events.filter(x => x !== ev.value) }))} className="w-3.5 h-3.5 rounded border-slate-300" />
-                    <span className="text-xs text-slate-700 dark:text-slate-300">{ev.label}</span>
+                    <input type="checkbox" checked={newWebhook.events.includes(ev.value)} onChange={e => setNewWebhook(w => ({ ...w, events: e.target.checked ? [...w.events, ev.value] : w.events.filter(x => x !== ev.value) }))} className="w-3.5 h-3.5 rounded border-[#E3E6EC]" />
+                    <span className="text-xs text-[#0C1224] dark:text-[#9BA5B7]">{ev.label}</span>
                   </label>
                 ))}
               </div>
-              <button type="submit" disabled={savingWebhook || !newWebhook.url} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow shadow-blue-500/20 transition-colors">
+              <button type="submit" disabled={savingWebhook || !newWebhook.url} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md shadow transition-colors">
                 <Plus size={14} /> Añadir webhook
               </button>
             </form>
@@ -692,18 +692,18 @@ export default function SettingsPage() {
                   {captureForms.map(f => {
                     const formUrl = typeof window !== 'undefined' ? `${window.location.origin}/form/${profile?.orgId}/${f.id}` : ''
                     return (
-                      <div key={f.id} className="flex items-center gap-3 py-2 px-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                      <div key={f.id} className="flex items-center gap-3 py-2 px-3 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-md">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{f.name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{f.fields.length} campo(s) · {f.submissionCount} envíos</p>
+                          <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">{f.name}</p>
+                          <p className="text-xs text-[#9BA5B7] mt-0.5">{f.fields.length} campo(s) · {f.submissionCount} envíos</p>
                         </div>
-                        <a href={formUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                        <a href={formUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200 hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] rounded-lg transition-colors">
                           <ExternalLink size={13} />
                         </a>
-                        <button onClick={() => { navigator.clipboard.writeText(formUrl); toast.success('URL copiada') }} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                        <button onClick={() => { navigator.clipboard.writeText(formUrl); toast.success('URL copiada') }} className="p-1.5 text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200 hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] rounded-lg transition-colors">
                           <Copy size={13} />
                         </button>
-                        <button onClick={() => { if (profile?.orgId) { deleteCaptureForm(profile.orgId, f.id); setCaptureForms(prev => prev.filter(x => x.id !== f.id)) } }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                        <button onClick={() => { if (profile?.orgId) { deleteCaptureForm(profile.orgId, f.id); setCaptureForms(prev => prev.filter(x => x.id !== f.id)) } }} className="p-1.5 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -712,38 +712,38 @@ export default function SettingsPage() {
                 </div>
               )}
               {!showFormBuilder ? (
-                <button onClick={() => setShowFormBuilder(true)} className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-sm rounded-xl hover:border-blue-400 hover:text-blue-600 transition-colors">
+                <button onClick={() => setShowFormBuilder(true)} className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-[#E3E6EC] dark:border-slate-600 text-[#68748D] dark:text-[#9BA5B7] text-sm rounded-md hover:border-[#0D7A65] hover:text-[#0D7A65] transition-colors">
                   <Plus size={14} /> Crear formulario
                 </button>
               ) : (
-                <form onSubmit={handleSaveCaptureForm} className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <form onSubmit={handleSaveCaptureForm} className="space-y-3 pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
                   <input value={newFormName} onChange={e => setNewFormName(e.target.value)} className={inputClass} placeholder='Nombre del formulario (ej: "Contacto web")' />
                   <div className="space-y-2">
                     {newFormFields.map(field => (
-                      <div key={field.id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl">
-                        <input value={field.label} onChange={e => setNewFormFields(prev => prev.map(f => f.id === field.id ? { ...f, label: e.target.value } : f))} className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none" placeholder="Etiqueta" />
-                        <select value={field.type} onChange={e => setNewFormFields(prev => prev.map(f => f.id === field.id ? { ...f, type: e.target.value as CaptureFormField['type'] } : f))} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-none">
+                      <div key={field.id} className="flex items-center gap-2 bg-[#F4F5F7] dark:bg-[#1A2540] p-2 rounded-md">
+                        <input value={field.label} onChange={e => setNewFormFields(prev => prev.map(f => f.id === field.id ? { ...f, label: e.target.value } : f))} className="flex-1 bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg px-2 py-1.5 text-xs text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none" placeholder="Etiqueta" />
+                        <select value={field.type} onChange={e => setNewFormFields(prev => prev.map(f => f.id === field.id ? { ...f, type: e.target.value as CaptureFormField['type'] } : f))} className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg px-2 py-1.5 text-xs text-[#0C1224] dark:text-[#9BA5B7] focus:outline-none">
                           <option value="text">Texto</option>
                           <option value="email">Email</option>
                           <option value="phone">Teléfono</option>
                           <option value="textarea">Área</option>
                         </select>
-                        <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap">
+                        <label className="flex items-center gap-1 text-xs text-[#68748D] whitespace-nowrap">
                           <input type="checkbox" checked={field.required} onChange={e => setNewFormFields(prev => prev.map(f => f.id === field.id ? { ...f, required: e.target.checked } : f))} className="w-3 h-3" /> Req.
                         </label>
-                        <button type="button" onClick={() => setNewFormFields(prev => prev.filter(f => f.id !== field.id))} className="p-1 text-slate-400 hover:text-red-500 rounded">
+                        <button type="button" onClick={() => setNewFormFields(prev => prev.filter(f => f.id !== field.id))} className="p-1 text-[#9BA5B7] hover:text-red-500 rounded">
                           <Trash2 size={12} />
                         </button>
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setNewFormFields(prev => [...prev, { id: `f_${Date.now()}`, label: '', type: 'text', required: false }])} className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                  <button type="button" onClick={() => setNewFormFields(prev => [...prev, { id: `f_${Date.now()}`, label: '', type: 'text', required: false }])} className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-[#E3E6EC] dark:border-slate-600 rounded-md text-sm text-[#68748D] hover:border-[#0D7A65] hover:text-[#0D7A65] transition-colors">
                     <Plus size={13} /> Añadir campo
                   </button>
                   <input value={newFormConfirmation} onChange={e => setNewFormConfirmation(e.target.value)} className={inputClass} placeholder="Mensaje de confirmación al enviar" />
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setShowFormBuilder(false)} className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
-                    <button type="submit" disabled={savingForm} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors py-2.5">{savingForm ? 'Guardando...' : 'Crear formulario'}</button>
+                    <button type="button" onClick={() => setShowFormBuilder(false)} className="flex-1 px-3 py-2.5 border border-[#E3E6EC] dark:border-[#1A2540] text-sm text-[#68748D] dark:text-[#9BA5B7] rounded-md hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors">Cancelar</button>
+                    <button type="submit" disabled={savingForm} className="flex-1 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md transition-colors py-2.5">{savingForm ? 'Guardando...' : 'Crear formulario'}</button>
                   </div>
                 </form>
               )}
@@ -761,17 +761,17 @@ export default function SettingsPage() {
               ] as const).map(tier => {
                 const current = org?.plan === tier.plan
                 return (
-                  <div key={tier.plan} className={`p-4 rounded-xl border-2 transition-all ${current ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-100 dark:border-slate-800'}`}>
+                  <div key={tier.plan} className={`p-4 rounded-md border-2 transition-all ${current ? 'border-[#0D7A65] bg-[#F4F5F7] dark:bg-blue-900/10' : 'border-[#E3E6EC] dark:border-[#1A2540]'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white">{tier.name}</span>
-                        {current && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">Actual</span>}
+                        <span className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">{tier.name}</span>
+                        {current && <span className="text-xs bg-[#0C1224] text-white px-2 py-0.5 rounded-full">Actual</span>}
                       </div>
-                      <span className="font-bold text-slate-700 dark:text-slate-300 text-sm">{tier.price}</span>
+                      <span className="font-bold text-[#0C1224] dark:text-[#9BA5B7] text-sm">{tier.price}</span>
                     </div>
                     <ul className="space-y-0.5 mb-3">
                       {tier.features.map(f => (
-                        <li key={f} className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <li key={f} className="text-xs text-[#68748D] dark:text-[#9BA5B7] flex items-center gap-1.5">
                           <CheckCircle size={11} className="text-emerald-500 flex-shrink-0" /> {f}
                         </li>
                       ))}
@@ -784,7 +784,7 @@ export default function SettingsPage() {
                           if (data.url) window.location.href = data.url
                           else toast.error(data.error || 'Error al iniciar pago')
                         } catch { toast.error('Error de conexión') }
-                      }} className="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-sm font-bold py-2 rounded-lg transition-colors">
+                      }} className="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-[#F4F5F7] text-white dark:text-[#0C1224] text-sm font-bold py-2 rounded-lg transition-colors">
                         Cambiar a {tier.name}
                       </button>
                     )}
@@ -801,19 +801,19 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Corregir teléfonos inválidos</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Elimina campos con texto en lugar de números</p>
+                    <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Corregir teléfonos inválidos</p>
+                    <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">Elimina campos con texto en lugar de números</p>
                   </div>
-                  <button onClick={handleFixPhones} disabled={cleaningPhones} className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors">
+                  <button onClick={handleFixPhones} disabled={cleaningPhones} className="flex-shrink-0 px-4 py-2 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white text-sm font-bold rounded-md transition-colors">
                     {cleaningPhones ? 'Procesando...' : 'Ejecutar'}
                   </button>
                 </div>
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between pt-3 border-t border-[#E3E6EC] dark:border-[#1A2540]">
                   <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Eliminar contactos falsos</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Elimina clientes de broadcasts o JIDs inválidos</p>
+                    <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Eliminar contactos falsos</p>
+                    <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">Elimina clientes de broadcasts o JIDs inválidos</p>
                   </div>
-                  <button onClick={handleCleanFakes} disabled={cleaningFakes} className="flex-shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors">
+                  <button onClick={handleCleanFakes} disabled={cleaningFakes} className="flex-shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold rounded-md transition-colors">
                     {cleaningFakes ? 'Procesando...' : 'Limpiar'}
                   </button>
                 </div>

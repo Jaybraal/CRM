@@ -104,25 +104,25 @@ export default function InstagramPage() {
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
       {/* Lista */}
-      <div className={`flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 ${showMobileChat ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-96 flex-shrink-0`}>
+      <div className={`flex flex-col bg-white dark:bg-[#0F1829] border-r border-[#E3E6EC] dark:border-[#1A2540] ${showMobileChat ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-96 flex-shrink-0`}>
         {/* Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="p-4 border-b border-[#E3E6EC] dark:border-[#1A2540]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <IgIcon size={20} />
-              <h2 className="font-black text-slate-900 dark:text-white">Instagram</h2>
+              <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">Instagram</h2>
               {totalUnread > 0 && (
                 <span className="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{totalUnread}</span>
               )}
             </div>
           </div>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BA5B7] dark:text-[#68748D]" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar contacto..."
-              className="w-full pl-8 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full pl-8 pr-3 py-2 text-sm bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 transition-colors placeholder:text-[#9BA5B7] dark:placeholder:text-[#68748D]"
             />
           </div>
         </div>
@@ -131,18 +131,18 @@ export default function InstagramPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-[#0D7A65] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
-              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full flex items-center justify-center">
                 <IgIcon size={28} />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                <p className="text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7]">
                   {allClients.length === 0 ? 'No hay mensajes de Instagram' : 'Sin resultados'}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-1">
                   {allClients.length === 0
                     ? 'Conecta tu cuenta en Configuración → Instagram'
                     : 'Intenta con otro término'}
@@ -154,21 +154,21 @@ export default function InstagramPage() {
               <button
                 key={client.id}
                 onClick={() => { setSelectedId(client.id); setShowMobileChat(true) }}
-                className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left ${selectedId === client.id ? 'bg-pink-50 dark:bg-pink-950/20 border-l-2 border-l-pink-400' : ''}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-[#1A2540] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors text-left ${selectedId === client.id ? 'bg-pink-50 dark:bg-pink-950/20 border-l-2 border-l-pink-400' : ''}`}
               >
                 <div className="relative">
                   <Avatar name={client.name} size={44} />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center">
+                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white dark:bg-[#0F1829] rounded-full flex items-center justify-center">
                     <IgIcon size={10} />
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white truncate">{client.name}</span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{formatLastTime(client.lastMessageAt)}</span>
+                    <span className="font-bold text-sm text-[#0C1224] dark:text-[#E8ECF4] truncate">{client.name}</span>
+                    <span className="text-xs text-[#9BA5B7] dark:text-[#68748D] shrink-0">{formatLastTime(client.lastMessageAt)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{client.lastMessage || 'Sin mensajes'}</span>
+                    <span className="text-xs text-[#68748D] dark:text-[#9BA5B7] truncate">{client.lastMessage || 'Sin mensajes'}</span>
                     {(client.unreadCount ?? 0) > 0 && (
                       <span className="bg-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0 min-w-[18px] text-center">
                         {client.unreadCount}
@@ -183,17 +183,17 @@ export default function InstagramPage() {
       </div>
 
       {/* Panel de chat */}
-      <div className={`flex-1 flex flex-col bg-slate-50 dark:bg-slate-800/30 ${showMobileChat ? 'flex' : 'hidden lg:flex'}`}>
+      <div className={`flex-1 flex flex-col bg-[#F4F5F7] dark:bg-[#1A2540]/30 ${showMobileChat ? 'flex' : 'hidden lg:flex'}`}>
         {/* Mobile back */}
         {showMobileChat && (
-          <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-            <button onClick={() => setShowMobileChat(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <ArrowLeft size={18} className="text-slate-600 dark:text-slate-300" />
+          <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#0F1829] border-b border-[#E3E6EC] dark:border-[#1A2540]">
+            <button onClick={() => setShowMobileChat(false)} className="p-1.5 rounded-lg hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors">
+              <ArrowLeft size={18} className="text-[#68748D] dark:text-[#9BA5B7]" />
             </button>
             {selectedClient && (
               <div className="flex items-center gap-2">
                 <Avatar name={selectedClient.name} size={32} />
-                <span className="font-bold text-sm text-slate-900 dark:text-white">{selectedClient.name}</span>
+                <span className="font-bold text-sm text-[#0C1224] dark:text-[#E8ECF4]">{selectedClient.name}</span>
               </div>
             )}
           </div>
@@ -208,12 +208,12 @@ export default function InstagramPage() {
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
-            <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="w-20 h-20 bg-white dark:bg-[#0F1829] rounded-full flex items-center justify-center border border-[#E3E6EC] dark:border-[#1A2540] shadow-sm">
               <IgIcon size={36} />
             </div>
             <div>
-              <p className="font-black text-slate-900 dark:text-white">Bienvenido a Instagram</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Selecciona un contacto para abrir la conversación</p>
+              <p className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">Bienvenido a Instagram</p>
+              <p className="text-sm text-[#68748D] dark:text-[#9BA5B7] mt-1">Selecciona un contacto para abrir la conversación</p>
             </div>
           </div>
         )}

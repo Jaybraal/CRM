@@ -70,9 +70,9 @@ export default function ChatAssistant() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-4 right-4 sm:right-6 z-50 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 right-4 sm:right-6 z-50 w-80 sm:w-96 bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white flex-shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3 bg-[#0C1224] text-white flex-shrink-0">
             <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
               <Bot size={15} />
             </div>
@@ -89,10 +89,10 @@ export default function ChatAssistant() {
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 max-h-80">
             {messages.length === 0 && (
               <div className="text-center mt-4 space-y-2">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">
                   Hola <span className="font-semibold">{profile?.displayName?.split(' ')[0]}</span>, soy Alex.
                 </p>
-                <p className="text-[11px] text-slate-400">Puedo crear tareas, agregar leads, buscar clientes y más.</p>
+                <p className="text-[11px] text-[#9BA5B7]">Puedo crear tareas, agregar leads, buscar clientes y más.</p>
               </div>
             )}
 
@@ -109,10 +109,10 @@ export default function ChatAssistant() {
                     ))}
                   </div>
                 ) : null}
-                <div className={`max-w-[82%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-wrap ${
+                <div className={`max-w-[82%] px-3 py-2 rounded-md text-xs leading-relaxed whitespace-pre-wrap ${
                   m.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-none'
+                    ? 'bg-[#0C1224] text-white rounded-br-none'
+                    : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#E8ECF4] rounded-bl-none'
                 }`}>
                   {m.content}
                 </div>
@@ -121,7 +121,7 @@ export default function ChatAssistant() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-slate-100 dark:bg-slate-800 px-3 py-2.5 rounded-xl rounded-bl-none">
+                <div className="bg-[#F4F5F7] dark:bg-[#1A2540] px-3 py-2.5 rounded-md rounded-bl-none">
                   <div className="flex gap-1 items-center">
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -134,18 +134,18 @@ export default function ChatAssistant() {
           </div>
 
           {/* Input */}
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
+          <div className="flex items-center gap-2 px-3 py-3 border-t border-[#E3E6EC] dark:border-[#1A2540] flex-shrink-0">
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
               placeholder="Escríbele a Alex..."
-              className="flex-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-blue-500 text-slate-700 dark:text-slate-200 placeholder-slate-400"
+              className="flex-1 text-xs bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-3 py-2 outline-none focus:border-[#0D7A65] text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400"
             />
             <button
               onClick={send}
               disabled={!input.trim() || loading}
-              className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl transition-colors flex-shrink-0"
+              className="p-2 bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-40 text-white rounded-md transition-colors flex-shrink-0"
             >
               <Send size={15} />
             </button>

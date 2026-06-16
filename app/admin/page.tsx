@@ -94,7 +94,7 @@ function DarkModal({ open, onClose, title, children, size = 'md' }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className={`w-full ${sizeClass} rounded-2xl shadow-2xl border border-gray-700/80 bg-gray-900 flex flex-col max-h-[90vh]`}>
+      <div className={`w-full ${sizeClass} rounded-lg shadow-sm border border-gray-700/80 bg-gray-900 flex flex-col max-h-[90vh]`}>
         {/* Header fijo */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
           <h2 className="text-base font-semibold text-white">{title}</h2>
@@ -123,7 +123,7 @@ function DurationPicker({ value, onChange }: { value: number; onChange: (days: n
             onClick={() => onChange(opt.days)}
             className={`py-2 px-3 rounded-lg text-xs font-medium transition-colors border ${
               value === opt.days
-                ? 'bg-indigo-600 border-indigo-500 text-white'
+                ? 'bg-[#0C1224] border-indigo-500 text-white'
                 : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
             }`}
           >
@@ -160,7 +160,7 @@ function OrgCard({ org, onEdit, onDelete, onEnter, isActive }: {
   const createdDate = secs ? new Date(secs * 1000).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 
   return (
-    <div className={`relative rounded-2xl border overflow-hidden transition-all ${
+    <div className={`relative rounded-lg border overflow-hidden transition-all ${
       status === 'expired'
         ? 'border-red-900/60 bg-gray-900/80 opacity-75'
         : 'border-gray-800 bg-gray-900 hover:border-gray-700'
@@ -172,7 +172,7 @@ function OrgCard({ org, onEdit, onDelete, onEnter, isActive }: {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">
               <Building2 size={18} className="text-gray-400" />
             </div>
             <div className="min-w-0">
@@ -188,7 +188,7 @@ function OrgCard({ org, onEdit, onDelete, onEnter, isActive }: {
         </div>
 
         {/* Access expiry */}
-        <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 mb-4 ${cfg.bg}`}>
+        <div className={`flex items-center justify-between rounded-md px-3 py-2.5 mb-4 ${cfg.bg}`}>
           <div className="flex items-center gap-2">
             <StatusIcon size={14} className={cfg.color} />
             <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
@@ -217,7 +217,7 @@ function OrgCard({ org, onEdit, onDelete, onEnter, isActive }: {
               { icon: UserCheck, val: org.stats.clients, label: 'clientes' },
               { icon: FolderKanban, val: org.stats.deals, label: 'deals' },
             ].map(({ icon: Icon, val, label }) => (
-              <div key={label} className="bg-gray-800/60 rounded-xl p-2 text-center">
+              <div key={label} className="bg-gray-800/60 rounded-md p-2 text-center">
                 <Icon size={12} className="text-gray-500 mx-auto mb-1" />
                 <p className="text-sm font-bold text-white">{val}</p>
                 <p className="text-xs text-gray-600">{label}</p>
@@ -484,7 +484,7 @@ export default function AdminPage() {
   const soon = orgs.filter(o => getExpiryStatus(o) === 'soon').length
   const active = orgs.filter(o => ['active', 'indefinite'].includes(getExpiryStatus(o))).length
 
-  const inputCls = `w-full rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-800 border border-gray-700 placeholder-gray-500 ${autofillFix}`
+  const inputCls = `w-full rounded-md px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-800 border border-gray-700 placeholder-gray-500 ${autofillFix}`
   const labelCls = "text-xs font-medium text-gray-400 mb-1.5 block"
 
   return (
@@ -496,12 +496,12 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="p-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
               title="Volver al dashboard"
             >
               <ArrowLeft size={18} />
             </Link>
-            <div className="p-2 rounded-xl bg-indigo-900/40 border border-indigo-800/60">
+            <div className="p-2 rounded-md bg-indigo-900/40 border border-indigo-800/60">
               <ShieldCheck size={20} className="text-indigo-400" />
             </div>
             <div>
@@ -511,7 +511,7 @@ export default function AdminPage() {
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors self-start sm:self-auto"
+            className="flex items-center gap-2 bg-[#0C1224] hover:bg-indigo-500 text-white px-4 py-2.5 rounded-md text-sm font-medium transition-colors self-start sm:self-auto"
           >
             <Plus size={16} /> Nueva organización
           </button>
@@ -520,15 +520,15 @@ export default function AdminPage() {
         {/* Summary stats */}
         {!loading && orgs.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-gray-900 border border-gray-800 rounded-md p-4 text-center">
               <p className="text-2xl font-bold text-emerald-400">{active}</p>
               <p className="text-xs text-gray-500 mt-0.5">Activas</p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-gray-900 border border-gray-800 rounded-md p-4 text-center">
               <p className="text-2xl font-bold text-amber-400">{soon}</p>
               <p className="text-xs text-gray-500 mt-0.5">Por vencer</p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-gray-900 border border-gray-800 rounded-md p-4 text-center">
               <p className="text-2xl font-bold text-red-400">{expired}</p>
               <p className="text-xs text-gray-500 mt-0.5">Vencidas</p>
             </div>
@@ -541,7 +541,7 @@ export default function AdminPage() {
             <div className="w-8 h-8 border-4 border-gray-600 border-t-indigo-500 rounded-full animate-spin" />
           </div>
         ) : orgs.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-16 text-center">
             <Building2 size={32} className="text-gray-700 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">No hay organizaciones. Crea la primera.</p>
           </div>
@@ -608,7 +608,7 @@ export default function AdminPage() {
               </div>
             </div>
             <button type="submit" disabled={creating}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors">
+              className="w-full bg-[#0C1224] hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-md transition-colors">
               {creating ? 'Creando...' : 'Crear organización'}
             </button>
           </form>
@@ -684,7 +684,7 @@ export default function AdminPage() {
             </div>
 
             <button type="submit" disabled={saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors mt-2">
+              className="w-full bg-[#0C1224] hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-md transition-colors mt-2">
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
           </form>
@@ -693,7 +693,7 @@ export default function AdminPage() {
         {/* Modal: Eliminar */}
         <DarkModal open={!!deleteOrg} onClose={() => setDeleteOrg(null)} title="Eliminar organización" size="sm">
           <div className="space-y-4">
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-red-900/20 border border-red-900/40">
+            <div className="flex items-start gap-3 p-4 rounded-md bg-red-900/20 border border-red-900/40">
               <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-300">
                 Esta acción <strong>no se puede deshacer</strong>. Se eliminará{' '}
@@ -714,7 +714,7 @@ export default function AdminPage() {
             <button
               onClick={handleDelete}
               disabled={deleting || deleteConfirm !== deleteOrg?.name}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl transition-colors"
+              className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-md transition-colors"
             >
               {deleting ? 'Eliminando...' : 'Eliminar permanentemente'}
             </button>

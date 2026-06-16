@@ -1,32 +1,76 @@
 export const dynamic = 'force-dynamic'
 
-import { adminDb, getAdminStorage, sendFCMToOrg } from '@/lib/firebase-admin'
+import { adminDb, sendFCMToOrg } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
+import { GoogleAuth } from 'google-auth-library'
 
 async function uploadMediaToStorage(orgId: string, clientId: string, base64: string, mimeType: string): Promise<string> {
+  const baseMime = mimeType.split(';')[0].trim().toLowerCase()
   const extMap: Record<string, string> = {
     'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
     'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
     'audio/ogg': 'ogg', 'audio/opus': 'opus', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a',
-    'audio/ogg; codecs=opus': 'ogg',
+    'audio/webm': 'webm', 'audio/wav': 'wav', 'audio/aac': 'aac',
   }
-  const ext = extMap[mimeType] || (mimeType.startsWith('video/') ? 'mp4' : mimeType.startsWith('audio/') ? 'ogg' : 'jpg')
+  const ext = extMap[baseMime] || (baseMime.startsWith('video/') ? 'mp4' : baseMime.startsWith('audio/') ? 'ogg' : 'jpg')
   const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-  const path = `organizations/${orgId}/chat/${clientId}/${fileName}`
+  const filePath = `organizations/${orgId}/chat/${clientId}/${fileName}`
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!
+  const downloadToken = crypto.randomUUID()
+
+  const auth = new GoogleAuth({
+    credentials: {
+      client_email: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      private_key: (process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/devstorage.full_control'],
+  })
+  const client = await auth.getClient()
+  const tokenRes = await client.getAccessToken()
+  const accessToken = tokenRes.token
 
   const buffer = Buffer.from(base64, 'base64')
-  const downloadToken = crypto.randomUUID()
-  const bucket = getAdminStorage()
-
-  await bucket.file(path).save(buffer, {
-    metadata: {
-      contentType: mimeType,
-      metadata: { firebaseStorageDownloadTokens: downloadToken },
-    },
+  const boundary = `boundary_${crypto.randomUUID().replace(/-/g, '')}`
+  const metaJson = JSON.stringify({
+    name: filePath,
+    contentType: baseMime,
+    metadata: { firebaseStorageDownloadTokens: downloadToken },
   })
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaJson}\r\n--${boundary}\r\nContent-Type: ${baseMime}\r\n\r\n`),
+    buffer,
+    Buffer.from(`\r\n--${boundary}--`),
+  ])
 
-  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`
+  const uploadRes = await fetch(
+    `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=multipart&name=${encodeURIComponent(filePath)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+        'Content-Length': String(body.length),
+      },
+      body,
+    }
+  )
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text()
+    throw new Error(`GCS upload failed: ${uploadRes.status} — ${errText}`)
+  }
+
+  // PATCH separado para garantizar que el download token quede registrado en Firebase Storage
+  await fetch(
+    `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(filePath)}`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata: { firebaseStorageDownloadTokens: downloadToken } }),
+    }
+  )
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`
 }
 
 async function getNextAgentForOrg(orgId: string): Promise<string> {

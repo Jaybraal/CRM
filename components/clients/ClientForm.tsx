@@ -16,8 +16,8 @@ interface Props {
   onSuccess: () => void
 }
 
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
-const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+const inputClass = 'w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7] mb-1.5'
 
 export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT_STATUSES, existing, onSuccess }: Props) {
   const { profile } = useAuth()
@@ -127,7 +127,7 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
       <div>
         <label className={labelClass}>
           WhatsApp del cliente
-          <span className="ml-1 text-xs text-slate-400 font-normal">(con código de país, ej: +52 55 1234 5678)</span>
+          <span className="ml-1 text-xs text-[#9BA5B7] font-normal">(con código de país, ej: +52 55 1234 5678)</span>
         </label>
         <input
           value={form.whatsappPhone}
@@ -175,16 +175,16 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
             className={inputClass}
             placeholder="Escribe y presiona Enter"
           />
-          <button type="button" onClick={addTag} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
+          <button type="button" onClick={addTag} className="px-4 py-2 bg-[#F4F5F7] dark:bg-[#1A2540] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7] transition-colors">
             +
           </button>
         </div>
         {form.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {form.tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+              <span key={tag} className="flex items-center gap-1 text-xs bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7] px-2.5 py-1 rounded-full border border-[#E3E6EC] dark:border-[#1A2540]">
                 {tag}
-                <button type="button" onClick={() => removeTag(tag)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={11} /></button>
+                <button type="button" onClick={() => removeTag(tag)} className="text-[#9BA5B7] hover:text-red-500 transition-colors"><X size={11} /></button>
               </span>
             ))}
           </div>
@@ -215,7 +215,7 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+        className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] disabled:opacity-50 text-white font-bold py-2.5 rounded-md transition-colors shadow-lg"
       >
         {loading ? 'Guardando...' : existing ? 'Actualizar cliente' : 'Crear cliente'}
       </button>

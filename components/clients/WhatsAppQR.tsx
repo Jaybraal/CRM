@@ -25,7 +25,7 @@ export default function WhatsAppQR({ phone, clientName }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl text-xs font-bold transition-colors"
+        className="flex items-center gap-2 px-3 py-2 border border-[#E3E6EC] dark:border-[#1A2540] hover:border-slate-400 dark:hover:border-slate-500 text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-white rounded-md text-xs font-bold transition-colors"
         title="Ver QR de WhatsApp"
       >
         <QrCode size={14} />
@@ -34,16 +34,16 @@ export default function WhatsAppQR({ phone, clientName }: Props) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-5">
+          <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm w-full max-w-xs p-6 space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-black text-slate-900 dark:text-white text-sm">WhatsApp QR</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{clientName}</p>
+                <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm">WhatsApp QR</h3>
+                <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] mt-0.5">{clientName}</p>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="p-1.5 text-[#9BA5B7] dark:text-[#68748D] hover:text-[#0C1224] dark:hover:text-slate-200 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-lg transition-colors"
               >
                 <X size={16} />
               </button>
@@ -51,7 +51,7 @@ export default function WhatsAppQR({ phone, clientName }: Props) {
 
             {/* QR */}
             <div className="flex justify-center">
-              <div className="p-4 bg-white border-2 border-slate-100 dark:border-slate-700 rounded-xl">
+              <div className="p-4 bg-white border-2 border-[#E3E6EC] dark:border-[#1A2540] rounded-md">
                 <QRCodeSVG
                   value={waUrl}
                   size={180}
@@ -69,13 +69,13 @@ export default function WhatsAppQR({ phone, clientName }: Props) {
             </div>
 
             {/* Phone */}
-            <p className="text-center text-sm font-bold text-slate-700 dark:text-slate-300">{phone}</p>
+            <p className="text-center text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7]">{phone}</p>
 
             {/* Actions */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={copyLink}
-                className="flex items-center justify-center gap-1.5 py-2.5 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-colors"
+                className="flex items-center justify-center gap-1.5 py-2.5 border border-[#E3E6EC] dark:border-[#1A2540] hover:border-slate-400 dark:hover:border-slate-500 text-[#0C1224] dark:text-[#9BA5B7] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-md text-xs font-bold transition-colors"
               >
                 <Copy size={13} /> Copiar enlace
               </button>
@@ -83,13 +83,13 @@ export default function WhatsAppQR({ phone, clientName }: Props) {
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-xs font-bold transition-colors"
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-md text-xs font-bold transition-colors"
               >
                 <ExternalLink size={13} /> Abrir WA
               </a>
             </div>
 
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-center text-xs text-[#9BA5B7] dark:text-[#68748D]">
               Escanea con cualquier cámara para abrir el chat
             </p>
           </div>

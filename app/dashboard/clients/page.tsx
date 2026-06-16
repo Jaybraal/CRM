@@ -198,11 +198,11 @@ export default function ClientsPage() {
     <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* ── Left panel: contact list ─────────────────────────────── */}
-      <div className="flex flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-shrink-0">
+      <div className="flex flex-col w-full lg:w-80 xl:w-96 bg-white dark:bg-[#0F1829] border-r border-[#E3E6EC] dark:border-[#1A2540] flex-shrink-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#F4F5F7] dark:bg-[#0F1829]/50 border-b border-[#E3E6EC] dark:border-[#1A2540]">
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-slate-900 dark:text-white text-base">Chats</h1>
+            <h1 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-base">Chats</h1>
             {totalUnread > 0 && (
               <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                 {totalUnread > 99 ? '99+' : totalUnread}
@@ -212,41 +212,41 @@ export default function ClientsPage() {
           <div className="flex items-center gap-0.5">
             <button onClick={() => importRef.current?.click()} disabled={importing}
               title="Importar CSV"
-              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              className="p-2 rounded-full text-[#68748D] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] transition-colors">
               <Upload size={16} />
             </button>
             <button onClick={exportCSV} title="Exportar CSV"
-              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              className="p-2 rounded-full text-[#68748D] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] transition-colors">
               <Download size={16} />
             </button>
             <button onClick={() => setShowForm(true)} title="Nuevo cliente"
-              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              className="p-2 rounded-full text-[#68748D] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540] transition-colors">
               <Plus size={16} />
             </button>
           </div>
         </div>
 
         {/* Search */}
-        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540]">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BA5B7] pointer-events-none" />
             <input
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               placeholder="Buscar contacto..."
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:bg-slate-200 dark:focus:bg-slate-700 transition-colors"
+              className="w-full pl-8 pr-3 py-1.5 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full text-sm text-[#0C1224] dark:text-[#E8ECF4] placeholder-slate-400 focus:outline-none focus:bg-[#E3E6EC] dark:focus:bg-slate-700 transition-colors"
             />
           </div>
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-slate-800 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1.5 px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] overflow-x-auto scrollbar-none">
           {[{ value: '', label: 'Todos' }, { value: '__unread__', label: '● No leídos' }, ...clientStatuses].map(s => (
             <button key={s.value} onClick={() => handleFilterChange(s.value)}
               className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
                 filterStatus === s.value
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-[#0C1224]'
+                  : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540]'
               }`}>
               {s.label}
             </button>
@@ -257,10 +257,10 @@ export default function ClientsPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-[#0D7A65] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">
+            <div className="text-center py-12 text-[#9BA5B7] dark:text-[#68748D] text-sm">
               {search ? 'Sin resultados' : 'No hay contactos'}
             </div>
           ) : (
@@ -268,8 +268,8 @@ export default function ClientsPage() {
               <button
                 key={client.id}
                 onClick={() => handleSelectClient(client)}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-left ${
-                  selectedId === client.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]/50 active:bg-[#F4F5F7] dark:active:bg-slate-800 transition-colors border-b border-slate-50 dark:border-[#1A2540]/50 text-left ${
+                  selectedId === client.id ? 'bg-[#F4F5F7] dark:bg-[#0D7A65]/10' : ''
                 }`}
               >
                 {/* Avatar */}
@@ -284,29 +284,29 @@ export default function ClientsPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{client.name}</span>
+                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-[#0C1224] dark:text-[#E8ECF4]' : 'text-[#0C1224] dark:text-[#9BA5B7]'}`}>{client.name}</span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {(client.unreadCount ?? 0) > 0 ? (
                         <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                           {client.unreadCount! > 99 ? '99+' : client.unreadCount}
                         </span>
                       ) : client.lastMessageAt ? (
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{formatLastTime(client.lastMessageAt)}</span>
+                        <span className="text-[10px] text-[#9BA5B7] dark:text-[#68748D]">{formatLastTime(client.lastMessageAt)}</span>
                       ) : null}
                     </div>
                   </div>
                   {/* Preview último mensaje (estilo inbox) */}
-                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-[#0C1224] dark:text-[#9BA5B7] font-medium' : 'text-[#9BA5B7] dark:text-[#68748D]'}`}>
                     {client.lastMessage || getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
                   </p>
                   {/* Teléfono secundario solo si hay lastMessage */}
                   {client.lastMessage && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                    <p className="text-[10px] text-[#9BA5B7] dark:text-[#68748D] truncate mt-0.5">
                       {getDisplayPhone(client) || (client.isLid ? 'Número privado' : '')}
                     </p>
                   )}
                   {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                    <p className="text-[10px] text-[#9BA5B7] dark:text-[#68748D] truncate">
                       {agents.find(a => a.uid === client.assignedTo)?.displayName || 'Sin asignar'}
                     </p>
                   )}
@@ -319,7 +319,7 @@ export default function ClientsPage() {
         {filtered.length > visibleCount && (
           <button
             onClick={() => setVisibleCount(v => v + 50)}
-            className="w-full py-3 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-t border-slate-100 dark:border-slate-800">
+            className="w-full py-3 text-sm text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-colors border-t border-[#E3E6EC] dark:border-[#1A2540]">
             Ver más ({filtered.length - visibleCount} restantes)
           </button>
         )}
@@ -333,14 +333,14 @@ export default function ClientsPage() {
             <ChatWindow {...chatWindowProps} />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 select-none">
-            <div className="w-24 h-24 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5">
-              <MessageCircle size={40} className="text-slate-300 dark:text-slate-600" />
+          <div className="flex-1 flex flex-col items-center justify-center bg-[#F4F5F7] dark:bg-[#0F1829] text-[#9BA5B7] dark:text-[#68748D] select-none">
+            <div className="w-24 h-24 bg-[#E3E6EC] dark:bg-[#1A2540] rounded-full flex items-center justify-center mb-5">
+              <MessageCircle size={40} className="text-[#9BA5B7] dark:text-[#68748D]" />
             </div>
-            <p className="font-semibold text-slate-500 dark:text-slate-400 text-lg">Bienvenido a Chats</p>
-            <p className="text-sm mt-1.5 text-slate-400 dark:text-slate-500">Selecciona un contacto para abrir la conversación</p>
+            <p className="font-semibold text-[#68748D] dark:text-[#9BA5B7] text-lg">Bienvenido a Chats</p>
+            <p className="text-sm mt-1.5 text-[#9BA5B7] dark:text-[#68748D]">Selecciona un contacto para abrir la conversación</p>
             <button onClick={() => setShowForm(true)}
-              className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-colors">
+              className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-[#0C1224] hover:bg-[#1B2B4B] text-white text-sm font-bold rounded-md shadow-lg transition-colors">
               <Plus size={16} /> Nuevo contacto
             </button>
           </div>

@@ -129,7 +129,7 @@ export default function ReportsPage() {
   const newClientsThisMonth = clients.filter(c => getTs(c.createdAt) >= startOfMonth).length
 
   const kpis = [
-    { label: 'Ganado total', value: `$${totalWon.toLocaleString()}`, sub: `$${wonThisMonth.toLocaleString()} este mes`, icon: DollarSign, colorClass: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+    { label: 'Ganado total', value: `$${totalWon.toLocaleString()}`, sub: `$${wonThisMonth.toLocaleString()} este mes`, icon: DollarSign, colorClass: 'text-[#0D7A65] bg-[#0D7A65]/10 dark:bg-[#0D7A65]/10' },
     { label: 'Tasa de conversión', value: `${conversionRate}%`, sub: `${deals.filter(d => d.stage === 'closed_won').length} deals ganados`, icon: Target, colorClass: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
     { label: 'Clientes nuevos', value: newClientsThisMonth.toString(), sub: `${clients.length} total`, icon: Users, colorClass: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
     { label: 'Tareas completadas', value: `${taskCompletionRate}%`, sub: `${tasks.filter(t => t.completed).length} / ${tasks.length}`, icon: CheckSquare, colorClass: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
@@ -139,13 +139,13 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Reportes</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Métricas de rendimiento de tu equipo</p>
+          <h1 className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">Reportes</h1>
+          <p className="text-[#68748D] dark:text-[#9BA5B7] text-sm mt-1">Métricas de rendimiento de tu equipo</p>
         </div>
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <div className="flex gap-1 bg-[#F4F5F7] dark:bg-[#1A2540] p-1 rounded-md">
           {([3, 6, 12] as const).map(m => (
             <button key={m} onClick={() => setPeriod(m)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${period === m ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${period === m ? 'bg-white dark:bg-[#1A2540] text-[#0D7A65] shadow-sm' : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200'}`}>
               {m}m
             </button>
           ))}
@@ -159,22 +159,22 @@ export default function ReportsPage() {
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map(kpi => (
-              <div key={kpi.label} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-                <div className={`p-2.5 rounded-xl w-fit mb-3 ${kpi.colorClass}`}>
+              <div key={kpi.label} className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-5 shadow-sm hover:shadow-md transition-all">
+                <div className={`p-2.5 rounded-md w-fit mb-3 ${kpi.colorClass}`}>
                   <kpi.icon size={18} />
                 </div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{kpi.value}</p>
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{kpi.label}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{kpi.sub}</p>
+                <p className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">{kpi.value}</p>
+                <p className="text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mt-0.5 uppercase tracking-wide">{kpi.label}</p>
+                <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-0.5">{kpi.sub}</p>
               </div>
             ))}
           </div>
 
           {/* Revenue chart */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
-              <TrendingUp size={16} className="text-slate-400" />
-              <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Ingresos mensuales</h2>
+              <TrendingUp size={16} className="text-[#9BA5B7]" />
+              <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Ingresos mensuales</h2>
             </div>
             <div className="flex items-end gap-2 h-40">
               {monthlyRevenue.map(m => {
@@ -183,15 +183,15 @@ export default function ReportsPage() {
                   <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 group">
                     <div className="relative w-full flex justify-center">
                       {m.value > 0 && (
-                        <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-2 py-1 rounded-lg whitespace-nowrap font-bold">
+                        <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-slate-900 dark:bg-white text-white dark:text-[#0C1224] px-2 py-1 rounded-lg whitespace-nowrap font-bold">
                           ${m.value.toLocaleString()}
                         </div>
                       )}
                     </div>
                     <div className="w-full flex items-end justify-center" style={{ height: '128px' }}>
-                      <div className="w-full bg-blue-600 hover:bg-blue-500 rounded-t-lg transition-colors" style={{ height: `${Math.max(pct, m.value > 0 ? 4 : 0)}%` }} />
+                      <div className="w-full bg-[#0C1224] hover:bg-[#F4F5F7]0 rounded-t-lg transition-colors" style={{ height: `${Math.max(pct, m.value > 0 ? 4 : 0)}%` }} />
                     </div>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 text-center">{m.month}</span>
+                    <span className="text-xs text-[#9BA5B7] dark:text-[#68748D] text-center">{m.month}</span>
                   </div>
                 )
               })}
@@ -199,10 +199,10 @@ export default function ReportsPage() {
           </div>
 
           {/* Pipeline funnel */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
-              <BarChart3 size={16} className="text-slate-400" />
-              <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Embudo de conversión</h2>
+              <BarChart3 size={16} className="text-[#9BA5B7]" />
+              <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Embudo de conversión</h2>
             </div>
             <div className="space-y-2">
               {stageFunnel.map(s => {
@@ -210,14 +210,14 @@ export default function ReportsPage() {
                 const pct = Math.max(s.count > 0 ? Math.round((s.count / maxCount) * 100) : 0, s.count > 0 ? 6 : 0)
                 return (
                   <div key={s.stage} className="flex items-center gap-4">
-                    <div className="w-24 text-xs font-bold text-slate-500 dark:text-slate-400 text-right flex-shrink-0">{s.stage}</div>
-                    <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-6 overflow-hidden">
+                    <div className="w-24 text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] text-right flex-shrink-0">{s.stage}</div>
+                    <div className="flex-1 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-full h-6 overflow-hidden">
                       <div className="h-6 rounded-full flex items-center px-2 transition-all" style={{ width: `${Math.max(pct, s.count > 0 ? 8 : 0)}%`, backgroundColor: s.color }}>
-                        {s.count > 0 && <span className="text-xs text-white font-black">{s.count}</span>}
+                        {s.count > 0 && <span className="text-xs text-white font-bold">{s.count}</span>}
                       </div>
                     </div>
-                    <div className="w-24 text-xs font-bold text-slate-600 dark:text-slate-300 text-right">
-                      {s.value > 0 ? `$${s.value.toLocaleString()}` : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    <div className="w-24 text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] text-right">
+                      {s.value > 0 ? `$${s.value.toLocaleString()}` : <span className="text-[#9BA5B7] dark:text-[#68748D]">—</span>}
                     </div>
                   </div>
                 )
@@ -226,7 +226,7 @@ export default function ReportsPage() {
           </div>
 
           {/* Client growth */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="bg-white border border-gray-200 rounded-md p-6">
             <div className="flex items-center gap-2 mb-6">
               <Users size={16} className="text-gray-400" />
               <h2 className="font-semibold text-gray-900 text-sm">Nuevos clientes por mes</h2>
@@ -244,28 +244,28 @@ export default function ReportsPage() {
 
           {/* Agent performance */}
           {agentPerf.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-5">
-                <Users size={16} className="text-slate-400" />
-                <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Rendimiento del equipo</h2>
+                <Users size={16} className="text-[#9BA5B7]" />
+                <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Rendimiento del equipo</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                    <tr className="border-b border-[#E3E6EC] dark:border-[#1A2540]">
                       {['Agente', 'Clientes', 'Deals ganados', 'Valor ganado', 'Tareas done'].map((h, i) => (
-                        <th key={h} className={`text-xs font-black text-slate-400 uppercase tracking-widest pb-3 ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                        <th key={h} className={`text-xs font-bold text-[#9BA5B7] uppercase tracking-widest pb-3 ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {agentPerf.map(a => (
-                      <tr key={a.name} className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 font-bold text-slate-900 dark:text-white">{a.name}</td>
-                        <td className="py-3 text-right text-slate-600 dark:text-slate-300">{a.clients}</td>
-                        <td className="py-3 text-right text-slate-600 dark:text-slate-300">{a.won}</td>
-                        <td className="py-3 text-right font-black text-blue-600">${a.wonValue.toLocaleString()}</td>
-                        <td className="py-3 text-right text-slate-600 dark:text-slate-300">{a.tasksDone}</td>
+                      <tr key={a.name} className="border-b border-slate-50 dark:border-[#1A2540] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]/30 transition-colors">
+                        <td className="py-3 font-bold text-[#0C1224] dark:text-[#E8ECF4]">{a.name}</td>
+                        <td className="py-3 text-right text-[#68748D] dark:text-[#9BA5B7]">{a.clients}</td>
+                        <td className="py-3 text-right text-[#68748D] dark:text-[#9BA5B7]">{a.won}</td>
+                        <td className="py-3 text-right font-bold text-[#0D7A65]">${a.wonValue.toLocaleString()}</td>
+                        <td className="py-3 text-right text-[#68748D] dark:text-[#9BA5B7]">{a.tasksDone}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -275,10 +275,10 @@ export default function ReportsPage() {
           )}
 
           {/* Client growth */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
-              <Users size={16} className="text-slate-400" />
-              <h2 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-wider">Nuevos clientes por mes</h2>
+              <Users size={16} className="text-[#9BA5B7]" />
+              <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm uppercase tracking-wider">Nuevos clientes por mes</h2>
             </div>
             <div className="flex items-end gap-2 h-32">
               {(() => {
@@ -297,7 +297,7 @@ export default function ReportsPage() {
                       <div className="w-full flex items-end justify-center" style={{ height: '100px' }}>
                         <div className="w-full bg-indigo-500 hover:bg-indigo-400 rounded-t-lg transition-colors" style={{ height: `${Math.max(pct, m.count > 0 ? 4 : 0)}%` }} />
                       </div>
-                      <span className="text-xs text-slate-400 dark:text-slate-500 text-center">{m.month}</span>
+                      <span className="text-xs text-[#9BA5B7] dark:text-[#68748D] text-center">{m.month}</span>
                     </div>
                   )
                 })

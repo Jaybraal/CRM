@@ -29,7 +29,7 @@ const BLUEPRINTS: Blueprint[] = [
     name: 'Inmobiliaria Premium',
     description: 'Gestión de propiedades, seguimiento de leads calificados y agendamiento de visitas con IA.',
     icon: '🏢',
-    color: 'bg-blue-600',
+    color: 'bg-[#0C1224]',
     industry: 'inmobiliaria',
     pipelineStages: ['Nuevo Lead', 'Visita Agendada', 'Propuesta', 'Negociación', 'Escritura', 'Cerrado'],
     tags: ['Propietario', 'Arrendador', 'Inversionista', 'Primera vivienda'],
@@ -86,7 +86,7 @@ const BLUEPRINTS: Blueprint[] = [
     name: 'E-commerce / Retail',
     description: 'Seguimiento de compras, resolución de dudas de envío y recuperación de carritos.',
     icon: '🛍️',
-    color: 'bg-indigo-600',
+    color: 'bg-[#0C1224]',
     industry: 'ecommerce',
     pipelineStages: ['Interés', 'Cotizó', 'Carrito Abandonado', 'Pedido Confirmado', 'Enviado', 'Entregado', 'Post-venta'],
     tags: ['Nuevo cliente', 'Recurrente', 'VIP', 'Referido'],
@@ -171,35 +171,35 @@ export default function MarketplacePage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="w-10 h-10 bg-[#0C1224] rounded-md flex items-center justify-center shadow-lg">
             <Zap size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Marketplace de Blueprints</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Configura tu CRM para tu industria en un solo clic</p>
+            <h1 className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">Marketplace de Blueprints</h1>
+            <p className="text-[#68748D] dark:text-[#9BA5B7] text-sm">Configura tu CRM para tu industria en un solo clic</p>
           </div>
         </div>
 
         {installedBp && (
-          <div className="mt-4 flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3">
-            <div className={`${installedBp.color} w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm flex-shrink-0`}>
+          <div className="mt-4 flex items-center gap-3 bg-[#F4F5F7] dark:bg-[#0D7A65]/10 border border-blue-200 dark:border-blue-800 rounded-md px-4 py-3">
+            <div className={`${installedBp.color} w-10 h-10 rounded-md flex items-center justify-center text-xl shadow-sm flex-shrink-0`}>
               {installedBp.icon}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
                 Blueprint activo: {installedBp.name}
               </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400">
+              <p className="text-xs text-[#0D7A65] dark:text-[#0D7A65]">
                 Pipeline con {installedBp.pipelineStages.length} etapas · IA configurada para {installedBp.industry}
               </p>
             </div>
-            <Check size={18} className="text-blue-600 flex-shrink-0" />
+            <Check size={18} className="text-[#0D7A65] flex-shrink-0" />
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 gap-3 text-slate-400">
+        <div className="flex items-center justify-center h-48 gap-3 text-[#9BA5B7]">
           <RefreshCw size={20} className="animate-spin" />
           <span>Cargando blueprints...</span>
         </div>
@@ -213,19 +213,19 @@ export default function MarketplacePage() {
               return (
                 <div
                   key={bp.id}
-                  className={`relative bg-white dark:bg-slate-800 rounded-2xl border-2 transition-all overflow-hidden flex flex-col ${
+                  className={`relative bg-white dark:bg-[#1A2540] rounded-lg border-2 transition-all overflow-hidden flex flex-col ${
                     isInstalled
-                      ? 'border-blue-600 shadow-lg shadow-blue-500/10'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md'
+                      ? 'border-[#0D7A65] shadow-lg shadow-blue-500/10'
+                      : 'border-[#E3E6EC] dark:border-[#1A2540] hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md'
                   }`}
                 >
                   {bp.popular && !isInstalled && (
-                    <div className="absolute top-3 right-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <div className="absolute top-3 right-3 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <Star size={9} fill="currentColor" /> Popular
                     </div>
                   )}
                   {isInstalled && (
-                    <div className="absolute top-3 right-3 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <div className="absolute top-3 right-3 bg-[#0D7A65]/10 dark:bg-[#0D7A65]/10 text-blue-700 dark:text-[#0D7A65] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <Check size={9} /> Activo
                     </div>
                   )}
@@ -234,25 +234,25 @@ export default function MarketplacePage() {
                   <div className={`${bp.color} h-1.5 w-full`} />
 
                   <div className="p-5 flex flex-col flex-1">
-                    <div className={`${bp.color} w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 shadow-sm`}>
+                    <div className={`${bp.color} w-12 h-12 rounded-md flex items-center justify-center text-2xl mb-4 shadow-sm`}>
                       {bp.icon}
                     </div>
-                    <h3 className="font-black text-slate-900 dark:text-white text-sm mb-1">{bp.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex-1 mb-4">
+                    <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm mb-1">{bp.name}</h3>
+                    <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] leading-relaxed flex-1 mb-4">
                       {bp.description}
                     </p>
 
                     {/* Pipeline preview */}
                     <div className="mb-4">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pipeline</p>
+                      <p className="text-[10px] font-bold text-[#9BA5B7] uppercase tracking-wider mb-1.5">Pipeline</p>
                       <div className="flex flex-wrap gap-1">
                         {bp.pipelineStages.slice(0, 3).map(s => (
-                          <span key={s} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-medium">
+                          <span key={s} className="text-[10px] bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] px-1.5 py-0.5 rounded font-medium">
                             {s}
                           </span>
                         ))}
                         {bp.pipelineStages.length > 3 && (
-                          <span className="text-[10px] text-slate-400">+{bp.pipelineStages.length - 3}</span>
+                          <span className="text-[10px] text-[#9BA5B7]">+{bp.pipelineStages.length - 3}</span>
                         )}
                       </div>
                     </div>
@@ -260,12 +260,12 @@ export default function MarketplacePage() {
                     <button
                       onClick={() => !isInstalled && installBlueprint(bp)}
                       disabled={isInstalled || isLoading}
-                      className={`w-full py-2.5 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition-all ${
+                      className={`w-full py-2.5 rounded-md font-bold text-sm flex justify-center items-center gap-2 transition-all ${
                         isInstalled
-                          ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                          ? 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#9BA5B7] cursor-not-allowed'
                           : isLoading
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-400 cursor-wait'
-                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white'
+                          ? 'bg-[#0D7A65]/10 dark:bg-[#0D7A65]/10 text-[#0D7A65] cursor-wait'
+                          : 'bg-[#F4F5F7] dark:bg-[#0D7A65]/10 text-blue-700 dark:text-[#0D7A65] hover:bg-[#0C1224] hover:text-white dark:hover:bg-[#0C1224] dark:hover:text-white'
                       }`}
                     >
                       {isInstalled ? (
@@ -283,7 +283,7 @@ export default function MarketplacePage() {
           </div>
 
           {/* Info section */}
-          <div className="mt-8 p-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl flex gap-4">
+          <div className="mt-8 p-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg flex gap-4">
             <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-1">

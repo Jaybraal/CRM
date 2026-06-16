@@ -9,8 +9,8 @@ import { Plus, CheckCircle, Circle, Trash2, CalendarDays, AlertCircle } from 'lu
 import toast from 'react-hot-toast'
 import { Spinner } from '@/components/ui/primitives'
 
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
-const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+const inputClass = 'w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7] mb-1.5'
 
 export default function TasksPage() {
   const { profile } = useAuth()
@@ -88,12 +88,12 @@ export default function TasksPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Tareas</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            <span className="text-blue-600 font-bold">{tasks.filter(t => !t.completed).length}</span> pendientes
+          <h1 className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">Tareas</h1>
+          <p className="text-[#68748D] dark:text-[#9BA5B7] text-sm mt-1">
+            <span className="text-[#0D7A65] font-bold">{tasks.filter(t => !t.completed).length}</span> pendientes
           </p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105 self-start sm:self-auto">
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-[#0C1224] hover:bg-[#1B2B4B] text-white px-4 py-2.5 rounded-md text-sm font-bold shadow-lg transition-all self-start sm:self-auto">
           <Plus size={17} /> Nueva tarea
         </button>
       </div>
@@ -102,10 +102,10 @@ export default function TasksPage() {
       <div className="flex gap-2 flex-wrap">
         {(['all', 'pending', 'overdue', 'done'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold transition-colors ${
               filter === f
-                ? f === 'overdue' ? 'bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                ? f === 'overdue' ? 'bg-red-600 text-white shadow-lg' : 'bg-[#0C1224] text-white shadow-lg'
+                : 'bg-white dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] border border-[#E3E6EC] dark:border-[#1A2540] hover:border-blue-300'
             }`}>
             {f === 'overdue' && <AlertCircle size={13} />}
             {{ all: 'Todas', pending: 'Pendientes', overdue: `Vencidas${overdueCount > 0 ? ` (${overdueCount})` : ''}`, done: 'Completadas' }[f]}
@@ -116,29 +116,29 @@ export default function TasksPage() {
       {loading ? (
         <Spinner />
       ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
-          <p className="text-slate-400 dark:text-slate-500">No hay tareas en esta vista.</p>
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-16 text-center shadow-sm">
+          <p className="text-[#9BA5B7] dark:text-[#68748D]">No hay tareas en esta vista.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map(task => (
-            <div key={task.id} className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 flex items-start gap-4 transition-all hover:shadow-sm ${
-              task.completed ? 'border-slate-100 dark:border-slate-800 opacity-60' : isOverdue(task) ? 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10' : 'border-slate-100 dark:border-slate-800'
+            <div key={task.id} className={`bg-white dark:bg-[#0F1829] border rounded-lg p-4 flex items-start gap-4 transition-all hover:shadow-sm ${
+              task.completed ? 'border-[#E3E6EC] dark:border-[#1A2540] opacity-60' : isOverdue(task) ? 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10' : 'border-[#E3E6EC] dark:border-[#1A2540]'
             }`}>
-              <button onClick={() => toggleTask(task)} className="mt-0.5 flex-shrink-0 text-slate-300 hover:text-blue-600 transition-colors">
+              <button onClick={() => toggleTask(task)} className="mt-0.5 flex-shrink-0 text-[#9BA5B7] hover:text-[#0D7A65] transition-colors">
                 {task.completed ? <CheckCircle size={20} className="text-emerald-500" /> : <Circle size={20} />}
               </button>
               <div className="flex-1 min-w-0">
-                <p className={`font-bold text-sm ${task.completed ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                <p className={`font-bold text-sm ${task.completed ? 'line-through text-[#9BA5B7]' : 'text-[#0C1224] dark:text-[#E8ECF4]'}`}>
                   {task.title}
                 </p>
-                {task.description && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{task.description}</p>}
-                <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-400">
+                {task.description && <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] mt-0.5">{task.description}</p>}
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#9BA5B7]">
                   {task.clientId && getClientName(task.clientId) && (
-                    <span>Cliente: <span className="text-slate-600 dark:text-slate-300 font-medium">{getClientName(task.clientId)}</span></span>
+                    <span>Cliente: <span className="text-[#68748D] dark:text-[#9BA5B7] font-medium">{getClientName(task.clientId)}</span></span>
                   )}
                   {task.dueDate && (
-                    <span className={`flex items-center gap-1 font-medium ${isOverdue(task) ? 'text-red-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                    <span className={`flex items-center gap-1 font-medium ${isOverdue(task) ? 'text-red-600' : 'text-[#68748D] dark:text-[#9BA5B7]'}`}>
                       {isOverdue(task) ? <AlertCircle size={11} /> : <CalendarDays size={11} />}
                       {(() => {
                         const due = (task.dueDate as unknown as { seconds: number })?.seconds
@@ -150,7 +150,7 @@ export default function TasksPage() {
                   )}
                 </div>
               </div>
-              <button onClick={() => handleDelete(task.id)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-xl transition-colors">
+              <button onClick={() => handleDelete(task.id)} className="text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-md transition-colors">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -181,7 +181,7 @@ export default function TasksPage() {
               <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className={inputClass} />
             </div>
           </div>
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition-colors">
+          <button type="submit" className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] text-white font-bold py-2.5 rounded-md transition-colors">
             Crear tarea
           </button>
         </form>

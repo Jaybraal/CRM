@@ -54,7 +54,7 @@ export default function PhotoUploader({
         {photos.map((url, i) => (
           <div key={url} className="relative group w-16 h-16 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-slate-200 dark:border-slate-700" />
+            <img src={url} alt="" className="w-full h-full object-cover rounded-md border border-[#E3E6EC] dark:border-[#1A2540]" />
             <button
               type="button"
               onClick={() => removePhoto(i)}
@@ -73,17 +73,17 @@ export default function PhotoUploader({
             onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
             disabled={uploading}
-            className="w-16 h-16 shrink-0 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-0.5 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-60 cursor-pointer"
+            className="w-16 h-16 shrink-0 border-2 border-dashed border-[#E3E6EC] dark:border-slate-600 rounded-md flex flex-col items-center justify-center gap-0.5 hover:border-[#0D7A65] dark:hover:border-[#0D7A65] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] transition-all disabled:opacity-60 cursor-pointer"
           >
             {uploading ? (
               <div className="flex flex-col items-center gap-0.5">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[9px] text-slate-400 dark:text-slate-500">{Math.round(progress)}%</span>
+                <div className="w-4 h-4 border-2 border-[#0D7A65] border-t-transparent rounded-full animate-spin" />
+                <span className="text-[9px] text-[#9BA5B7] dark:text-[#68748D]">{Math.round(progress)}%</span>
               </div>
             ) : (
               <>
-                <Plus size={18} className="text-slate-400 dark:text-slate-500" />
-                <span className="text-[9px] text-slate-400 dark:text-slate-500">{photos.length}/{maxPhotos}</span>
+                <Plus size={18} className="text-[#9BA5B7] dark:text-[#68748D]" />
+                <span className="text-[9px] text-[#9BA5B7] dark:text-[#68748D]">{photos.length}/{maxPhotos}</span>
               </>
             )}
           </button>

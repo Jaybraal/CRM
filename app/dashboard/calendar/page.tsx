@@ -38,7 +38,7 @@ const EMPTY_FORM: ApptForm = {
   startTime: '09:00', endTime: '10:00',
 }
 
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
+const inputClass = 'w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 text-sm transition-colors'
 
 export default function CalendarPage() {
   const { profile } = useAuth()
@@ -167,15 +167,15 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Calendario</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">Calendario</h1>
+          <p className="text-[#68748D] dark:text-[#9BA5B7] text-sm mt-1">
             {tasksDueThisMonth.length} tareas · {apptsThisMonth.length} citas este mes
             {overdue.length > 0 && <span className="text-red-500 ml-2">· {overdue.length} vencidas</span>}
           </p>
         </div>
         <button
           onClick={() => openNewAppt()}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 bg-[#0C1224] hover:bg-[#1B2B4B] shadow-lg text-white px-4 py-2.5 rounded-md text-sm font-bold transition-all self-start sm:self-auto"
         >
           <CalendarPlus size={16} /> Nueva cita
         </button>
@@ -184,26 +184,26 @@ export default function CalendarPage() {
       {loading ? (
         <Spinner />
       ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-              <ChevronLeft size={18} className="text-slate-600 dark:text-slate-300" />
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#E3E6EC] dark:border-[#1A2540]">
+            <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-2 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-lg transition-colors">
+              <ChevronLeft size={18} className="text-[#68748D] dark:text-[#9BA5B7]" />
             </button>
-            <h2 className="font-black text-slate-900 dark:text-white capitalize">{monthName}</h2>
-            <button onClick={() => setCurrent(new Date(year, month + 1, 1))} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-              <ChevronRight size={18} className="text-slate-600 dark:text-slate-300" />
+            <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] capitalize">{monthName}</h2>
+            <button onClick={() => setCurrent(new Date(year, month + 1, 1))} className="p-2 hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] rounded-lg transition-colors">
+              <ChevronRight size={18} className="text-[#68748D] dark:text-[#9BA5B7]" />
             </button>
           </div>
 
-          <div className="flex items-center gap-4 px-6 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 dark:text-slate-400">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 inline-block" /> Cita</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700 inline-block" /> Tarea</span>
+          <div className="flex items-center gap-4 px-6 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] bg-[#F4F5F7] dark:bg-[#1A2540]/50 text-xs text-[#68748D] dark:text-[#9BA5B7]">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#0D7A65]/10 inline-block" /> Cita</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#E3E6EC] dark:bg-[#1A2540] inline-block" /> Tarea</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 inline-block" /> Vencida</span>
           </div>
 
-          <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-7 border-b border-[#E3E6EC] dark:border-[#1A2540]">
             {[['L','Lun'], ['M','Mar'], ['X','Mié'], ['J','Jue'], ['V','Vie'], ['S','Sáb'], ['D','Dom']].map(([short, full]) => (
-              <div key={full} className="text-center text-xs font-medium text-slate-400 dark:text-slate-500 py-2">
+              <div key={full} className="text-center text-xs font-medium text-[#9BA5B7] dark:text-[#68748D] py-2">
                 <span className="sm:hidden">{short}</span>
                 <span className="hidden sm:inline">{full}</span>
               </div>
@@ -212,7 +212,7 @@ export default function CalendarPage() {
 
           <div className="grid grid-cols-7">
             {cells.map((day, idx) => {
-              if (!day) return <div key={`empty-${idx}`} className="min-h-14 sm:min-h-24 border-b border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20" />
+              if (!day) return <div key={`empty-${idx}`} className="min-h-14 sm:min-h-24 border-b border-r border-[#E3E6EC] dark:border-[#1A2540] bg-[#F4F5F7]/50 dark:bg-[#1A2540]/20" />
               const dayTasks = getTasksForDay(day)
               const dayAppts = getApptsForDay(day)
               const total = dayTasks.length + dayAppts.length
@@ -226,17 +226,17 @@ export default function CalendarPage() {
                     if (total > 0) setSelectedDay(day)
                     else openNewAppt(day)
                   }}
-                  className={`min-h-14 sm:min-h-24 border-b border-r border-slate-100 dark:border-slate-800 p-1 sm:p-2 cursor-pointer group hover:bg-blue-50/20 transition-colors ${isWeekend ? 'bg-slate-50/30 dark:bg-slate-800/10' : ''}`}
+                  className={`min-h-14 sm:min-h-24 border-b border-r border-[#E3E6EC] dark:border-[#1A2540] p-1 sm:p-2 cursor-pointer group hover:bg-[#F4F5F7]/20 transition-colors ${isWeekend ? 'bg-[#F4F5F7]/30 dark:bg-[#1A2540]/10' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium rounded-full ${isToday ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                    <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium rounded-full ${isToday ? 'bg-[#0C1224] text-white' : 'text-[#68748D] dark:text-[#9BA5B7]'}`}>
                       {day}
                     </div>
                     {total === 0 && <span className="text-blue-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity">+</span>}
                   </div>
                   <div className="space-y-1">
                     {dayAppts.slice(0, 2).map(a => (
-                      <div key={a.id} className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 flex items-center gap-1 truncate">
+                      <div key={a.id} className="text-xs px-1.5 py-0.5 rounded bg-[#F4F5F7] text-blue-700 flex items-center gap-1 truncate">
                         <Clock size={9} className="flex-shrink-0" />
                         <span className="truncate">{a.title}</span>
                       </div>
@@ -250,7 +250,7 @@ export default function CalendarPage() {
                           className={`text-xs px-1.5 py-0.5 rounded flex items-center gap-1 truncate cursor-pointer ${
                             t.completed ? 'bg-green-50 text-green-700 line-through'
                             : isOverdue ? 'bg-red-50 text-red-700'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540]'
                           }`}
                         >
                           <CheckSquare size={9} className="flex-shrink-0 opacity-60" />
@@ -258,7 +258,7 @@ export default function CalendarPage() {
                         </div>
                       )
                     })}
-                    {total > 2 && <p className="text-xs text-slate-400 dark:text-slate-500 text-center">+{total - 2} más</p>}
+                    {total > 2 && <p className="text-xs text-[#9BA5B7] dark:text-[#68748D] text-center">+{total - 2} más</p>}
                   </div>
                 </div>
               )
@@ -269,8 +269,8 @@ export default function CalendarPage() {
 
       {/* Lista citas del mes */}
       {apptsThisMonth.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
-          <h2 className="font-black text-slate-900 dark:text-white text-sm mb-4">Citas este mes</h2>
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-5">
+          <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm mb-4">Citas este mes</h2>
           <div className="space-y-2">
             {apptsThisMonth
               .sort((a, b) => (getTs(a.startDate)?.getTime() ?? 0) - (getTs(b.startDate)?.getTime() ?? 0))
@@ -278,21 +278,21 @@ export default function CalendarPage() {
                 const start = getTs(a.startDate)
                 const end = a.endDate ? getTs(a.endDate) : null
                 return (
-                  <div key={a.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
+                  <div key={a.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-[#1A2540] last:border-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{a.title}</p>
-                        {a.clientName && <p className="text-xs text-slate-400 dark:text-slate-500">{a.clientName}</p>}
+                        <p className="text-sm font-medium text-[#0C1224] dark:text-[#E8ECF4] truncate">{a.title}</p>
+                        {a.clientName && <p className="text-xs text-[#9BA5B7] dark:text-[#68748D]">{a.clientName}</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                       {start && (
-                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                        <span className="text-xs text-[#9BA5B7] dark:text-[#68748D]">
                           {start.toLocaleDateString('es', { day: 'numeric', month: 'short' })} · {toTimeStr(start)}{end ? ` - ${toTimeStr(end)}` : ''}
                         </span>
                       )}
-                      <button onClick={() => handleDeleteAppt(a.id)} className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors">
+                      <button onClick={() => handleDeleteAppt(a.id)} className="text-[#9BA5B7] dark:text-[#68748D] hover:text-red-500 transition-colors">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -305,8 +305,8 @@ export default function CalendarPage() {
 
       {/* Tareas pendientes */}
       {tasksDueThisMonth.filter(t => !t.completed).length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
-          <h2 className="font-black text-slate-900 dark:text-white text-sm mb-4">Tareas pendientes este mes</h2>
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg shadow-sm p-5">
+          <h2 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-sm mb-4">Tareas pendientes este mes</h2>
           <div className="space-y-2">
             {tasksDueThisMonth
               .filter(t => !t.completed)
@@ -316,13 +316,13 @@ export default function CalendarPage() {
                 const due = getTs(t.dueDate)
                 const isOverdue = due && due < today
                 return (
-                  <div key={t.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
+                  <div key={t.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-[#1A2540] last:border-0">
                     <button onClick={() => toggleTask(t)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                      <div className={`w-4 h-4 rounded border flex-shrink-0 ${isOverdue ? 'border-red-300' : 'border-slate-300 dark:border-slate-600'}`} />
-                      <span className="text-sm text-slate-800 dark:text-slate-200 truncate">{t.title}</span>
+                      <div className={`w-4 h-4 rounded border flex-shrink-0 ${isOverdue ? 'border-red-300' : 'border-[#E3E6EC] dark:border-slate-600'}`} />
+                      <span className="text-sm text-[#0C1224] dark:text-[#E8ECF4] truncate">{t.title}</span>
                     </button>
                     {due && (
-                      <span className={`text-xs flex-shrink-0 ml-3 ${isOverdue ? 'text-red-500 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                      <span className={`text-xs flex-shrink-0 ml-3 ${isOverdue ? 'text-red-500 font-medium' : 'text-[#9BA5B7] dark:text-[#68748D]'}`}>
                         {due.toLocaleDateString('es', { day: 'numeric', month: 'short' })}
                       </span>
                     )}
@@ -336,16 +336,16 @@ export default function CalendarPage() {
       {/* Panel lateral del día */}
       {selectedDay !== null && dayItems && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-black text-slate-900 dark:text-white capitalize">
+          <div className="w-full max-w-sm bg-white dark:bg-[#0F1829] rounded-lg shadow-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E3E6EC] dark:border-[#1A2540]">
+              <h3 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] capitalize">
                 {new Date(year, month, selectedDay).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}
               </h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => openNewAppt(selectedDay)} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl font-medium transition-colors">
+                <button onClick={() => openNewAppt(selectedDay)} className="text-xs bg-[#0C1224] hover:bg-[#1B2B4B] text-white px-3 py-1.5 rounded-md font-medium transition-colors">
                   + Cita
                 </button>
-                <button onClick={() => setSelectedDay(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"><X size={18} /></button>
+                <button onClick={() => setSelectedDay(null)} className="text-[#9BA5B7] dark:text-[#68748D] hover:text-[#0C1224] dark:hover:text-slate-200"><X size={18} /></button>
               </div>
             </div>
             <div className="p-5 space-y-2 max-h-80 overflow-y-auto">
@@ -353,12 +353,12 @@ export default function CalendarPage() {
                 const start = getTs(a.startDate)
                 const end = a.endDate ? getTs(a.endDate) : null
                 return (
-                  <div key={a.id} className="flex items-start justify-between gap-2 p-3 bg-blue-50 rounded-lg">
+                  <div key={a.id} className="flex items-start justify-between gap-2 p-3 bg-[#F4F5F7] rounded-lg">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-blue-800">{a.title}</p>
-                      {a.clientName && <p className="text-xs text-blue-500">{a.clientName}</p>}
-                      {a.description && <p className="text-xs text-blue-600 mt-1">{a.description}</p>}
-                      {start && <p className="text-xs text-blue-400 mt-1">{toTimeStr(start)}{end ? ` - ${toTimeStr(end)}` : ''}</p>}
+                      {a.clientName && <p className="text-xs text-[#0D7A65]">{a.clientName}</p>}
+                      {a.description && <p className="text-xs text-[#0D7A65] mt-1">{a.description}</p>}
+                      {start && <p className="text-xs text-[#0D7A65] mt-1">{toTimeStr(start)}{end ? ` - ${toTimeStr(end)}` : ''}</p>}
                     </div>
                     <button onClick={() => handleDeleteAppt(a.id)} className="text-blue-300 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5">
                       <Trash2 size={14} />
@@ -370,10 +370,10 @@ export default function CalendarPage() {
                 const isOverdue = !t.completed && getTs(t.dueDate) && getTs(t.dueDate)! < today
                 return (
                   <button key={t.id} onClick={() => toggleTask(t)} className={`w-full text-left p-3 rounded-lg flex items-start gap-2 transition-colors ${
-                    t.completed ? 'bg-green-50' : isOverdue ? 'bg-red-50' : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    t.completed ? 'bg-green-50' : isOverdue ? 'bg-red-50' : 'bg-[#F4F5F7] dark:bg-[#1A2540] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540]'
                   }`}>
-                    <div className={`w-4 h-4 rounded border flex-shrink-0 mt-0.5 ${t.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-300' : 'border-slate-300 dark:border-slate-600'}`} />
-                    <span className={`text-sm ${t.completed ? 'line-through text-slate-400' : isOverdue ? 'text-red-700' : 'text-slate-800 dark:text-slate-200'}`}>{t.title}</span>
+                    <div className={`w-4 h-4 rounded border flex-shrink-0 mt-0.5 ${t.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-300' : 'border-[#E3E6EC] dark:border-slate-600'}`} />
+                    <span className={`text-sm ${t.completed ? 'line-through text-[#9BA5B7]' : isOverdue ? 'text-red-700' : 'text-[#0C1224] dark:text-[#E8ECF4]'}`}>{t.title}</span>
                   </button>
                 )
               })}
@@ -385,10 +385,10 @@ export default function CalendarPage() {
       {/* Modal nueva cita */}
       {showApptModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowApptModal(false)}>
-          <div className="w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Nueva cita</h2>
-              <button onClick={() => setShowApptModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><X size={20} /></button>
+          <div className="w-full sm:max-w-md bg-white dark:bg-[#0F1829] rounded-lg shadow-sm max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E3E6EC] dark:border-[#1A2540] sticky top-0 bg-white dark:bg-[#0F1829] z-10">
+              <h2 className="text-lg font-bold text-[#0C1224] dark:text-[#E8ECF4]">Nueva cita</h2>
+              <button onClick={() => setShowApptModal(false)} className="text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-slate-200"><X size={20} /></button>
             </div>
             <form onSubmit={handleCreateAppt} className="p-6 space-y-4">
               <input
@@ -412,7 +412,7 @@ export default function CalendarPage() {
                 placeholder="Descripción (opcional)"
               />
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Fecha</label>
+                <label className="text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1 block">Fecha</label>
                 <input
                   required
                   type="date"
@@ -423,7 +423,7 @@ export default function CalendarPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Hora inicio</label>
+                  <label className="text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1 block">Hora inicio</label>
                   <input
                     type="time"
                     value={apptForm.startTime}
@@ -432,7 +432,7 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Hora fin</label>
+                  <label className="text-xs font-bold text-[#68748D] dark:text-[#9BA5B7] mb-1 block">Hora fin</label>
                   <input
                     type="time"
                     value={apptForm.endTime}
@@ -444,7 +444,7 @@ export default function CalendarPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+                className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] shadow-lg disabled:opacity-50 text-white font-bold py-2.5 rounded-md transition-all text-sm"
               >
                 {saving ? 'Agendando...' : 'Agendar cita'}
               </button>

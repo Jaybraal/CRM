@@ -82,12 +82,12 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
   if (!sessionId) {
     return (
       <div className="flex flex-col items-center gap-3 py-8 text-center">
-        <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center">
+        <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
           <WifiOff size={28} className="text-amber-500" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Selecciona un negocio primero</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Elige tu negocio activo en la barra superior para vincular WhatsApp.</p>
+          <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Selecciona un negocio primero</p>
+          <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] mt-0.5">Elige tu negocio activo en la barra superior para vincular WhatsApp.</p>
         </div>
       </div>
     )
@@ -106,7 +106,7 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
               <Smartphone size={14} /> Escanea el QR
             </span>
           ) : status === 'connecting' ? (
-            <span className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full font-bold">
+            <span className="flex items-center gap-1.5 text-sm text-[#68748D] dark:text-[#9BA5B7] bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] px-3 py-1 rounded-full font-bold">
               <RefreshCw size={14} className="animate-spin" /> Conectando...
             </span>
           ) : (
@@ -118,17 +118,17 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
         {status === 'open' ? (
           <button onClick={handleDisconnect} disabled={loading}
-            className="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-xl transition-colors">
+            className="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-md transition-colors">
             <Trash2 size={12} /> Desconectar
           </button>
         ) : (
           <div className="flex gap-2">
             <button onClick={handleReconnect}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl transition-colors">
+              className="flex items-center gap-1.5 text-xs font-bold text-[#0C1224] dark:text-[#9BA5B7] hover:bg-[#F4F5F7] dark:hover:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] px-3 py-1.5 rounded-md transition-colors">
               <RefreshCw size={12} /> Reintentar
             </button>
             <button onClick={handleReset} disabled={loading}
-              className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50">
               <RotateCcw size={12} /> Reset
             </button>
           </div>
@@ -137,32 +137,32 @@ export default function BaileysQR({ orgId }: { orgId: string }) {
 
       {frozenQr ? (
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm">
+          <div className="bg-white p-4 rounded-lg border-2 border-[#E3E6EC] shadow-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={frozenQr} alt="QR WhatsApp" className="w-52 h-52" />
           </div>
           <div className="text-center space-y-1">
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Escanea con tu teléfono</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
-            <p className="text-xs text-slate-400 mt-1">Si el QR expiró, pulsa <strong>Reintentar</strong></p>
+            <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">Escanea con tu teléfono</p>
+            <p className="text-xs text-[#68748D] dark:text-[#9BA5B7]">WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
+            <p className="text-xs text-[#9BA5B7] mt-1">Si el QR expiró, pulsa <strong>Reintentar</strong></p>
           </div>
         </div>
       ) : status === 'open' ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center">
             <Wifi size={28} className="text-emerald-500" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">WhatsApp conectado y activo</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Los mensajes se sincronizarán automáticamente</p>
+            <p className="text-sm font-bold text-[#0C1224] dark:text-[#E8ECF4]">WhatsApp conectado y activo</p>
+            <p className="text-xs text-[#68748D] dark:text-[#9BA5B7] mt-0.5">Los mensajes se sincronizarán automáticamente</p>
           </div>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-16 h-16 bg-[#F4F5F7] dark:bg-[#1A2540] rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-[#0D7A65] border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500">Iniciando conexión con WhatsApp...</p>
+          <p className="text-xs text-[#9BA5B7] dark:text-[#68748D]">Iniciando conexión con WhatsApp...</p>
         </div>
       )}
     </div>

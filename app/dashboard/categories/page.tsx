@@ -11,8 +11,8 @@ import { Spinner } from '@/components/ui/primitives'
 
 const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16','#6366f1']
 
-const inputClass = 'w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm transition-colors'
-const labelClass = 'block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5'
+const inputClass = 'w-full bg-[#F4F5F7] dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#1A2540] rounded-md px-4 py-2.5 text-[#0C1224] dark:text-[#E8ECF4] focus:outline-none focus:border-[#0D7A65] focus:ring-1 focus:ring-[#0D7A65]/10 text-sm transition-colors'
+const labelClass = 'block text-sm font-bold text-[#0C1224] dark:text-[#9BA5B7] mb-1.5'
 
 export default function CategoriesPage() {
   const { profile } = useAuth()
@@ -62,10 +62,10 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Categorías</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Organiza tus clientes por categorías</p>
+          <h1 className="text-2xl font-bold text-[#0C1224] dark:text-[#E8ECF4]">Categorías</h1>
+          <p className="text-[#68748D] dark:text-[#9BA5B7] text-sm mt-1">Organiza tus clientes por categorías</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+        <button onClick={openCreate} className="flex items-center gap-2 bg-[#0C1224] hover:bg-[#1B2B4B] text-white px-4 py-2.5 rounded-md text-sm font-bold shadow-lg transition-all">
           <Plus size={17} /> Nueva categoría
         </button>
       </div>
@@ -73,29 +73,29 @@ export default function CategoriesPage() {
       {loading ? (
         <Spinner />
       ) : categories.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-16 text-center shadow-sm">
-          <p className="text-slate-400 dark:text-slate-500">No hay categorías. Crea la primera.</p>
+        <div className="bg-white dark:bg-[#0F1829] border border-[#E3E6EC] dark:border-[#1A2540] rounded-lg p-16 text-center shadow-sm">
+          <p className="text-[#9BA5B7] dark:text-[#68748D]">No hay categorías. Crea la primera.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map(cat => {
             const isEliminados = cat.isSystem && cat.systemKey === 'eliminados'
             return (
-              <div key={cat.id} className={`bg-white dark:bg-slate-900 border rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md ${isEliminados ? 'border-red-200 dark:border-red-900/50' : 'border-slate-100 dark:border-slate-800'}`}>
-                <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}>
+              <div key={cat.id} className={`bg-white dark:bg-[#0F1829] border rounded-lg p-5 flex items-center gap-4 transition-all hover:shadow-md ${isEliminados ? 'border-red-200 dark:border-red-900/50' : 'border-[#E3E6EC] dark:border-[#1A2540]'}`}>
+                <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: cat.color + '18', border: `2px solid ${cat.color}40` }}>
                   {isEliminados ? <Trash size={18} style={{ color: cat.color }} /> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-black text-slate-900 dark:text-white">{cat.name}</p>
+                    <p className="font-bold text-[#0C1224] dark:text-[#E8ECF4]">{cat.name}</p>
                     {isEliminados && <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold">Auto-elimina 14d</span>}
                   </div>
-                  {cat.description && <p className="text-sm text-slate-400 dark:text-slate-500 truncate">{cat.description}</p>}
+                  {cat.description && <p className="text-sm text-[#9BA5B7] dark:text-[#68748D] truncate">{cat.description}</p>}
                 </div>
                 {!isEliminados && (
                   <div className="flex gap-1">
-                    <button onClick={() => openEdit(cat)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"><Pencil size={15} /></button>
-                    <button onClick={() => handleDelete(cat.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><Trash2 size={15} /></button>
+                    <button onClick={() => openEdit(cat)} className="p-2 text-[#9BA5B7] hover:text-[#0D7A65] hover:bg-[#F4F5F7] dark:hover:bg-blue-900/20 rounded-md transition-colors"><Pencil size={15} /></button>
+                    <button onClick={() => handleDelete(cat.id)} className="p-2 text-[#9BA5B7] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"><Trash2 size={15} /></button>
                   </div>
                 )}
               </div>
@@ -119,12 +119,12 @@ export default function CategoriesPage() {
             <div className="flex flex-wrap gap-2">
               {COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                  className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? 'scale-125 ring-2 ring-offset-2 ring-blue-400' : ''}`}
+                  className={`w-8 h-8 rounded-full transition-transform ${form.color === c ? 'scale-125 ring-2 ring-offset-2 ring-blue-400' : ''}`}
                   style={{ backgroundColor: c }} />
               ))}
             </div>
           </div>
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition-colors">
+          <button type="submit" className="w-full bg-[#0C1224] hover:bg-[#1B2B4B] text-white font-bold py-2.5 rounded-md transition-colors">
             {editing ? 'Actualizar' : 'Crear categoría'}
           </button>
         </form>
