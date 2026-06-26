@@ -141,6 +141,31 @@ La lógica de "¿hay agente disponible?" se evalúa comparando la hora actual co
 
 ---
 
+## Pantalla de onboarding (aprobada)
+
+Al registrar una organización nueva, mostrar un wizard de 3 pasos antes de entrar al dashboard:
+
+```
+Paso 1: Conecta WhatsApp
+  → Escanear QR de Baileys (mismo componente que Settings > Conexiones)
+
+Paso 2: Configura tu bot N8N
+  → Pegar URL del webhook + API key
+  → Seleccionar modo de activación
+
+Paso 3: Cuéntanos de tu negocio
+  → Nombre de la organización
+  → Industria (restaurante / real estate / clínica / taller / agencia / salón / otro)
+  → Horario de atención
+
+→ [Ir al dashboard]
+```
+
+Ruta: `app/dashboard/onboarding/page.tsx`
+Lógica: si `org.settings.onboardingCompleted !== true`, redirigir a `/dashboard/onboarding` antes de entrar al dashboard principal.
+
+---
+
 ## Invariantes que no cambian
 
 - Auth multi-tenant (Firebase) — sin tocar
