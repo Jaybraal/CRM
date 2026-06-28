@@ -19,13 +19,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'N8N no configurado para esta org' }, { status: 503 })
     }
 
+    // Cargar historial de conversación del bot (últimos 20 mensajes)
+    const convSnap = await adminDb.doc(`organizations/${orgId}/bot_conversations/${clientPhone}`).get()
+    const convData = convSnap.data()
+    const rawHistory: Array<{ role: string; content: string; ts: unknown }> = convData?.messages || []
+    const history = rawHistory.slice(-20).map(m => ({ role: m.role, content: m.content }))
+
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (apiKey) headers['x-api-key'] = apiKey
 
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ orgId, clientPhone, clientName, message, channel }),
+      body: JSON.stringify({ orgId, clientPhone, clientName, message, channel, history }),
       signal: AbortSignal.timeout(10000),
     })
 
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `N8N error ${res.status}` }, { status: 502 })
     }
 
-    console.log(`[bot/trigger] Conversación enviada a N8N: ${clientPhone} org=${orgId}`)
+    console.log(`[bot/trigger] Conversación enviada a N8N: ${clientPhone} org=${orgId} history=${history.length} msgs`)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[bot/trigger]', e)

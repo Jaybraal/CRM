@@ -1,0 +1,210 @@
+{
+  "name": "CRM — Bot Calificador de Leads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-qualifier",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "CRM Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "crm-qualifier"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el array de mensajes para Groq a partir del historial\nconst body = $input.first().json.body ?? $input.first().json;\nconst { orgId, clientPhone, clientName, channel, message, history } = body;\n\n// Nombre a usar en el saludo inicial\nconst nombre = clientName && clientName !== clientPhone ? clientName : null;\n\nconst systemPrompt = `Eres un asistente de ventas amigable y conciso. Califica leads de forma natural en el idioma del cliente (generalmente español).\n\nOBJETIVO: Recopilar en la conversación:\n1. Nombre completo del cliente\n2. Qué necesita o está buscando\n3. Presupuesto aproximado o urgencia\n4. Email de contacto\n\nCUANDO CALIFICAR: Si ya tienes nombre, necesidad y email → devuelve action=QUALIFY.\nCUANDO AGENDAR: Si el cliente pide una cita o llamada → devuelve action=SCHEDULE con la fecha sugerida.\nSI NO HAY INFO SUFICIENTE: devuelve action=REPLY con tu siguiente pregunta.\n\nREGLAS:\n- Sé breve y natural. Máximo 2 preguntas por mensaje.\n- No menciones que eres un bot.\n- No inventes datos que el cliente no ha dado.\n\nRESPONDE ÚNICAMENTE con JSON válido (sin markdown, sin explicaciones):\n{\n  \"action\": \"REPLY\" | \"QUALIFY\" | \"SCHEDULE\",\n  \"message\": \"tu respuesta para el cliente\",\n  \"lead\": {\n    \"name\": \"nombre completo del cliente\",\n    \"email\": \"email@ejemplo.com\",\n    \"summary\": \"resumen en 1-2 oraciones de lo que necesita y su presupuesto\",\n    \"stage\": \"Nuevo\",\n    \"appointmentAt\": \"2025-01-15T10:00:00Z\"\n  }\n}`;\n\n// Convertir historial del CRM al formato OpenAI\nconst prevMessages = (history || []).map(m => ({\n  role: m.role === 'bot' ? 'assistant' : 'user',\n  content: m.content\n}));\n\n// El mensaje actual ya viene en history si fue guardado antes del trigger.\n// Si el último mensaje del historial no coincide con el actual, lo agregamos.\nconst lastInHistory = prevMessages.length > 0 ? prevMessages[prevMessages.length - 1] : null;\nif (!lastInHistory || lastInHistory.role !== 'user' || lastInHistory.content !== message) {\n  prevMessages.push({ role: 'user', content: message });\n}\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...prevMessages\n];\n\nreturn [{ json: { orgId, clientPhone, clientName, channel, messages } }];"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Construir Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'llama-3.3-70b-versatile',\n  messages: $json.messages,\n  temperature: 0.4,\n  max_tokens: 600,\n  response_format: { type: 'json_object' }\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Groq API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GROQ_CREDENTIAL_ID",
+          "name": "Groq API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsea la respuesta de Groq y extrae acción + datos del lead\nconst groqResponse = $input.first().json;\nconst content = groqResponse.choices?.[0]?.message?.content || '{}';\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (e) {\n  // Fallback si Groq no devolvió JSON válido\n  parsed = { action: 'REPLY', message: 'Hola! ¿En qué te puedo ayudar hoy?' };\n}\n\nconst action = parsed.action || 'REPLY';\nconst replyMessage = parsed.message || '';\nconst lead = parsed.lead || {};\n\n// Pasar contexto del nodo anterior\nconst prev = $('Construir Prompt').first().json;\n\nreturn [{\n  json: {\n    action,\n    replyMessage,\n    lead,\n    orgId: prev.orgId,\n    clientPhone: prev.clientPhone,\n    clientName: prev.clientName,\n    channel: prev.channel\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Parsear Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "REPLY",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REPLY"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "QUALIFY",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "QUALIFY"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "SCHEDULE",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SCHEDULE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Decidir Acción",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CRM_URL }}/api/bot/reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  clientPhone: $json.clientPhone,\n  message: $json.replyMessage,\n  channel: $json.channel\n}) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Responder al Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CRM_URL }}/api/bot/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  name: $json.lead.name || $json.clientName,\n  phone: $json.clientPhone,\n  email: $json.lead.email,\n  summary: $json.lead.summary,\n  stage: $json.lead.stage || 'Nuevo',\n  channel: $json.channel,\n  source: 'bot'\n}) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "Crear Lead Calificado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CRM_URL }}/api/bot/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  name: $json.lead.name || $json.clientName,\n  phone: $json.clientPhone,\n  email: $json.lead.email,\n  summary: $json.lead.summary,\n  stage: 'Negociación',\n  channel: $json.channel,\n  source: 'bot',\n  appointmentAt: $json.lead.appointmentAt\n}) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "a1b2c3d4-0008-0008-0008-000000000008",
+      "name": "Agendar y Crear Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 440]
+    }
+  ],
+  "connections": {
+    "CRM Trigger": {
+      "main": [
+        [{ "node": "Construir Prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Construir Prompt": {
+      "main": [
+        [{ "node": "Groq API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Groq API": {
+      "main": [
+        [{ "node": "Parsear Respuesta", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parsear Respuesta": {
+      "main": [
+        [{ "node": "Decidir Acción", "type": "main", "index": 0 }]
+      ]
+    },
+    "Decidir Acción": {
+      "main": [
+        [{ "node": "Responder al Lead", "type": "main", "index": 0 }],
+        [{ "node": "Crear Lead Calificado", "type": "main", "index": 0 }],
+        [{ "node": "Agendar y Crear Lead", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "variables": {},
+  "meta": {
+    "templateId": "crm-bot-qualifier-v1",
+    "instanceId": "crm-auto"
+  }
+}

@@ -263,6 +263,18 @@ export async function POST(req: NextRequest) {
       const bh = orgData?.settings?.businessHours as { days: number[]; openTime: string; closeTime: string } | undefined
       const shouldTrigger = n8nMode === 'always' || (n8nMode === 'outside_hours' && !isInsideBusinessHours(bh))
       if (shouldTrigger) {
+        // Guardar mensaje del usuario en historial de conversación del bot
+        const convRef = adminDb.doc(`organizations/${orgId}/bot_conversations/${fromPhone}`)
+        const userMsg = { role: 'user', content: text || '[Multimedia]', ts: new Date() }
+        await convRef.set({
+          phone: fromPhone,
+          name: clientName,
+          channel: 'whatsapp',
+          status: 'active',
+          updatedAt: new Date(),
+          messages: FieldValue.arrayUnion(userMsg),
+        }, { merge: true })
+
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         void fetch(`${appUrl}/api/bot/trigger`, {
           method: 'POST',
