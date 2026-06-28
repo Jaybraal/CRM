@@ -45,3 +45,4 @@ baileys-server/auth_info_baileys/
 baileys-server/auth_info_default/
 baileys-server/node_modules/
 .env*.local
+.gstack/

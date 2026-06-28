@@ -13,7 +13,10 @@
       "name": "CRM Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "crm-qualifier"
     },
     {
@@ -24,7 +27,10 @@
       "name": "Construir Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
@@ -33,11 +39,9 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": []
-        },
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: 'llama-3.3-70b-versatile',\n  messages: $json.messages,\n  temperature: 0.4,\n  max_tokens: 600,\n  response_format: { type: 'json_object' }\n}) }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: $json.messages, temperature: 0.4, max_tokens: 600, response_format: { type: 'json_object' } }) }}",
         "options": {
           "timeout": 30000
         }
@@ -46,10 +50,13 @@
       "name": "Groq API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 300],
+      "position": [
+        720,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GROQ_CREDENTIAL_ID",
+          "id": "zZX5gUC9Nwy5qMy1",
           "name": "Groq API Key"
         }
       }
@@ -62,149 +69,153 @@
       "name": "Parsear Respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
+      "position": [
+        960,
+        300
+      ]
     },
     {
       "parameters": {
-        "rules": {
-          "rules": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "conditions": {
-                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.action }}",
-                    "rightValue": "REPLY",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "REPLY"
-            },
-            {
-              "conditions": {
-                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.action }}",
-                    "rightValue": "QUALIFY",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "QUALIFY"
-            },
-            {
-              "conditions": {
-                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.action }}",
-                    "rightValue": "SCHEDULE",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "SCHEDULE"
+              "id": "reply-check",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "REPLY",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
       "id": "a1b2c3d4-0005-0005-0005-000000000005",
-      "name": "Decidir Acción",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [1200, 300]
+      "name": "Es Respuesta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.CRM_URL }}/api/bot/reply",
+        "url": "http://localhost:3001/api/bot/reply",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  clientPhone: $json.clientPhone,\n  message: $json.replyMessage,\n  channel: $json.channel\n}) }}",
-        "options": { "timeout": 10000 }
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ orgId: $json.orgId, clientPhone: $json.clientPhone, message: $json.replyMessage, channel: $json.channel }) }}",
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "a1b2c3d4-0006-0006-0006-000000000006",
       "name": "Responder al Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1440, 160]
+      "position": [
+        1440,
+        160
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.CRM_URL }}/api/bot/webhook",
+        "url": "http://localhost:3001/api/bot/webhook",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  name: $json.lead.name || $json.clientName,\n  phone: $json.clientPhone,\n  email: $json.lead.email,\n  summary: $json.lead.summary,\n  stage: $json.lead.stage || 'Nuevo',\n  channel: $json.channel,\n  source: 'bot'\n}) }}",
-        "options": { "timeout": 10000 }
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ orgId: $json.orgId, name: ($json.lead && $json.lead.name) || $json.clientName, phone: $json.clientPhone, email: $json.lead && $json.lead.email, summary: $json.lead && $json.lead.summary, stage: ($json.lead && $json.lead.stage) || 'Nuevo', channel: $json.channel, source: 'bot' }) }}",
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "a1b2c3d4-0007-0007-0007-000000000007",
-      "name": "Crear Lead Calificado",
+      "name": "Calificar Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1440, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $vars.CRM_URL }}/api/bot/webhook",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  orgId: $json.orgId,\n  name: $json.lead.name || $json.clientName,\n  phone: $json.clientPhone,\n  email: $json.lead.email,\n  summary: $json.lead.summary,\n  stage: 'Negociación',\n  channel: $json.channel,\n  source: 'bot',\n  appointmentAt: $json.lead.appointmentAt\n}) }}",
-        "options": { "timeout": 10000 }
-      },
-      "id": "a1b2c3d4-0008-0008-0008-000000000008",
-      "name": "Agendar y Crear Lead",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1440, 440]
+      "position": [
+        1440,
+        440
+      ]
     }
   ],
   "connections": {
     "CRM Trigger": {
       "main": [
-        [{ "node": "Construir Prompt", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Construir Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Construir Prompt": {
       "main": [
-        [{ "node": "Groq API", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Groq API",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Groq API": {
       "main": [
-        [{ "node": "Parsear Respuesta", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parsear Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parsear Respuesta": {
       "main": [
-        [{ "node": "Decidir Acción", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Es Respuesta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Decidir Acción": {
+    "Es Respuesta?": {
       "main": [
-        [{ "node": "Responder al Lead", "type": "main", "index": 0 }],
-        [{ "node": "Crear Lead Calificado", "type": "main", "index": 0 }],
-        [{ "node": "Agendar y Crear Lead", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Responder al Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Calificar Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "variables": {},
-  "meta": {
-    "templateId": "crm-bot-qualifier-v1",
-    "instanceId": "crm-auto"
-  }
+  "active": false
 }
