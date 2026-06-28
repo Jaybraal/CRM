@@ -3,11 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { useAlexChat } from '@/context/AlexChatContext'
 import {
-  LayoutDashboard, Inbox, KanbanSquare, CalendarDays,
-  Package, MessageSquare, Zap, Settings,
-  ShieldCheck, LogOut, Bot, Menu, X
+  LayoutDashboard, Inbox, Users, KanbanSquare, Bot, Settings,
+  ShieldCheck, LogOut, Menu, X
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -15,28 +13,17 @@ type NavItem = {
   href: string
   label: string
   icon: React.ComponentType<{ size?: number; className?: string }>
-  roles: string[]
-  badge?: number
+  superAdminOnly?: boolean
 }
 
-const NAV_SECTIONS: NavItem[][] = [
-  [
-    { href: '/dashboard',          label: 'Dashboard',    icon: LayoutDashboard, roles: ['super_admin','owner','manager','supervisor','agent'] },
-    { href: '/dashboard/inbox',    label: 'Inbox WA/IG',  icon: Inbox,           roles: ['super_admin','owner','manager','supervisor','agent'] },
-    { href: '/dashboard/pipeline', label: 'Pipeline',     icon: KanbanSquare,    roles: ['super_admin','owner','manager','supervisor','agent'] },
-    { href: '/dashboard/calendar', label: 'Calendario',   icon: CalendarDays,    roles: ['super_admin','owner','manager','supervisor','agent'] },
-  ],
-  [
-    { href: '/dashboard/catalog', label: 'Catálogo', icon: Package, roles: ['super_admin','owner','manager','supervisor','agent'] },
-  ],
-  [
-    { href: '/dashboard/nexo', label: 'Nexo Connect', icon: MessageSquare, roles: ['super_admin','owner','manager','supervisor','agent'] },
-  ],
-  [
-    { href: '/dashboard/marketplace', label: 'Blueprints',  icon: Zap,        roles: ['super_admin','owner'] },
-    { href: '/dashboard/settings',    label: 'Ajustes',     icon: Settings,   roles: ['super_admin','owner'] },
-    { href: '/admin',                 label: 'Super Admin', icon: ShieldCheck, roles: ['super_admin'] },
-  ],
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',          label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/dashboard/inbox',    label: 'Inbox',      icon: Inbox },
+  { href: '/dashboard/clients',  label: 'Clientes',   icon: Users },
+  { href: '/dashboard/pipeline', label: 'Pipeline',   icon: KanbanSquare },
+  { href: '/dashboard/bot',      label: 'Bot',        icon: Bot },
+  { href: '/dashboard/settings', label: 'Ajustes',    icon: Settings },
+  { href: '/admin',              label: 'Super Admin', icon: ShieldCheck, superAdminOnly: true },
 ]
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -55,14 +42,6 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           <span className="absolute inset-0 bg-white/[0.06]" />
         </>
       )}
-      {item.badge !== undefined && (
-        <span className="absolute top-2 right-2 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
-            {item.badge}
-          </span>
-        </span>
-      )}
       <item.icon size={18} className="relative z-10" />
       <span className="absolute left-full ml-3 bg-[#1B2B4B] text-white text-xs px-2.5 py-1.5 rounded opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-white/10">
         {item.label}
@@ -74,7 +53,6 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export default function Sidebar() {
   const pathname = usePathname()
   const { profile, signOut } = useAuth()
-  const { toggle: toggleAlex } = useAlexChat()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const initials = profile?.displayName
@@ -83,6 +61,11 @@ export default function Sidebar() {
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (item.superAdminOnly) return profile?.role === 'super_admin'
+    return true
+  })
 
   const SidebarBody = ({ onNavigate }: { onNavigate?: () => void }) => (
     <>
@@ -93,33 +76,15 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 flex flex-col items-center px-0">
-        {NAV_SECTIONS.map((section, si) => {
-          const visible = section.filter(item => profile?.role && item.roles.includes(profile.role))
-          if (!visible.length) return null
-          return (
-            <div key={si} className="w-full">
-              {si > 0 && <div className="w-6 h-px bg-white/[0.07] my-2 mx-auto" />}
-              {visible.map(item => (
-                <div key={item.href} onClick={onNavigate}>
-                  <NavLink item={item} active={isActive(item.href)} />
-                </div>
-              ))}
-            </div>
-          )
-        })}
+        {visibleItems.map(item => (
+          <div key={item.href} className="w-full" onClick={onNavigate}>
+            <NavLink item={item} active={isActive(item.href)} />
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
       <div className="border-t border-white/[0.06] py-3 flex flex-col items-center gap-1">
-        <button
-          onClick={() => { toggleAlex(); onNavigate?.() }}
-          className="relative group w-full flex justify-center py-3 text-[#0D7A65] hover:bg-white/[0.04] hover:text-[#0fad8e] transition-colors"
-        >
-          <Bot size={17} />
-          <span className="absolute left-full ml-3 bg-[#1B2B4B] text-white text-xs px-2.5 py-1.5 rounded opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg border border-white/10">
-            Alex IA
-          </span>
-        </button>
         <button
           onClick={signOut}
           className="relative group w-full flex justify-center py-3 text-white/30 hover:bg-red-900/20 hover:text-red-400 transition-colors"

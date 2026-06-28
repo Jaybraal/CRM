@@ -3,17 +3,30 @@
 import AuthGuard from '@/components/auth/AuthGuard'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
-import ChatAssistant from '@/components/ui/ChatAssistant'
-import { AlexChatProvider } from '@/context/AlexChatContext'
 import { useNotifications } from '@/hooks/useNotifications'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { getOrganization } from '@/lib/firestore'
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
   useNotifications()
   const pathname = usePathname()
-  const isFullHeight = ['/dashboard/clients', '/dashboard/inbox', '/dashboard/nexo'].some(
+  const router = useRouter()
+  const { profile, loading } = useAuth()
+
+  const isFullHeight = ['/dashboard/clients', '/dashboard/inbox'].some(
     p => pathname === p || pathname.startsWith(p + '/')
   )
+
+  useEffect(() => {
+    if (loading || !profile?.orgId || pathname === '/dashboard/onboarding') return
+    getOrganization(profile.orgId).then(org => {
+      if (org && org.settings.onboardingCompleted !== true) {
+        router.replace('/dashboard/onboarding')
+      }
+    })
+  }, [loading, profile?.orgId, pathname])
 
   if (isFullHeight) {
     return (
@@ -45,10 +58,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <AlexChatProvider>
-        <DashboardInner>{children}</DashboardInner>
-        <ChatAssistant />
-      </AlexChatProvider>
+      <DashboardInner>{children}</DashboardInner>
     </AuthGuard>
   )
 }

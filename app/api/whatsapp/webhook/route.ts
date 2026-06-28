@@ -51,6 +51,19 @@ async function uploadToStorage(orgId: string, clientId: string, buffer: Buffer, 
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'crm_webhook_2024'
 
+function isInsideBusinessHours(businessHours: { days: number[]; openTime: string; closeTime: string } | undefined): boolean {
+  if (!businessHours) return true // no config = always "in hours"
+  const now = new Date()
+  const day = now.getDay() // 0=Sun, 1=Mon...
+  if (!businessHours.days.includes(day)) return false
+  const [oh, om] = businessHours.openTime.split(':').map(Number)
+  const [ch, cm] = businessHours.closeTime.split(':').map(Number)
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const openMin = oh * 60 + om
+  const closeMin = ch * 60 + cm
+  return nowMin >= openMin && nowMin < closeMin
+}
+
 async function getNextAgentForOrg(orgId: string): Promise<string> {
   const [agentsSnap, supervisorsSnap] = await Promise.all([
     adminDb.collection('users').where('orgId', '==', orgId).where('role', '==', 'agent').get(),
@@ -240,48 +253,28 @@ export async function POST(req: NextRequest) {
     })
     void sendFCMToOrg(orgId, notifTitle, notifBody, notifUrl)
 
-    // Auto-reply bot + window message config
+    // Bot N8N trigger
     const orgDoc = await adminDb.doc(`organizations/${orgId}`).get()
     const orgData = orgDoc.data()
 
-    const autoReply = orgData?.settings?.autoReply
-    if (autoReply?.enabled && autoReply?.message) {
-      void fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${waToken}` },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: fromPhone,
-          type: 'text',
-          text: { body: autoReply.message },
-        }),
-      })
-    }
-
-    // Mensaje de ventana 24h — solo para clientes nuevos (primer mensaje)
-    if (isNewClient) {
-      const windowCfg = orgData?.settings?.windowMessage
-      if (windowCfg?.enabled && windowCfg?.message) {
-        const delayMs = (windowCfg.delayHours || 23) * 60 * 60 * 1000
-        const sendAt = new Date(Date.now() + delayMs)
-        // Verificar que no exista ya uno pendiente para este cliente
-        const existing = await adminDb
-          .collection(`organizations/${orgId}/scheduled_messages`)
-          .where('clientId', '==', clientId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-        if (existing.empty) {
-          await adminDb.collection(`organizations/${orgId}/scheduled_messages`).add({
+    const n8nMode = orgData?.settings?.n8nMode as string | undefined
+    const n8nWebhookUrl = orgData?.settings?.n8nWebhookUrl as string | undefined
+    if (n8nMode && n8nMode !== 'off' && n8nWebhookUrl) {
+      const bh = orgData?.settings?.businessHours as { days: number[]; openTime: string; closeTime: string } | undefined
+      const shouldTrigger = n8nMode === 'always' || (n8nMode === 'outside_hours' && !isInsideBusinessHours(bh))
+      if (shouldTrigger) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        void fetch(`${appUrl}/api/bot/trigger`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             orgId,
-            clientId,
-            whatsappPhone: fromPhone,
-            message: windowCfg.message,
-            sendAt: sendAt,
-            status: 'pending',
-            createdAt: FieldValue.serverTimestamp(),
-          })
-        }
+            clientPhone: fromPhone,
+            clientName,
+            message: text || '[Multimedia]',
+            channel: 'whatsapp',
+          }),
+        })
       }
     }
 

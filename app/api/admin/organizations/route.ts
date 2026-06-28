@@ -3,6 +3,16 @@ export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 
+const SUPER_ADMIN_UID = process.env.NEXT_PUBLIC_SUPER_ADMIN_UID
+
+async function requireSuperAdmin(req: NextRequest): Promise<boolean> {
+  const uid = req.headers.get('x-user-uid')
+  if (!uid) return false
+  if (uid === SUPER_ADMIN_UID) return true
+  const snap = await adminDb.doc(`users/${uid}`).get()
+  return snap.data()?.role === 'super_admin'
+}
+
 const NEXO_DEFAULT_CHANNELS = [
   { name: 'general', emoji: '#', description: 'Canal general del equipo' },
   { name: 'ventas',  emoji: '#', description: 'Novedades del área de ventas' },
@@ -30,6 +40,9 @@ async function seedNexoChannels(orgId: string) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await requireSuperAdmin(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const { name, ownerId, plan, settings, accessExpiresAt } = await req.json()
     const ref = await adminDb.collection('organizations').add({
@@ -53,7 +66,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!(await requireSuperAdmin(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const snap = await adminDb.collection('organizations').get()
     const orgs = snap.docs.map(d => ({ id: d.id, ...d.data() }))

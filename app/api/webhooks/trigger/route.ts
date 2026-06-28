@@ -3,6 +3,13 @@ import { adminDb } from '@/lib/firebase-admin'
 import type { Webhook, WebhookEvent } from '@/types'
 
 export async function POST(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const authHeader = req.headers.get('authorization')
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+  }
   try {
     const { orgId, event, data } = await req.json() as { orgId: string; event: WebhookEvent; data: Record<string, unknown> }
 

@@ -62,6 +62,10 @@ export interface Organization {
       slotMinutes: number  // 30 | 60
     }
     websiteUrl?: string    // URL del sitio web vinculado (ej: https://musaweb.up.railway.app)
+    n8nWebhookUrl?: string
+    n8nApiKey?: string
+    n8nMode?: 'always' | 'outside_hours' | 'off'
+    onboardingCompleted?: boolean
   }
 }
 
@@ -321,4 +325,18 @@ export interface EmailThread {
   body: string
   direction: 'inbound' | 'outbound'
   createdAt: Date
+}
+
+export interface BotLead {
+  id: string
+  orgId: string
+  name: string
+  phone: string
+  email?: string
+  summary: string
+  stage?: string
+  appointmentAt?: string
+  createdAt: Date
+  channel: 'whatsapp' | 'instagram'
+  source: 'bot'
 }
