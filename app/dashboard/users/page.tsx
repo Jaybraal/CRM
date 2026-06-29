@@ -74,7 +74,7 @@ interface UserRow {
 }
 
 export default function UsersPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [rows, setRows] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -147,9 +147,10 @@ export default function UsersPage() {
     if (!profile?.orgId) return
     setCreating(true)
     try {
+      const token = user ? await user.getIdToken() : ''
       const res = await fetch('/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-uid': profile.uid },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           email: form.email,
           password: form.password,

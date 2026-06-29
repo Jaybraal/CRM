@@ -276,9 +276,10 @@ export async function POST(req: NextRequest) {
         }, { merge: true })
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        const botSecret = process.env.BOT_INTERNAL_SECRET || ''
         void fetch(`${appUrl}/api/bot/trigger`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bot-secret': botSecret },
           body: JSON.stringify({
             orgId,
             clientPhone: fromPhone,

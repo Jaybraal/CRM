@@ -117,6 +117,14 @@
         "body": "={{ JSON.stringify({ orgId: $json.orgId, clientPhone: $json.clientPhone, message: $json.replyMessage, channel: $json.channel }) }}",
         "options": {
           "timeout": 10000
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-bot-secret",
+              "value": "bot_secret_crm_9f4a2b8e1d7c3a6f"
+            }
+          ]
         }
       },
       "id": "a1b2c3d4-0006-0006-0006-000000000006",
@@ -138,6 +146,14 @@
         "body": "={{ JSON.stringify({ orgId: $json.orgId, name: ($json.lead && $json.lead.name) || $json.clientName, phone: $json.clientPhone, email: $json.lead && $json.lead.email, summary: $json.lead && $json.lead.summary, stage: ($json.lead && $json.lead.stage) || 'Nuevo', channel: $json.channel, source: 'bot' }) }}",
         "options": {
           "timeout": 10000
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-bot-secret",
+              "value": "bot_secret_crm_9f4a2b8e1d7c3a6f"
+            }
+          ]
         }
       },
       "id": "a1b2c3d4-0007-0007-0007-000000000007",

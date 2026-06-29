@@ -1,16 +1,11 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
+import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const SUPER_ADMIN_UID = process.env.NEXT_PUBLIC_SUPER_ADMIN_UID
-
 async function requireSuperAdmin(req: NextRequest): Promise<boolean> {
-  const uid = req.headers.get('x-user-uid')
-  if (!uid) return false
-  if (uid === SUPER_ADMIN_UID) return true
-  const snap = await adminDb.doc(`users/${uid}`).get()
-  return snap.data()?.role === 'super_admin'
+  return requireSuperAdminJWT(req)
 }
 
 const NEXO_DEFAULT_CHANNELS = [

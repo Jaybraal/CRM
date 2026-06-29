@@ -269,6 +269,13 @@ export default function AdminPage() {
   const { isSuperAdmin, user, profile, switchOrg } = useAuth()
   const router = useRouter()
 
+  // Obtiene el header Authorization con el Firebase ID token verificado
+  const getAuthHeader = async (): Promise<Record<string, string>> => {
+    if (!user) return {}
+    const token = await user.getIdToken()
+    return { Authorization: `Bearer ${token}` }
+  }
+
   const [orgs, setOrgs] = useState<OrgWithStats[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -339,7 +346,7 @@ export default function AdminPage() {
 
       const userRes = await fetch('/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
         body: JSON.stringify({
           email: createForm.ownerEmail,
           password: createForm.ownerPassword,
@@ -361,7 +368,7 @@ export default function AdminPage() {
       if (createForm.waToken || createForm.igToken) {
         const tokenRes = await fetch(`/api/admin/tokens/${orgData.id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
           body: JSON.stringify({
             wa_phone_number_id: createForm.waPhoneNumberId,
             wa_token: createForm.waToken,
@@ -402,7 +409,7 @@ export default function AdminPage() {
     setLoadingTokens(true)
     try {
       const res = await fetch(`/api/admin/tokens/${org.id}`, {
-        headers: { 'x-user-uid': user?.uid || '' },
+        headers: { ...(await getAuthHeader()) },
       })
       if (res.ok) {
         const tokens = await res.json()
@@ -436,7 +443,7 @@ export default function AdminPage() {
       // Guardar tokens siempre (aunque estén vacíos, para borrarlos si se limpiaron)
       const tokenRes = await fetch(`/api/admin/tokens/${editOrg.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-uid': user?.uid || '' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
         body: JSON.stringify({
           wa_phone_number_id: editForm.waPhoneNumberId,
           wa_token: editForm.waToken,

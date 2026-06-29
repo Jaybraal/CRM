@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 
+function verifyBotSecret(req: NextRequest): boolean {
+  const secret = process.env.BOT_INTERNAL_SECRET
+  if (!secret) return false
+  return req.headers.get('x-bot-secret') === secret
+}
+
 export async function POST(req: NextRequest) {
+  if (!verifyBotSecret(req)) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const { orgId, name, phone, email, summary, stage, appointmentAt } = await req.json()
 

@@ -1,11 +1,15 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
+import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Limpia campos de teléfono con datos corruptos (texto en lugar de número)
 export async function POST(req: NextRequest) {
+  if (!(await requireSuperAdminJWT(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const { orgId } = await req.json()
     if (!orgId) return NextResponse.json({ error: 'orgId requerido' }, { status: 400 })

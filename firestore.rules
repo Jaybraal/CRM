@@ -152,6 +152,24 @@ service cloud.firestore {
           allow update, delete: if false;
         }
       }
+
+      // Bot conversations — solo lectura por miembros, escritura exclusiva Admin SDK
+      match /bot_conversations/{phone} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow write: if false; // Solo Admin SDK (server-side)
+      }
+
+      // Bot leads — generados por N8N via Admin SDK
+      match /bot_leads/{leadId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow write: if false; // Solo Admin SDK
+      }
+
+      // Webhooks registrados por la org
+      match /webhooks/{whId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isManager(orgId) || isSuperAdmin();
+      }
     }
   }
 }

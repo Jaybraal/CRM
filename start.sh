@@ -5,8 +5,16 @@
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GROQ_KEY="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"
 N8N_BIN="/tmp/n8n-prefix/bin/n8n"
+
+# Leer GROQ_API_KEY desde .env.local (nunca hardcodear claves)
+GROQ_KEY=""
+if [ -f "$DIR/.env.local" ]; then
+  GROQ_KEY=$(grep -E '^GROQ_API_KEY=' "$DIR/.env.local" | head -1 | cut -d'=' -f2- | tr -d '"')
+fi
+if [ -z "$GROQ_KEY" ]; then
+  warn "GROQ_API_KEY no encontrado en .env.local — N8N arrancará sin acceso a Groq"
+fi
 
 # Colores
 GREEN='\033[0;32m'

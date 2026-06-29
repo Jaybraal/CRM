@@ -1,17 +1,18 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb, getAdminAuth } from '@/lib/firebase-admin'
+import { verifyFirebaseToken } from '@/lib/admin-auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    // Solo super_admin u owner pueden crear usuarios
-    const callerUid = req.headers.get('x-user-uid')
+    // Solo super_admin, owner o manager pueden crear usuarios
+    const callerUid = await verifyFirebaseToken(req)
     if (!callerUid) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const callerSnap = await adminDb.doc(`users/${callerUid}`).get()
     const callerRole = callerSnap.data()?.role
-    const isSuperAdmin = callerUid === process.env.NEXT_PUBLIC_SUPER_ADMIN_UID
+    const isSuperAdmin = callerUid === process.env.SUPER_ADMIN_UID
     if (!isSuperAdmin && callerRole !== 'super_admin' && callerRole !== 'owner' && callerRole !== 'manager') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }

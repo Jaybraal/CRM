@@ -1,16 +1,12 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
+import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
-const SUPER_ADMIN_UID = process.env.NEXT_PUBLIC_SUPER_ADMIN_UID
-
 async function verifySuperAdmin(req: NextRequest): Promise<boolean> {
-  const authHeader = req.headers.get('x-user-uid')
-  if (!authHeader) return false
-  const userSnap = await adminDb.doc(`users/${authHeader}`).get()
-  return userSnap.data()?.role === 'super_admin' || authHeader === SUPER_ADMIN_UID
+  return requireSuperAdminJWT(req)
 }
 
 // Intercambia un token temporal de Meta por uno de larga duración (60 días)

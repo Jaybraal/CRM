@@ -1,12 +1,16 @@
 export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
+import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 
 const BAILEYS_URL = (process.env.BAILEYS_URL || 'http://localhost:3002').trim()
 
-// GET /api/debug — info de entorno + estado de sesiones en Baileys
-export async function GET() {
+// GET /api/debug — info de entorno + estado de sesiones en Baileys (solo superadmin)
+export async function GET(req: NextRequest) {
+  if (!(await requireSuperAdminJWT(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   const pk = process.env.FIREBASE_ADMIN_PRIVATE_KEY || ''
   let baileysSessions = null
   try {
@@ -24,8 +28,11 @@ export async function GET() {
   })
 }
 
-// POST /api/debug — fijar orgId en Firestore + sesión en vivo
+// POST /api/debug — fijar orgId en Firestore + sesión en vivo (solo superadmin)
 export async function POST(req: NextRequest) {
+  if (!(await requireSuperAdminJWT(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const { sessionId, orgId } = await req.json()
     if (!sessionId || !orgId) return NextResponse.json({ error: 'sessionId y orgId requeridos' }, { status: 400 })

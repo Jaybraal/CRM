@@ -1,10 +1,14 @@
 export const dynamic = 'force-dynamic'
 
 import { adminDb } from '@/lib/firebase-admin'
+import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Elimina clientes creados por WA con JIDs falsos (newsletter, broadcast, etc.)
 export async function POST(req: NextRequest) {
+  if (!(await requireSuperAdminJWT(req))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
   try {
     const { orgId } = await req.json()
     if (!orgId) return NextResponse.json({ error: 'orgId requerido' }, { status: 400 })
