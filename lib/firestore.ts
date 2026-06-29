@@ -4,7 +4,7 @@ import {
   Timestamp, onSnapshot, limit
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, OrgStats } from '@/types'
+import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, AppointmentRequest, OrgStats } from '@/types'
 
 // --- Organizations ---
 export async function updateOrganization(orgId: string, data: { name?: string; plan?: Organization['plan']; settings?: Partial<Organization['settings']>; ownerId?: string }) {
@@ -420,6 +420,28 @@ export async function updateAppointment(orgId: string, appointmentId: string, da
 
 export async function deleteAppointment(orgId: string, appointmentId: string) {
   await deleteDoc(doc(db, 'organizations', orgId, 'appointments', appointmentId))
+}
+
+// --- Appointment Requests ---
+export async function getAppointmentRequests(orgId: string, status?: 'pending' | 'confirmed' | 'rejected'): Promise<AppointmentRequest[]> {
+  const q = status
+    ? query(collection(db, 'organizations', orgId, 'appointment_requests'), where('status', '==', status), orderBy('createdAt', 'desc'))
+    : query(collection(db, 'organizations', orgId, 'appointment_requests'), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as AppointmentRequest[]
+}
+
+export async function createAppointmentRequest(orgId: string, data: Omit<AppointmentRequest, 'id' | 'orgId' | 'createdAt'>) {
+  const ref = await addDoc(collection(db, 'organizations', orgId, 'appointment_requests'), {
+    orgId,
+    ...data,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function updateAppointmentRequest(orgId: string, requestId: string, data: Partial<Pick<AppointmentRequest, 'status'>>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'appointment_requests', requestId), data)
 }
 
 // --- Broadcast Campaigns ---

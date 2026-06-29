@@ -65,6 +65,30 @@ export interface Organization {
     n8nWebhookUrl?: string
     n8nApiKey?: string
     n8nMode?: 'always' | 'outside_hours' | 'off'
+    botPersonality?: {
+      businessName: string
+      industry: string
+      tone: 'formal' | 'casual'
+      description: string
+      assistantName?: string
+    }
+    faq?: Array<{
+      id: string
+      question: string
+      answer: string
+    }>
+    businessLocation?: {
+      lat: number
+      lng: number
+      name: string
+      address: string
+      mapsUrl?: string
+    }
+    appointmentSlots?: Array<{
+      day: number
+      time: string
+      label: string
+    }>
     onboardingCompleted?: boolean
   }
 }
@@ -304,6 +328,21 @@ export interface Appointment {
   assignedToName?: string
   startDate: Date
   endDate?: Date
+  createdAt: Date
+  status?: 'pending' | 'confirmed' | 'rejected'
+  clientPhone?: string
+  slotIndex?: number
+}
+
+export interface AppointmentRequest {
+  id: string
+  orgId: string
+  clientPhone: string
+  clientName: string
+  slotLabel: string
+  slotDay: number
+  slotTime: string
+  status: 'pending' | 'confirmed' | 'rejected'
   createdAt: Date
 }
 
