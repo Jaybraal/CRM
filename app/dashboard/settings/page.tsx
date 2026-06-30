@@ -8,9 +8,7 @@ import type { Organization } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
 import InstagramConnect from '@/components/settings/InstagramConnect'
-import {
-  Building2, MessageCircle, Instagram, Bot, Eye, EyeOff, Clock
-} from 'lucide-react'
+import { Building2, MessageCircle, Instagram, Bot, Eye, EyeOff, Clock, MapPin, HelpCircle, Calendar, Plus, Trash2, User } from 'lucide-react'
 import { Card, SectionHeader, PageHeader, Spinner, inputClass, labelClass } from '@/components/ui/primitives'
 
 type Tab = 'negocio' | 'conexiones' | 'bot'
@@ -52,6 +50,26 @@ export default function SettingsPage() {
   const [n8nApiKey, setN8nApiKey] = useState('')
   const [n8nMode, setN8nMode] = useState<'always' | 'outside_hours' | 'off'>('always')
   const [showApiKey, setShowApiKey] = useState(false)
+
+  // Personalidad del bot
+  const [botName, setBotName] = useState('')
+  const [botIndustry, setBotIndustry] = useState('')
+  const [botDescription, setBotDescription] = useState('')
+  const [botAssistantName, setBotAssistantName] = useState('')
+  const [botTone, setBotTone] = useState<'formal' | 'casual'>('casual')
+
+  // Ubicación
+  const [locLat, setLocLat] = useState('')
+  const [locLng, setLocLng] = useState('')
+  const [locName, setLocName] = useState('')
+  const [locAddress, setLocAddress] = useState('')
+  const [locMapsUrl, setLocMapsUrl] = useState('')
+
+  // FAQ
+  const [faq, setFaq] = useState<Array<{ id: string; question: string; answer: string }>>([])
+
+  // Slots
+  const [slots, setSlots] = useState<Array<{ day: number; time: string; label: string }>>([])
   const [savingBot, setSavingBot] = useState(false)
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
 
@@ -74,6 +92,25 @@ export default function SettingsPage() {
         setN8nWebhookUrl(o.settings.n8nWebhookUrl || '')
         setN8nApiKey(o.settings.n8nApiKey || '')
         setN8nMode(o.settings.n8nMode || 'always')
+        // Personalidad del bot
+        if (o.settings.botPersonality) {
+          setBotName(o.settings.botPersonality.businessName || '')
+          setBotIndustry(o.settings.botPersonality.industry || '')
+          setBotDescription(o.settings.botPersonality.description || '')
+          setBotAssistantName(o.settings.botPersonality.assistantName || '')
+          setBotTone(o.settings.botPersonality.tone || 'casual')
+        }
+        // Ubicación
+        if (o.settings.businessLocation) {
+          setLocLat(String(o.settings.businessLocation.lat || ''))
+          setLocLng(String(o.settings.businessLocation.lng || ''))
+          setLocName(o.settings.businessLocation.name || '')
+          setLocAddress(o.settings.businessLocation.address || '')
+          setLocMapsUrl(o.settings.businessLocation.mapsUrl || '')
+        }
+        // FAQ y slots
+        setFaq(o.settings.faq || [])
+        setSlots(o.settings.appointmentSlots || [])
       }
     }).finally(() => setLoading(false))
   }, [profile])
@@ -113,15 +150,32 @@ export default function SettingsPage() {
     if (!profile?.orgId || !org) return
     setSavingBot(true)
     try {
-      await updateOrganization(profile.orgId, {
-        settings: {
-          ...org.settings,
-          n8nWebhookUrl: n8nWebhookUrl.trim(),
-          n8nApiKey: n8nApiKey.trim(),
-          n8nMode,
+      const newSettings: Partial<typeof org.settings> = {
+        ...org.settings,
+        n8nWebhookUrl: n8nWebhookUrl.trim(),
+        n8nApiKey: n8nApiKey.trim(),
+        n8nMode,
+        botPersonality: {
+          businessName: botName.trim(),
+          industry: botIndustry.trim(),
+          description: botDescription.trim(),
+          assistantName: botAssistantName.trim() || undefined,
+          tone: botTone,
         },
-      })
-      setOrg(prev => prev ? { ...prev, settings: { ...prev.settings, n8nWebhookUrl: n8nWebhookUrl.trim(), n8nApiKey: n8nApiKey.trim(), n8nMode } } : prev)
+        faq,
+        appointmentSlots: slots,
+      }
+      if (locLat && locLng) {
+        newSettings.businessLocation = {
+          lat: parseFloat(locLat),
+          lng: parseFloat(locLng),
+          name: locName.trim(),
+          address: locAddress.trim(),
+          mapsUrl: locMapsUrl.trim() || undefined,
+        }
+      }
+      await updateOrganization(profile.orgId, { settings: newSettings })
+      setOrg(prev => prev ? { ...prev, settings: { ...prev.settings, ...newSettings } } : prev)
       toast.success('Configuración del bot guardada')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error')
@@ -134,16 +188,10 @@ export default function SettingsPage() {
     if (!profile?.orgId) return
     setTestStatus('testing')
     try {
-      const res = await fetch('/api/bot/trigger', {
+      const res = await fetch('/api/bot/ping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orgId: profile.orgId,
-          clientPhone: '0000000000',
-          clientName: 'Test',
-          message: '[Prueba de conexión desde CRM]',
-          channel: 'whatsapp',
-        }),
+        body: JSON.stringify({ orgId: profile.orgId }),
       })
       setTestStatus(res.ok ? 'ok' : 'error')
     } catch {
@@ -389,6 +437,146 @@ export default function SettingsPage() {
               </div>
             </div>
           </Card>
+
+          {/* ── Personalidad del Bot ── */}
+          <div className="border border-[#E3E6EC] dark:border-[#1A2540] rounded-xl p-4 space-y-3">
+            <SectionHeader icon={User} title="Personalidad del Bot" desc="Cómo se presenta el bot a tus clientes" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Nombre del negocio</label>
+                <input className={inputClass} value={botName} onChange={e => setBotName(e.target.value)} placeholder="AutoCentro García" />
+              </div>
+              <div>
+                <label className={labelClass}>Nombre del asistente</label>
+                <input className={inputClass} value={botAssistantName} onChange={e => setBotAssistantName(e.target.value)} placeholder="Carlos" />
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Industria / tipo de negocio</label>
+              <input className={inputClass} value={botIndustry} onChange={e => setBotIndustry(e.target.value)} placeholder="venta de autos usados" />
+            </div>
+            <div>
+              <label className={labelClass}>Descripción del negocio</label>
+              <textarea className={inputClass} rows={3} value={botDescription} onChange={e => setBotDescription(e.target.value)} placeholder="Vendemos autos usados certificados en Santo Domingo..." />
+            </div>
+            <div>
+              <label className={labelClass}>Tono del bot</label>
+              <div className="flex gap-4 mt-1">
+                {(['casual', 'formal'] as const).map(t => (
+                  <label key={t} className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="tone" value={t} checked={botTone === t} onChange={() => setBotTone(t)} className="accent-[#0D7A65]" />
+                    <span className="text-sm capitalize text-[#0C1224] dark:text-[#E8ECF4]">{t}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Ubicación ── */}
+          <div className="border border-[#E3E6EC] dark:border-[#1A2540] rounded-xl p-4 space-y-3">
+            <SectionHeader icon={MapPin} title="Ubicación del Negocio" desc="El bot enviará un pin de ubicación cuando el cliente pregunte dónde están" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Latitud</label>
+                <input className={inputClass} value={locLat} onChange={e => setLocLat(e.target.value)} placeholder="18.4861" />
+              </div>
+              <div>
+                <label className={labelClass}>Longitud</label>
+                <input className={inputClass} value={locLng} onChange={e => setLocLng(e.target.value)} placeholder="-69.9312" />
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Nombre del local</label>
+              <input className={inputClass} value={locName} onChange={e => setLocName(e.target.value)} placeholder="AutoCentro García - Sucursal Principal" />
+            </div>
+            <div>
+              <label className={labelClass}>Dirección completa</label>
+              <input className={inputClass} value={locAddress} onChange={e => setLocAddress(e.target.value)} placeholder="Av. 27 de Febrero #123, Santo Domingo" />
+            </div>
+            <div>
+              <label className={labelClass}>Link de Google Maps (opcional)</label>
+              <input className={inputClass} value={locMapsUrl} onChange={e => setLocMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." />
+            </div>
+          </div>
+
+          {/* ── FAQ ── */}
+          <div className="border border-[#E3E6EC] dark:border-[#1A2540] rounded-xl p-4 space-y-3">
+            <SectionHeader icon={HelpCircle} title="Preguntas Frecuentes" desc="El bot usa estas respuestas cuando el cliente hace estas preguntas" />
+            <div className="space-y-2">
+              {faq.map((item, i) => (
+                <div key={item.id} className="flex gap-2 items-start">
+                  <div className="flex-1 space-y-1">
+                    <input
+                      className={inputClass}
+                      value={item.question}
+                      onChange={e => setFaq(prev => prev.map((f, j) => j === i ? { ...f, question: e.target.value } : f))}
+                      placeholder="¿Tienen garantía?"
+                    />
+                    <input
+                      className={inputClass}
+                      value={item.answer}
+                      onChange={e => setFaq(prev => prev.map((f, j) => j === i ? { ...f, answer: e.target.value } : f))}
+                      placeholder="Sí, 6 meses en motor y transmisión"
+                    />
+                  </div>
+                  <button type="button" onClick={() => setFaq(prev => prev.filter((_, j) => j !== i))} className="mt-1 text-red-500 hover:text-red-700 p-1">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFaq(prev => [...prev, { id: crypto.randomUUID(), question: '', answer: '' }])}
+              className="flex items-center gap-1 text-sm text-[#0D7A65] hover:underline"
+            >
+              <Plus size={14} /> Agregar pregunta
+            </button>
+          </div>
+
+          {/* ── Slots de Citas ── */}
+          <div className="border border-[#E3E6EC] dark:border-[#1A2540] rounded-xl p-4 space-y-3">
+            <SectionHeader icon={Calendar} title="Horarios de Citas" desc="El bot ofrecerá estos slots cuando el cliente quiera agendar" />
+            <div className="space-y-2">
+              {slots.map((slot, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <select
+                    className={inputClass + ' flex-1'}
+                    value={slot.day}
+                    onChange={e => {
+                      const day = parseInt(e.target.value)
+                      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+                      setSlots(prev => prev.map((s, j) => j === i ? { ...s, day, label: `${days[day]} ${s.time}` } : s))
+                    }}
+                  >
+                    {['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].map((d, idx) => (
+                      <option key={idx} value={idx}>{d}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    className={inputClass + ' w-32'}
+                    value={slot.time}
+                    onChange={e => {
+                      const time = e.target.value
+                      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+                      setSlots(prev => prev.map((s, j) => j === i ? { ...s, time, label: `${days[s.day]} ${time}` } : s))
+                    }}
+                  />
+                  <button type="button" onClick={() => setSlots(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 p-1">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSlots(prev => [...prev, { day: 1, time: '09:00', label: 'Lun 09:00' }])}
+              className="flex items-center gap-1 text-sm text-[#0D7A65] hover:underline"
+            >
+              <Plus size={14} /> Agregar horario
+            </button>
+          </div>
 
           <button
             type="submit"
