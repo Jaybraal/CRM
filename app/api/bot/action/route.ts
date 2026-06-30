@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
           if (!imgRes.ok) console.error('[bot/action] send-image error', imgRes.status)
         }
         // Send catalog link
-        const catalogLink = `${appUrl.replace(':3010', '')}/c/${orgId}`
+        const catalogLink = `${appUrl}/c/${orgId}`
         await sendText(baileysUrl, clientPhone, `Ver catálogo completo: ${catalogLink}`, orgId)
         break
       }
