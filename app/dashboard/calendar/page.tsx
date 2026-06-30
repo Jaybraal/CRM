@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getTasks, updateTask, getAppointments, createAppointment, deleteAppointment } from '@/lib/firestore'
-import type { Task, Appointment } from '@/types'
-import { ChevronLeft, ChevronRight, CheckSquare, AlertCircle, CalendarPlus, Clock, Trash2, X } from 'lucide-react'
+import { getTasks, updateTask, getAppointments, createAppointment, deleteAppointment, getAppointmentRequests } from '@/lib/firestore'
+import type { Task, Appointment, AppointmentRequest } from '@/types'
+import { ChevronLeft, ChevronRight, CheckSquare, AlertCircle, CalendarPlus, Clock, Trash2, X, Check, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Spinner } from '@/components/ui/primitives'
 
@@ -44,6 +44,8 @@ export default function CalendarPage() {
   const { profile } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [requests, setRequests] = useState<AppointmentRequest[]>([])
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [current, setCurrent] = useState(new Date())
   const [showApptModal, setShowApptModal] = useState(false)
@@ -58,12 +60,14 @@ export default function CalendarPage() {
   const load = useCallback(async () => {
     if (!profile?.orgId) { setLoading(false); return }
     const uid = profile.role === 'agent' ? profile.uid : undefined
-    const [t, a] = await Promise.all([
+    const [t, a, r] = await Promise.all([
       getTasks(profile.orgId, uid),
       getAppointments(profile.orgId, uid),
+      getAppointmentRequests(profile.orgId, 'pending'),
     ])
     setTasks(t)
     setAppointments(a)
+    setRequests(r)
     setLoading(false)
   }, [profile])
 
@@ -144,6 +148,28 @@ export default function CalendarPage() {
     }
   }
 
+  const handleRequestAction = async (requestId: string, orgId: string, action: 'confirm' | 'reject') => {
+    if (!profile?.orgId) return
+    setProcessingRequest(requestId)
+    try {
+      const res = await fetch('/api/bot/confirm-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, orgId: profile.orgId, action }),
+      })
+      if (!res.ok) throw new Error('Error procesando solicitud')
+      setRequests(prev => prev.filter(r => r.id !== requestId))
+      toast.success(action === 'confirm' ? 'Cita confirmada y notificada al cliente' : 'Cita rechazada')
+      if (action === 'confirm') {
+        load()
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setProcessingRequest(null)
+    }
+  }
+
   const monthName = current.toLocaleDateString('es', { month: 'long', year: 'numeric' })
   const tasksDueThisMonth = tasks.filter(t => {
     const due = getTs(t.dueDate)
@@ -180,6 +206,46 @@ export default function CalendarPage() {
           <CalendarPlus size={16} /> Nueva cita
         </button>
       </div>
+
+      {/* ── Solicitudes pendientes del bot ── */}
+      {requests.length > 0 && (
+        <div className="mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <UserCheck size={16} className="text-amber-600" />
+            <span className="font-semibold text-amber-700 dark:text-amber-400 text-sm">
+              {requests.length} solicitud{requests.length > 1 ? 'es' : ''} de cita pendiente{requests.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {requests.map(r => (
+              <div key={r.id} className="flex items-center justify-between bg-white dark:bg-[#0C1224] rounded-lg px-4 py-2.5 border border-amber-100 dark:border-amber-900">
+                <div>
+                  <p className="text-sm font-medium text-[#0C1224] dark:text-[#E8ECF4]">
+                    {r.clientName || r.clientPhone}
+                  </p>
+                  <p className="text-xs text-[#6B7280]">📅 {r.slotLabel}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleRequestAction(r.id, r.orgId, 'confirm')}
+                    disabled={processingRequest === r.id}
+                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Check size={13} /> Confirmar
+                  </button>
+                  <button
+                    onClick={() => handleRequestAction(r.id, r.orgId, 'reject')}
+                    disabled={processingRequest === r.id}
+                    className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <X size={13} /> Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <Spinner />
