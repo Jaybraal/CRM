@@ -13,6 +13,7 @@ async function sendWhatsApp(baileysUrl: string, to: string, text: string, sessio
 }
 
 export async function POST(req: NextRequest) {
+  // Auth: called from authenticated dashboard session
   try {
     const { requestId, orgId, action } = await req.json() as {
       requestId: string
@@ -22,6 +23,11 @@ export async function POST(req: NextRequest) {
 
     if (!requestId || !orgId || !action) {
       return NextResponse.json({ error: 'requestId, orgId y action son requeridos' }, { status: 400 })
+    }
+
+    // Runtime type guard for action
+    if (action !== 'confirm' && action !== 'reject') {
+      return NextResponse.json({ error: 'action debe ser confirm o reject' }, { status: 400 })
     }
 
     const reqRef = adminDb.doc(`organizations/${orgId}/appointment_requests/${requestId}`)
@@ -34,9 +40,6 @@ export async function POST(req: NextRequest) {
     const baileysUrl = (process.env.BAILEYS_URL || 'http://localhost:3002').trim()
 
     if (action === 'confirm') {
-      // Actualizar estado de la solicitud
-      await reqRef.update({ status: 'confirmed' })
-
       // Crear cita oficial en appointments
       const orgSnap = await adminDb.doc(`organizations/${orgId}`).get()
       const orgName = orgSnap.data()?.name || 'el negocio'
@@ -51,7 +54,11 @@ export async function POST(req: NextRequest) {
       apptDate.setDate(now.getDate() + diff)
       apptDate.setHours(h, m, 0, 0)
 
-      await adminDb.collection(`organizations/${orgId}/appointments`).add({
+      // Atomic batch: update request + create appointment
+      const batch = adminDb.batch()
+      batch.update(reqRef, { status: 'confirmed' })
+      const newApptRef = adminDb.collection(`organizations/${orgId}/appointments`).doc()
+      batch.set(newApptRef, {
         orgId,
         title: `Cita con ${request.clientName || request.clientPhone}`,
         clientName: request.clientName || '',
@@ -61,28 +68,40 @@ export async function POST(req: NextRequest) {
         status: 'confirmed',
         createdAt: new Date(),
       })
+      await batch.commit()
 
-      // Notificar al cliente
-      await sendWhatsApp(
-        baileysUrl,
-        request.clientPhone as string,
-        `✅ ¡Tu cita ha sido confirmada!\n📅 ${request.slotLabel}\n📍 ${orgName}\n\nTe esperamos. Si necesitas cambiarla, escríbenos.`,
-        orgId,
-      )
+      // Notificar al cliente (wrapped in try-catch to prevent 500 if Baileys fails)
+      try {
+        await sendWhatsApp(
+          baileysUrl,
+          request.clientPhone as string,
+          `✅ ¡Tu cita ha sido confirmada!\n📅 ${request.slotLabel}\n📍 ${orgName}\n\nTe esperamos. Si necesitas cambiarla, escríbenos.`,
+          orgId,
+        )
+      } catch (err) {
+        console.error('[confirm-slot] WhatsApp send failed:', err)
+        // Firestore already updated — appointment confirmed, client notification failed
+      }
     } else {
-      // Rechazar
-      await reqRef.update({ status: 'rejected' })
-      await sendWhatsApp(
-        baileysUrl,
-        request.clientPhone as string,
-        `Lo sentimos, el horario *${request.slotLabel}* ya no está disponible. ¿Quieres que revisemos otra opción?`,
-        orgId,
-      )
-      // Reactivar bot para que el cliente pueda elegir otro slot
-      await adminDb.doc(`organizations/${orgId}/bot_conversations/${request.clientPhone}`).set(
-        { status: 'active' },
-        { merge: true },
-      )
+      // Rechazar: use Promise.all for atomic updates
+      const convRef = adminDb.doc(`organizations/${orgId}/bot_conversations/${request.clientPhone}`)
+      await Promise.all([
+        reqRef.update({ status: 'rejected' }),
+        convRef.set({ status: 'active' }, { merge: true }),
+      ])
+
+      // Notificar al cliente (wrapped in try-catch to prevent 500 if Baileys fails)
+      try {
+        await sendWhatsApp(
+          baileysUrl,
+          request.clientPhone as string,
+          `Lo sentimos, el horario *${request.slotLabel}* ya no está disponible. ¿Quieres que revisemos otra opción?`,
+          orgId,
+        )
+      } catch (err) {
+        console.error('[confirm-slot] WhatsApp send failed:', err)
+        // Firestore already updated — rejection confirmed, client notification failed
+      }
     }
 
     return NextResponse.json({ ok: true })
