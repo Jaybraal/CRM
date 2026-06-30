@@ -115,6 +115,17 @@ async function sendBaileys(baileysUrl: string, to: string, text: string, session
   })
 }
 
+function isInsideBusinessHours(businessHours: { days: number[]; openTime: string; closeTime: string } | undefined): boolean {
+  if (!businessHours) return true
+  const now = new Date()
+  const day = now.getDay()
+  if (!businessHours.days.includes(day)) return false
+  const [oh, om] = businessHours.openTime.split(':').map(Number)
+  const [ch, cm] = businessHours.closeTime.split(':').map(Number)
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  return nowMin >= oh * 60 + om && nowMin < ch * 60 + cm
+}
+
 // Fusiona un cliente "lid_" antiguo (creado cuando WhatsApp ocultaba el número
 // tras un @lid) dentro del cliente con número real ya resuelto. Mueve los mensajes,
 // conserva el nombre/etiquetas/agente y borra el cliente viejo. Es best-effort:
@@ -397,6 +408,47 @@ export async function POST(req: NextRequest) {
       // Auto-reply SOLO en el primer mensaje del cliente (isNew === true)
       if (isNew && !qualificationHandled && autoReply?.enabled && autoReply?.message) {
         void sendBaileys(baileysUrl, jid || from, autoReply.message, orgId)
+      }
+
+      // Bot N8N — dispara si está configurado y la conversación no está escalada
+      if (!qualificationHandled) {
+        const n8nMode = orgData?.settings?.n8nMode as string | undefined
+        const n8nWebhookUrl = orgData?.settings?.n8nWebhookUrl as string | undefined
+        if (n8nMode && n8nMode !== 'off' && n8nWebhookUrl) {
+          const bh = orgData?.settings?.businessHours as { days: number[]; openTime: string; closeTime: string } | undefined
+          const shouldTrigger = n8nMode === 'always' || (n8nMode === 'outside_hours' && !isInsideBusinessHours(bh))
+          if (shouldTrigger) {
+            // Chequear si la conversación está escalada a humano
+            const convRef = adminDb.doc(`organizations/${orgId}/bot_conversations/${normalizedPhone}`)
+            const convSnap = await convRef.get()
+            const convStatus = convSnap.data()?.status as string | undefined
+
+            if (convStatus === 'escalated') {
+              // Guardar mensaje pero no disparar el bot
+              void convRef.set({
+                updatedAt: new Date(),
+                messages: FieldValue.arrayUnion({ role: 'user', content: text || '[Multimedia]', ts: new Date() }),
+              }, { merge: true })
+            } else {
+              void convRef.set({
+                phone: normalizedPhone,
+                name: clientName,
+                channel: 'whatsapp',
+                status: 'active',
+                updatedAt: new Date(),
+                messages: FieldValue.arrayUnion({ role: 'user', content: text || '[Multimedia]', ts: new Date() }),
+              }, { merge: true })
+
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010'
+              const botSecret = process.env.BOT_INTERNAL_SECRET || ''
+              void fetch(`${appUrl}/api/bot/trigger`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-bot-secret': botSecret },
+                body: JSON.stringify({ orgId, clientPhone: normalizedPhone, clientName, message: text || '[Multimedia]', channel: 'whatsapp' }),
+              })
+            }
+          }
+        }
       }
     }
 
