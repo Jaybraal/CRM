@@ -166,9 +166,16 @@ export default function SettingsPage() {
         appointmentSlots: slots,
       }
       if (locLat && locLng) {
+        const lat = parseFloat(locLat)
+        const lng = parseFloat(locLng)
+        if (isNaN(lat) || isNaN(lng)) {
+          toast.error('Coordenadas de ubicación inválidas (usa punto decimal)')
+          setSavingBot(false)
+          return
+        }
         newSettings.businessLocation = {
-          lat: parseFloat(locLat),
-          lng: parseFloat(locLng),
+          lat,
+          lng,
           name: locName.trim(),
           address: locAddress.trim(),
           mapsUrl: locMapsUrl.trim() || undefined,

@@ -134,6 +134,12 @@ service cloud.firestore {
         allow create, update, delete: if isMember(orgId) || isSuperAdmin();
       }
 
+      // Solicitudes de cita — generadas por bot, escritura exclusiva Admin SDK
+      match /appointment_requests/{requestId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow write: if false; // Admin SDK only
+      }
+
       // Sesiones del formulario de calificación
       match /qualification_sessions/{sessionId} {
         allow read: if isMember(orgId) || isSuperAdmin();
