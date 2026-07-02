@@ -4,6 +4,7 @@ import webhookRouter from './routes/webhook';
 import checkoutRouter from './routes/checkout';
 import leadsRouter from './routes/leads';
 import dealsRouter from './routes/deals';
+import { verifyFirebaseToken } from './middleware/auth';
 import { initWhatsApp } from './services/whatsapp';
 
 const app = express();
@@ -17,11 +18,17 @@ app.use(express.json());
 // Initialize Firebase Admin
 admin.initializeApp();
 
-// Routes
-app.use('/api/webhook', webhookRouter);
-app.use('/api/checkout', checkoutRouter);
+// Apply Firebase authentication to protected routes
+app.use('/api/leads', verifyFirebaseToken);
+app.use('/api/deals', verifyFirebaseToken);
+app.use('/api/checkout', verifyFirebaseToken);
+app.use('/api/webhook/whatsapp', verifyFirebaseToken);
+
+// Mount routers
 app.use('/api/leads', leadsRouter);
 app.use('/api/deals', dealsRouter);
+app.use('/api/checkout', checkoutRouter);
+app.use('/api/webhook', webhookRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
