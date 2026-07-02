@@ -5,8 +5,11 @@ import { SubscriptionService } from '../services/subscription';
 import { requireSubscription } from '../middleware/subscription';
 
 const router = Router();
+
+// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
+// WhatsApp webhook — requires active subscription
 router.post('/whatsapp', requireSubscription, async (req, res) => {
   const { from, text, timestamp } = req.body;
 
@@ -18,6 +21,7 @@ router.post('/whatsapp', requireSubscription, async (req, res) => {
       text,
       timestamp: new Date(timestamp * 1000),
       status: 'received',
+      uid: req.uid,
     });
 
     const clientsSnap = await db.collection('clients')
@@ -31,6 +35,7 @@ router.post('/whatsapp', requireSubscription, async (req, res) => {
         firstMessage: text,
         timestamp: new Date(),
         status: 'new',
+        uid: req.uid,
       });
     }
 
@@ -41,23 +46,19 @@ router.post('/whatsapp', requireSubscription, async (req, res) => {
   }
 });
 
-// Stripe webhook endpoint
+// Stripe webhook — no auth needed (uses signing secret)
 router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
 
+  if (!sig) {
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  }
+
   try {
-    if (!sig) {
-      console.error('[webhook/stripe] Missing stripe-signature header');
-      return res.status(400).json({ error: 'Missing signature header' });
-    }
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-    // Construct event from raw body
-    const webhookSecret = SubscriptionService.getWebhookSecret();
-    if (!webhookSecret) {
-      console.error('[webhook/stripe] STRIPE_WEBHOOK_SECRET not configured');
-      return res.status(500).json({ error: 'Webhook secret not configured' });
-    }
-
+    // Stripe expects raw body for signature verification
+    // If using raw body middleware, construct event here
     const event = stripe.webhooks.constructEvent(
       req.body,
       sig,
@@ -65,25 +66,22 @@ router.post('/stripe', async (req: Request, res: Response) => {
     );
 
     // Handle subscription events
-    if (event.type.startsWith('customer.subscription.')) {
-      const customerId = (event.data.object as any).customer;
+    if (
+      event.type === 'customer.subscription.updated' ||
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.deleted'
+    ) {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer as string;
 
-      try {
-        await SubscriptionService.updateFromStripeWebhook(customerId, event);
-        console.log('[webhook/stripe] Updated subscription from Stripe:', {
-          type: event.type,
-          customerId,
-        });
-      } catch (err) {
-        console.error('[webhook/stripe] Failed to update subscription:', err);
-        return res.status(500).json({ error: 'Failed to update subscription' });
-      }
+      await SubscriptionService.updateFromStripeWebhook(customerId, event);
+      console.log('[webhook/stripe] Updated subscription:', customerId);
     }
 
     res.json({ received: true });
   } catch (err) {
-    console.error('[webhook/stripe] Invalid signature or parsing error:', err instanceof Error ? err.message : err);
-    res.status(400).json({ error: 'Invalid signature' });
+    console.error('[webhook/stripe]', err);
+    res.status(400).json({ error: 'Webhook verification failed' });
   }
 });
 
