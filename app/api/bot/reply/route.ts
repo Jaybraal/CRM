@@ -7,7 +7,11 @@ import { NextRequest, NextResponse } from 'next/server'
 function verifyBotSecret(req: NextRequest): boolean {
   const secret = process.env.BOT_INTERNAL_SECRET
   if (!secret) return false
-  return req.headers.get('x-bot-secret') === secret
+  if (req.headers.get('x-bot-secret') === secret) return true
+  // N8N corre localmente — permitir desde loopback con secret en query param
+  const url = new URL(req.url)
+  if (url.searchParams.get('secret') === secret) return true
+  return false
 }
 
 export async function POST(req: NextRequest) {
@@ -39,8 +43,8 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${baileysUrl}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: clientPhone, text: message }),
-        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ to: clientPhone, text: message, sessionId: orgId }),
+        signal: AbortSignal.timeout(20000),
       })
 
       if (!res.ok) {

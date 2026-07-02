@@ -4,6 +4,11 @@ import webhookRouter from './routes/webhook';
 import { initWhatsApp } from './services/whatsapp';
 
 const app = express();
+
+// CRITICAL: Stripe raw body middleware BEFORE JSON parsing
+app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
+
+// JSON parsing for all other routes
 app.use(express.json());
 
 // Initialize Firebase Admin

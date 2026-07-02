@@ -5,7 +5,10 @@ import { FieldValue } from 'firebase-admin/firestore'
 function verifyBotSecret(req: NextRequest): boolean {
   const secret = process.env.BOT_INTERNAL_SECRET
   if (!secret) return false
-  return req.headers.get('x-bot-secret') === secret
+  if (req.headers.get('x-bot-secret') === secret) return true
+  const url = new URL(req.url)
+  if (url.searchParams.get('secret') === secret) return true
+  return false
 }
 
 export async function POST(req: NextRequest) {
