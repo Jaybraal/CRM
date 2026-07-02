@@ -41,6 +41,9 @@ const admin = __importStar(require("firebase-admin"));
 const webhook_1 = __importDefault(require("./routes/webhook"));
 const whatsapp_1 = require("./services/whatsapp");
 const app = (0, express_1.default)();
+// CRITICAL: Stripe raw body middleware BEFORE JSON parsing
+app.use('/api/webhook/stripe', express_1.default.raw({ type: 'application/json' }));
+// JSON parsing for all other routes
 app.use(express_1.default.json());
 // Initialize Firebase Admin
 admin.initializeApp();

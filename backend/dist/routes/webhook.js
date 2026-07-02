@@ -32,11 +32,18 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const admin = __importStar(require("firebase-admin"));
+const stripe_1 = __importDefault(require("stripe"));
+const subscription_1 = require("../services/subscription");
+const subscription_2 = require("../middleware/subscription");
 const router = (0, express_1.Router)();
-router.post('/whatsapp', async (req, res) => {
+const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY || '');
+router.post('/whatsapp', subscription_2.requireSubscription, async (req, res) => {
     const { from, text, timestamp } = req.body;
     try {
         const db = admin.firestore();
@@ -63,6 +70,43 @@ router.post('/whatsapp', async (req, res) => {
     catch (err) {
         console.error('[webhook/whatsapp]', err);
         res.status(500).json({ error: 'Error procesando mensaje' });
+    }
+});
+// Stripe webhook endpoint
+router.post('/stripe', async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    try {
+        if (!sig) {
+            console.error('[webhook/stripe] Missing stripe-signature header');
+            return res.status(400).json({ error: 'Missing signature header' });
+        }
+        // Construct event from raw body
+        const webhookSecret = subscription_1.SubscriptionService.getWebhookSecret();
+        if (!webhookSecret) {
+            console.error('[webhook/stripe] STRIPE_WEBHOOK_SECRET not configured');
+            return res.status(500).json({ error: 'Webhook secret not configured' });
+        }
+        const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        // Handle subscription events
+        if (event.type.startsWith('customer.subscription.')) {
+            const customerId = event.data.object.customer;
+            try {
+                await subscription_1.SubscriptionService.updateFromStripeWebhook(customerId, event);
+                console.log('[webhook/stripe] Updated subscription from Stripe:', {
+                    type: event.type,
+                    customerId,
+                });
+            }
+            catch (err) {
+                console.error('[webhook/stripe] Failed to update subscription:', err);
+                return res.status(500).json({ error: 'Failed to update subscription' });
+            }
+        }
+        res.json({ received: true });
+    }
+    catch (err) {
+        console.error('[webhook/stripe] Invalid signature or parsing error:', err instanceof Error ? err.message : err);
+        res.status(400).json({ error: 'Invalid signature' });
     }
 });
 exports.default = router;

@@ -2,6 +2,8 @@ import express from 'express';
 import * as admin from 'firebase-admin';
 import webhookRouter from './routes/webhook';
 import checkoutRouter from './routes/checkout';
+import leadsRouter from './routes/leads';
+import dealsRouter from './routes/deals';
 import { initWhatsApp } from './services/whatsapp';
 
 const app = express();
@@ -18,6 +20,8 @@ admin.initializeApp();
 // Routes
 app.use('/api/webhook', webhookRouter);
 app.use('/api/checkout', checkoutRouter);
+app.use('/api/leads', leadsRouter);
+app.use('/api/deals', dealsRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
