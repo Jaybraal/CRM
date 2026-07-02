@@ -1,6 +1,7 @@
 'use client'
 
 import AuthGuard from '@/components/auth/AuthGuard'
+import SubscriptionGate from '@/components/SubscriptionGate'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -58,7 +59,9 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <DashboardInner>{children}</DashboardInner>
+      <SubscriptionGate allowTrial={true}>
+        <DashboardInner>{children}</DashboardInner>
+      </SubscriptionGate>
     </AuthGuard>
   )
 }
