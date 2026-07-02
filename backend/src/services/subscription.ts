@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 import { StripeService } from './stripe';
 import { SubscriptionStatus } from '../types/subscription';
 
-export const SubscriptionService = {
+class SubscriptionServiceClass {
   async createTrialUser(uid: string, email: string): Promise<SubscriptionStatus> {
     const db = admin.firestore();
 
@@ -25,7 +25,7 @@ export const SubscriptionService = {
     await db.collection('subscriptions').doc(uid).set(subscriptionStatus);
 
     return subscriptionStatus;
-  },
+  }
 
   async getSubscriptionStatus(uid: string): Promise<SubscriptionStatus | null> {
     const db = admin.firestore();
@@ -36,7 +36,7 @@ export const SubscriptionService = {
     }
 
     return doc.data() as SubscriptionStatus;
-  },
+  }
 
   async updateFromStripeWebhook(customerId: string, event: any): Promise<void> {
     const db = admin.firestore();
@@ -68,7 +68,7 @@ export const SubscriptionService = {
         canceledAt: Math.floor(Date.now() / 1000),
       });
     }
-  },
+  }
 
   async isTrialActive(uid: string): Promise<boolean> {
     const status = await this.getSubscriptionStatus(uid);
@@ -76,22 +76,25 @@ export const SubscriptionService = {
 
     const now = Math.floor(Date.now() / 1000);
     return status.status === 'trial' && now < status.trialEndsAt;
-  },
+  }
 
   async isPaid(uid: string): Promise<boolean> {
     const status = await this.getSubscriptionStatus(uid);
     if (!status) return false;
 
     return status.status === 'active';
-  },
+  }
 
   async canWrite(uid: string): Promise<boolean> {
     const isTrialActive = await this.isTrialActive(uid);
     const isPaid = await this.isPaid(uid);
     return isTrialActive || isPaid;
-  },
+  }
 
   getWebhookSecret(): string {
     return process.env.STRIPE_WEBHOOK_SECRET || '';
-  },
-};
+  }
+}
+
+// Export singleton instance
+export const SubscriptionService = new SubscriptionServiceClass();
