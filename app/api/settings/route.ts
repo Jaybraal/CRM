@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { adminDb } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
+import { saveGmailCredentials, testGmail } from '@/lib/gmail'
 
 // GET /api/settings?orgId=X&action=get_ig_status
 export async function GET(req: NextRequest) {
@@ -17,6 +18,14 @@ export async function GET(req: NextRequest) {
       const data = snap.exists ? snap.data() : null
       const configured = !!(data?.ig_token && data?.ig_page_id && data.ig_token !== '' && data.ig_page_id !== '')
       return NextResponse.json({ configured })
+    }
+
+    if (action === 'get_gmail_status') {
+      const snap = await adminDb.doc(`org_tokens/${orgId}`).get()
+      const data = snap.exists ? snap.data() : null
+      const gmailUser = (data?.gmail_user as string) || ''
+      const configured = !!(gmailUser && data?.gmail_app_password)
+      return NextResponse.json({ configured, gmail_user: gmailUser })
     }
 
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
@@ -125,6 +134,28 @@ export async function POST(req: NextRequest) {
         { merge: true }
       )
       return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'save_gmail_credentials') {
+      const { gmail_user, gmail_app_password } = body
+      if (!gmail_user || !gmail_app_password) {
+        return NextResponse.json({ error: 'Faltan gmail_user o gmail_app_password' }, { status: 400 })
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(gmail_user).trim())) {
+        return NextResponse.json({ error: 'gmail_user no es un email válido' }, { status: 400 })
+      }
+      await saveGmailCredentials(orgId, String(gmail_user), String(gmail_app_password))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'test_gmail') {
+      try {
+        await testGmail(orgId)
+        return NextResponse.json({ ok: true })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return NextResponse.json({ ok: false, error: msg }, { status: 400 })
+      }
     }
 
     return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
