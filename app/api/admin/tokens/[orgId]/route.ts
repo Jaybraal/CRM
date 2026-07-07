@@ -37,13 +37,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
   }
   try {
     const snap = await adminDb.doc(`org_tokens/${orgId}`).get()
-    if (!snap.exists) return NextResponse.json({ wa_phone_number_id: '', wa_token: '', ig_token: '', wa_token_expires_at: null })
+    if (!snap.exists) return NextResponse.json({ wa_phone_number_id: '', wa_token: '', wa_token_expires_at: null })
     const data = snap.data()!
     const expiresAt = data.wa_token_expires_at?.toDate?.() || null
     return NextResponse.json({
       wa_phone_number_id: data.wa_phone_number_id || '',
       wa_token: data.wa_token || '',
-      ig_token: data.ig_token || '',
       wa_token_expires_at: expiresAt ? expiresAt.toISOString() : null,
     })
   } catch (e) {
@@ -59,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
   try {
-    const { wa_phone_number_id, wa_token, ig_token, updatedBy } = await req.json()
+    const { wa_phone_number_id, wa_token, updatedBy } = await req.json()
 
     const update: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
@@ -97,10 +96,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       if (phoneId) {
         await adminDb.doc(`whatsapp_configs/${phoneId}`).set({ orgId }, { merge: true })
       }
-    }
-
-    if (ig_token !== undefined) {
-      update.ig_token = ig_token?.trim() || ''
     }
 
     await adminDb.doc(`org_tokens/${orgId}`).set(update, { merge: true })

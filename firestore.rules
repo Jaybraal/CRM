@@ -103,6 +103,13 @@ service cloud.firestore {
         allow create, update, delete: if isManager(orgId) || isSuperAdmin();
       }
 
+      // Campañas de outreach (negocios/plantillas creados desde el CRM).
+      // Distinta de /campaigns (Broadcast Campaigns, difusión masiva).
+      match /outreach_campaigns/{campaignId} {
+        allow read: if isMember(orgId) || isSuperAdmin();
+        allow create, update, delete: if isManager(orgId) || isSuperAdmin();
+      }
+
       // Catálogo — lectura pública para la página /c/[orgId]
       match /catalog/{itemId} {
         allow read: if true;

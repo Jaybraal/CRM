@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       orgId: string
       clientPhone: string
       message: string
-      channel: 'whatsapp' | 'instagram'
+      channel: 'whatsapp'
     }
 
     if (!orgId || !clientPhone || !message) {
@@ -55,8 +55,6 @@ export async function POST(req: NextRequest) {
 
       console.log(`[bot/reply] Mensaje enviado a ${clientPhone} via WhatsApp`)
     }
-
-    // TODO: canal Instagram — llamar a Meta Graph API /messages
 
     return NextResponse.json({ ok: true })
   } catch (e) {

@@ -7,16 +7,17 @@ import { getOrganization, updateOrganization } from '@/lib/firestore'
 import type { Organization } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
-import InstagramConnect from '@/components/settings/InstagramConnect'
 import GmailConnect from '@/components/settings/GmailConnect'
-import { Building2, MessageCircle, Instagram, Bot, Eye, EyeOff, Clock, MapPin, HelpCircle, Calendar, Plus, Trash2, User, Mail } from 'lucide-react'
+import CampaignsManager from '@/components/settings/CampaignsManager'
+import { Building2, MessageCircle, Bot, Eye, EyeOff, Clock, MapPin, HelpCircle, Calendar, Plus, Trash2, User, Mail, Megaphone } from 'lucide-react'
 import { Card, SectionHeader, PageHeader, Spinner, inputClass, labelClass } from '@/components/ui/primitives'
 
-type Tab = 'negocio' | 'conexiones' | 'bot'
+type Tab = 'negocio' | 'conexiones' | 'campanas' | 'bot'
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
   { id: 'negocio',    label: 'Negocio',     icon: Building2 },
   { id: 'conexiones', label: 'Conexiones',  icon: MessageCircle },
+  { id: 'campanas',   label: 'Campañas',    icon: Megaphone },
   { id: 'bot',        label: 'Bot N8N',     icon: Bot },
 ]
 
@@ -349,14 +350,18 @@ export default function SettingsPage() {
             <BaileysQR orgId={profile?.orgId || ''} />
           </Card>
           <Card className="space-y-4">
-            <SectionHeader icon={Instagram} title="Instagram" desc="Conecta tu cuenta para recibir mensajes directos" />
-            <InstagramConnect />
-          </Card>
-          <Card className="space-y-4">
             <SectionHeader icon={Mail} title="Gmail / Email de captación" desc="Conecta tu Gmail para enviar campañas de outreach a prospectos" />
             <GmailConnect />
           </Card>
         </div>
+      )}
+
+      {/* ── CAMPAÑAS (negocios de outreach) ────────────────── */}
+      {activeTab === 'campanas' && (
+        <Card className="space-y-4">
+          <SectionHeader icon={Megaphone} title="Campañas" desc="Crea un negocio nuevo y su mensaje de outreach sin depender de código" />
+          <CampaignsManager />
+        </Card>
       )}
 
       {/* ── BOT N8N ─────────────────────────────────────── */}

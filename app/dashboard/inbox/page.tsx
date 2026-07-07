@@ -7,7 +7,7 @@ import ChatWindow from '@/components/chat/ChatWindow'
 import type { Client } from '@/types'
 import Link from 'next/link'
 import {
-  Search, Filter, Bot, Circle, Phone, Instagram,
+  Search, Filter, Bot, Circle, Phone,
   MessageCircle, Users, RefreshCw, Megaphone
 } from 'lucide-react'
 import { getChannel } from '@/lib/channel'
@@ -39,7 +39,7 @@ function formatTime(ts: any): string {
   return `${Math.floor(hrs / 24)}d`
 }
 
-type FilterTab = 'all' | 'unread' | 'whatsapp' | 'instagram'
+type FilterTab = 'all' | 'unread'
 
 export default function InboxPage() {
   const { profile } = useAuth()
@@ -69,25 +69,17 @@ export default function InboxPage() {
 
   const filtered = clients.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase())
-    const channel = getChannel(c)
-    const isChat = channel === 'whatsapp' || channel === 'instagram'
-    const matchTab =
-      tab === 'all'       ? isChat :
-      tab === 'unread'    ? isChat && (c.unreadCount ?? 0) > 0 :
-      tab === 'whatsapp'  ? channel === 'whatsapp' :
-      tab === 'instagram' ? channel === 'instagram' : true
+    const isChat = getChannel(c) === 'whatsapp'
+    const matchTab = tab === 'unread' ? isChat && (c.unreadCount ?? 0) > 0 : isChat
     return matchSearch && matchTab
   })
 
-  const isInstagram = (c: Client) => !!c.instagramId
-  const hasWA       = (c: Client) => !!(c.phone || c.whatsappPhone)
+  const hasWA = (c: Client) => !!(c.phone || c.whatsappPhone)
 
   const handleSelect = useCallback((c: Client) => setSelected(c), [])
 
   const TABS: { id: FilterTab; label: string }[] = [
-    { id: 'unread',    label: 'Sin leer'  },
-    { id: 'whatsapp',  label: 'WS'        },
-    { id: 'instagram', label: 'IG'        },
+    { id: 'unread', label: 'Sin leer' },
   ]
 
   return (
@@ -100,7 +92,7 @@ export default function InboxPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="text-lg font-bold text-[#0C1224] dark:text-[#E8ECF4]">Bandeja</h1>
-              <p className="text-xs text-[#9BA5B7]">WhatsApp · Instagram</p>
+              <p className="text-xs text-[#9BA5B7]">WhatsApp</p>
             </div>
             <div className="flex items-center gap-1">
               <Link
@@ -157,7 +149,6 @@ export default function InboxPage() {
             </div>
           ) : (
             filtered.map(client => {
-              const isIG   = isInstagram(client)
               const active = selected?.id === client.id
               const unread = client.unreadCount ?? 0
               return (
@@ -181,12 +172,8 @@ export default function InboxPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0 ${
-                        isIG
-                          ? 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                      }`}>
-                        {isIG ? 'IG' : 'WA'}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        WA
                       </span>
                       <p className={`text-xs truncate ${unread > 0 ? 'text-[#0C1224] dark:text-[#E8ECF4] font-medium' : 'text-[#9BA5B7]'}`}>
                         {client.lastMessage || 'Sin mensajes'}
@@ -209,11 +196,7 @@ export default function InboxPage() {
             <span className="flex items-center gap-1"><Users size={12} /> {filtered.length}</span>
             <span className="flex items-center gap-1 text-emerald-500">
               <Circle size={8} fill="currentColor" />
-              {filtered.filter(c => !isInstagram(c)).length} WA
-            </span>
-            <span className="flex items-center gap-1 text-fuchsia-500">
-              <Circle size={8} fill="currentColor" />
-              {filtered.filter(c => isInstagram(c)).length} IG
+              {filtered.length} WA
             </span>
           </div>
         </div>
@@ -227,7 +210,6 @@ export default function InboxPage() {
             client={selected}
             hasWhatsApp={hasWA(selected)}
             fitParent
-            channel={isInstagram(selected) ? 'instagram' : 'whatsapp'}
             onBack={() => setSelected(null)}
           />
         ) : (
@@ -242,9 +224,6 @@ export default function InboxPage() {
             <div className="flex items-center gap-3 mt-2 flex-wrap justify-center">
               <span className="flex items-center gap-2 text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full font-medium">
                 <Phone size={12} /> WhatsApp
-              </span>
-              <span className="flex items-center gap-2 text-xs bg-fuchsia-50 dark:bg-fuchsia-900/20 text-fuchsia-600 dark:text-fuchsia-400 px-3 py-1.5 rounded-full font-medium">
-                <Instagram size={12} /> Instagram
               </span>
               <span className="flex items-center gap-2 text-xs bg-[#F4F5F7] dark:bg-[#0D7A65]/10 text-[#0D7A65] dark:text-[#0D7A65] px-3 py-1.5 rounded-full font-medium">
                 <Bot size={12} /> Alex IA activo

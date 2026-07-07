@@ -5,20 +5,13 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 import { saveGmailCredentials, testGmail } from '@/lib/gmail'
 
-// GET /api/settings?orgId=X&action=get_ig_status
+// GET /api/settings?orgId=X&action=get_gmail_status
 export async function GET(req: NextRequest) {
   try {
     const orgId = req.nextUrl.searchParams.get('orgId')
     const action = req.nextUrl.searchParams.get('action')
 
     if (!orgId) return NextResponse.json({ error: 'orgId requerido' }, { status: 400 })
-
-    if (action === 'get_ig_status') {
-      const snap = await adminDb.doc(`org_tokens/${orgId}`).get()
-      const data = snap.exists ? snap.data() : null
-      const configured = !!(data?.ig_token && data?.ig_page_id && data.ig_token !== '' && data.ig_page_id !== '')
-      return NextResponse.json({ configured })
-    }
 
     if (action === 'get_gmail_status') {
       const snap = await adminDb.doc(`org_tokens/${orgId}`).get()
@@ -121,16 +114,6 @@ export async function POST(req: NextRequest) {
       const { days, openTime, closeTime, slotMinutes } = body
       await adminDb.doc(`organizations/${orgId}`).set(
         { settings: { businessHours: { days, openTime, closeTime, slotMinutes: Number(slotMinutes) || 60 } } },
-        { merge: true }
-      )
-      return NextResponse.json({ ok: true })
-    }
-
-    if (action === 'save_ig_tokens') {
-      const { ig_token, ig_page_id } = body
-      if (!ig_token || !ig_page_id) return NextResponse.json({ error: 'Faltan ig_token o ig_page_id' }, { status: 400 })
-      await adminDb.doc(`org_tokens/${orgId}`).set(
-        { ig_token: ig_token.trim(), ig_page_id: ig_page_id.trim(), updatedAt: FieldValue.serverTimestamp() },
         { merge: true }
       )
       return NextResponse.json({ ok: true })

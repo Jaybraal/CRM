@@ -9,20 +9,18 @@ import Modal from '@/components/ui/Modal'
 import ClientForm from '@/components/clients/ClientForm'
 import ChatWindow from '@/components/chat/ChatWindow'
 import EmailLeadPanel from '@/components/clients/EmailLeadPanel'
-import { Plus, Search, Download, Upload, MessageCircle, Instagram, Mail, Phone } from 'lucide-react'
+import { Plus, Search, Download, Upload, MessageCircle, Mail, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getChannel, type ClientChannel } from '@/lib/channel'
-import { getCampaign } from '@/lib/outreach/campaigns'
+import { listAllCampaigns, type CampaignOption } from '@/lib/outreach/clientCampaigns'
 
 const CHANNEL_TABS: { value: '' | ClientChannel; label: string; icon: typeof Phone }[] = [
   { value: '', label: 'Todos', icon: MessageCircle },
   { value: 'whatsapp', label: 'WhatsApp', icon: Phone },
-  { value: 'instagram', label: 'Instagram', icon: Instagram },
   { value: 'email', label: 'Email', icon: Mail },
 ]
 
 function ChannelIcon({ channel, size = 12 }: { channel: ClientChannel; size?: number }) {
-  if (channel === 'instagram') return <Instagram size={size} className="text-[#E1306C]" />
   if (channel === 'whatsapp') return <Phone size={size} className="text-[#25D366]" />
   if (channel === 'email') return <Mail size={size} className="text-[#3b82f6]" />
   return null
@@ -81,6 +79,7 @@ export default function ClientsPage() {
   const [importing, setImporting] = useState(false)
   const [visibleCount, setVisibleCount] = useState(50)
   const [bulkEnrolling, setBulkEnrolling] = useState(false)
+  const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([])
   const importRef = useRef<HTMLInputElement>(null)
 
   const [hasWhatsApp, setHasWhatsApp] = useState(true) // Usa Baileys — siempre activo
@@ -90,6 +89,7 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!profile?.orgId) { setLoading(false); return }
     getCategories(profile.orgId).then(setCategories)
+    listAllCampaigns(profile.orgId).then(setCampaignOptions).catch(() => {})
     getOrganization(profile.orgId).then(o => {
       if (o?.settings?.clientStatuses?.length) setClientStatuses(o.settings.clientStatuses)
       // Baileys siempre activo — setHasWhatsApp ya es true por defecto
@@ -130,6 +130,7 @@ export default function ClientsPage() {
   const emailProducts = Array.from(
     new Set(clients.filter(c => getChannel(c) === 'email').map(c => c.product || 'stod'))
   )
+  const campaignLabel = (id: string) => campaignOptions.find(c => c.id === id)?.businessLabel || id
 
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
@@ -264,7 +265,6 @@ export default function ClientsPage() {
     client: selectedClient,
     hasWhatsApp,
     fitParent: true as const,
-    channel: (selectedChannel === 'instagram' ? 'instagram' : 'whatsapp') as 'whatsapp' | 'instagram',
     statusOptions: clientStatuses,
     currentStatus: selectedClient.status,
     onStatusChange: async (newStatus: string) => {
@@ -349,7 +349,7 @@ export default function ClientsPage() {
               <button key={p} onClick={() => handleProductChange(p)}
                 className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                   filterProduct === p ? 'bg-slate-900 dark:bg-white text-white dark:text-[#0C1224]' : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D]'
-                }`}>{getCampaign(p).businessLabel}</button>
+                }`}>{campaignLabel(p)}</button>
             ))}
           </div>
         )}

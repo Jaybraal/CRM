@@ -74,7 +74,6 @@ interface Props {
   client: Client
   hasWhatsApp: boolean
   fitParent?: boolean
-  channel?: 'whatsapp' | 'instagram'
   statusOptions?: { value: string; label: string }[]
   currentStatus?: string
   onStatusChange?: (status: string) => void
@@ -82,8 +81,7 @@ interface Props {
   onBack?: () => void
 }
 
-export default function ChatWindow({ client, hasWhatsApp, fitParent, channel = 'whatsapp', statusOptions, currentStatus, onStatusChange, profileHref, onBack }: Props) {
-  const isInstagram = channel === 'instagram'
+export default function ChatWindow({ client, hasWhatsApp, fitParent, statusOptions, currentStatus, onStatusChange, profileHref, onBack }: Props) {
   const { profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
@@ -468,7 +466,7 @@ ${messages.map(m => {
         status: 'sending',
       })
 
-      if (!isInstagram && hasWhatsApp && client.whatsappPhone) {
+      if (hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
         if (photoUrl) {
           await fetch('/api/whatsapp/send', {
@@ -484,19 +482,6 @@ ${messages.map(m => {
             body: JSON.stringify({ orgId: profile.orgId, to: jid, text: caption, type: 'text' }),
           })
         }
-      } else if (isInstagram && client.instagramId) {
-        if (photoUrl) {
-          await fetch('/api/instagram/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: photoUrl }),
-          })
-        }
-        await fetch('/api/instagram/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: caption }),
-        })
       }
     } catch { toast.error('Error al enviar producto') }
     setSending(false)
@@ -532,33 +517,7 @@ ${messages.map(m => {
 
       const msgRef = msgId ? doc(db, `organizations/${profile.orgId}/clients/${client.id}/messages/${msgId}`) : null
 
-      if (!noteMode && isInstagram && client.instagramId) {
-        if (photoUrls.length > 0) {
-          for (const url of photoUrls) {
-            await fetch('/api/instagram/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, imageUrl: url }),
-            })
-          }
-        }
-        if (text.trim()) {
-          const igRes = await fetch('/api/instagram/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgId: profile.orgId, recipientId: client.instagramId, text: text.trim() }),
-          })
-          if (!igRes.ok) {
-            const igErr = await igRes.json().catch(() => ({}))
-            toast.error(igErr.error || 'Falló el envío por Instagram', { duration: 6000 })
-          } else {
-            const igData = await igRes.json().catch(() => ({}))
-            if (igData.msgId && msgRef) {
-              await updateDoc(msgRef, { instagramMsgId: igData.msgId, status: 'sent' })
-            }
-          }
-        }
-      } else if (!noteMode && hasWhatsApp && client.whatsappPhone) {
+      if (!noteMode && hasWhatsApp && client.whatsappPhone) {
         const jid = client.whatsappJid || client.whatsappPhone
         let mediaOk = photoUrls.length === 0
         let textOk = !text.trim()

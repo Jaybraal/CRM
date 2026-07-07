@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { Mail, Send, Square, Eye, ArrowLeft, Globe, MapPin, Inbox } from 'lucide-react'
 import { collection, query, orderBy, onSnapshot, updateDoc, doc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { getCampaign } from '@/lib/outreach/campaigns'
+import { listAllCampaigns } from '@/lib/outreach/clientCampaigns'
 
 interface OutreachPreviewEmail {
   step: number
@@ -43,7 +43,16 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
   const [preview, setPreview] = useState<OutreachPreviewEmail[] | null>(null)
   const [thread, setThread] = useState<EmailThreadItem[]>([])
   const outreachStatus = client.outreachStatus
-  const campaign = getCampaign(client.product)
+  const [businessLabel, setBusinessLabel] = useState(client.product || 'STOD')
+
+  useEffect(() => {
+    listAllCampaigns(orgId)
+      .then(list => {
+        const match = list.find(c => c.id === (client.product || 'stod'))
+        if (match) setBusinessLabel(match.businessLabel)
+      })
+      .catch(() => {})
+  }, [orgId, client.product])
 
   // Historial real de correos (enviados + respuestas) — en vivo.
   useEffect(() => {
@@ -57,7 +66,7 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
     return unsub
   }, [orgId, client.id])
 
-  // Al abrir el lead, marcar como leído (mismo patrón que WhatsApp/Instagram).
+  // Al abrir el lead, marcar como leído (mismo patrón que WhatsApp).
   useEffect(() => {
     if ((client.unreadCount ?? 0) > 0) {
       updateDoc(doc(db, `organizations/${orgId}/clients/${client.id}`), { unreadCount: 0 }).catch(() => {})
@@ -88,7 +97,7 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F4F5F7] dark:bg-[#0F1829]">
-      {/* Header — deliberadamente distinto al de WhatsApp/Instagram: esto no es un chat en vivo */}
+      {/* Header — deliberadamente distinto al de WhatsApp: esto no es un chat en vivo */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#0F1829] border-b border-[#E3E6EC] dark:border-[#1A2540]">
         {onBack && (
           <button onClick={onBack} className="lg:hidden p-1 text-[#68748D]"><ArrowLeft size={18} /></button>
@@ -102,7 +111,7 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
         </div>
         <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-            {campaign.businessLabel}
+            {businessLabel}
           </span>
           {outreachStatus && (
             <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
@@ -116,7 +125,7 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Ficha del lead */}
         <div className="bg-white dark:bg-[#0F1829] rounded-lg border border-[#E3E6EC] dark:border-[#1A2540] p-4 space-y-2">
-          <p className="text-xs font-bold uppercase text-[#9BA5B7] mb-1">Lead de email — captación {campaign.businessLabel}</p>
+          <p className="text-xs font-bold uppercase text-[#9BA5B7] mb-1">Lead de email — captación {businessLabel}</p>
           {client.specialty && <p className="text-sm text-[#0C1224] dark:text-[#E8ECF4]">{client.specialty}</p>}
           {client.city && (
             <p className="text-sm text-[#68748D] flex items-center gap-1.5"><MapPin size={13} /> {client.city}{client.country ? `, ${client.country}` : ''}</p>
@@ -132,7 +141,7 @@ export default function EmailLeadPanel({ client, orgId, onBack }: Props) {
         <div className="flex flex-wrap gap-2">
           <button onClick={() => call('preview')} disabled={loading !== null}
             className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-white dark:bg-[#1A2540] border border-[#E3E6EC] dark:border-[#2A3550] text-[#0C1224] dark:text-[#E8ECF4] hover:bg-[#F4F5F7] disabled:opacity-50">
-            <Eye size={14} /> {loading === 'preview' ? 'Cargando...' : `Ver secuencia (${campaign.steps.length} correos)`}
+            <Eye size={14} /> {loading === 'preview' ? 'Cargando...' : 'Ver secuencia (4 correos)'}
           </button>
           {outreachStatus !== 'enrolled' ? (
             <button onClick={() => call('enroll')} disabled={loading !== null}

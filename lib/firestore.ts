@@ -4,7 +4,7 @@ import {
   Timestamp, onSnapshot, limit
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, AppointmentRequest, OrgStats } from '@/types'
+import type { Organization, AppUser, Client, Category, CatalogItem, Deal, Task, Message, AgentGoal, Appointment, AppointmentRequest, OrgStats, Campaign } from '@/types'
 
 // --- Organizations ---
 export async function updateOrganization(orgId: string, data: { name?: string; plan?: Organization['plan']; settings?: Partial<Organization['settings']>; ownerId?: string }) {
@@ -120,6 +120,44 @@ export async function ensureEliminadosCategory(orgId: string): Promise<string> {
     createdAt: serverTimestamp(),
   })
   return ref.id
+}
+
+// --- Outreach Campaigns (negocios de outreach creados desde el CRM) ---
+// Nota: distinto de "Broadcast Campaigns" (más abajo, difusión masiva) —
+// colección separada `outreach_campaigns` para no chocar con esa.
+function slugify(text: string): string {
+  return text
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    .slice(0, 40) || 'negocio'
+}
+
+export async function getOutreachCampaigns(orgId: string) {
+  const snap = await getDocs(collection(db, 'organizations', orgId, 'outreach_campaigns'))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as Campaign[]
+}
+
+export async function createOutreachCampaign(
+  orgId: string,
+  data: Omit<Campaign, 'id' | 'orgId' | 'createdAt' | 'updatedAt'>
+): Promise<string> {
+  let id = slugify(data.businessLabel)
+  const existing = await getDoc(doc(db, 'organizations', orgId, 'outreach_campaigns', id))
+  if (existing.exists()) id = `${id}-${Date.now().toString(36)}`
+  await setDoc(doc(db, 'organizations', orgId, 'outreach_campaigns', id), {
+    ...data, orgId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  })
+  return id
+}
+
+export async function updateOutreachCampaign(orgId: string, campaignId: string, data: Partial<Campaign>) {
+  await updateDoc(doc(db, 'organizations', orgId, 'outreach_campaigns', campaignId), {
+    ...data, updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteOutreachCampaign(orgId: string, campaignId: string) {
+  await deleteDoc(doc(db, 'organizations', orgId, 'outreach_campaigns', campaignId))
 }
 
 // --- Clients ---

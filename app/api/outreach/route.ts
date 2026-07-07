@@ -6,7 +6,7 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 import { renderTemplate } from '@/lib/outreach/templates'
 import { personalizeObservation } from '@/lib/outreach/personalize'
-import { getCampaign } from '@/lib/outreach/campaigns'
+import { resolveCampaign } from '@/lib/outreach/resolveCampaign'
 import type { OutreachLanguage, LeadSignals } from '@/types'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -34,8 +34,8 @@ async function loadClient(orgId: string, clientId: string): Promise<ClientLite |
   }
 }
 
-async function renderSequence(client: ClientLite) {
-  const campaign = getCampaign(client.product)
+async function renderSequence(orgId: string, client: ClientLite) {
+  const campaign = await resolveCampaign(orgId, client.product)
   const observation = await personalizeObservation({
     clinicName: client.name,
     language: client.language,
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (action === 'preview') {
       const client = await loadClient(orgId, clientId)
       if (!client) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
-      const emails = await renderSequence(client)
+      const emails = await renderSequence(orgId, client)
       return NextResponse.json({ ok: true, clinic: client.name, emails })
     }
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Este lead ya tiene una secuencia activa' }, { status: 409 })
       }
 
-      const emails = await renderSequence(client)
+      const emails = await renderSequence(orgId, client)
       const now = Date.now()
       const batch = adminDb.batch()
       for (const e of emails) {

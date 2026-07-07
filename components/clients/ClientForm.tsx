@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient, updateClient } from '@/lib/firestore'
 import PhotoUploader from '@/components/ui/PhotoUploader'
@@ -8,7 +8,7 @@ import type { Client, Category, ClientStatus } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import { X } from 'lucide-react'
-import { CAMPAIGNS } from '@/lib/outreach/campaigns'
+import { listAllCampaigns, type CampaignOption } from '@/lib/outreach/clientCampaigns'
 
 interface Props {
   categories: Category[]
@@ -39,6 +39,12 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
     website: existing?.website || '',
     language: existing?.language || 'es' as 'es' | 'en' | 'de',
   })
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
+
+  useEffect(() => {
+    if (!profile?.orgId) return
+    listAllCampaigns(profile.orgId).then(setCampaigns).catch(() => {})
+  }, [profile?.orgId])
 
   const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }))
 
@@ -149,7 +155,7 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
             <label className={labelClass}>Negocio / campaña</label>
             <select value={form.product} onChange={e => set('product', e.target.value)} className={inputClass}>
               <option value="">Ninguno (contacto normal)</option>
-              {Object.values(CAMPAIGNS).map(c => (
+              {campaigns.map(c => (
                 <option key={c.id} value={c.id}>{c.businessLabel}</option>
               ))}
             </select>

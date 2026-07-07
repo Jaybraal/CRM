@@ -286,7 +286,7 @@ export default function AdminPage() {
     orgName: '', industry: '', plan: 'trial' as Organization['plan'],
     ownerName: '', ownerEmail: '', ownerPassword: '',
     durationDays: 30,
-    waPhoneNumberId: '', waToken: '', igToken: '',
+    waPhoneNumberId: '', waToken: '',
     websiteUrl: '',
   })
 
@@ -294,7 +294,7 @@ export default function AdminPage() {
   const [editOrg, setEditOrg] = useState<Organization | null>(null)
   const [editForm, setEditForm] = useState({
     name: '', industry: '', plan: 'trial' as Organization['plan'], durationDays: 0,
-    waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: '',
+    waPhoneNumberId: '', waToken: '', websiteUrl: '',
   })
   const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
   const [loadingTokens, setLoadingTokens] = useState(false)
@@ -365,14 +365,13 @@ export default function AdminPage() {
       })
 
       // Guardar tokens encriptados si se proporcionaron
-      if (createForm.waToken || createForm.igToken) {
+      if (createForm.waToken) {
         const tokenRes = await fetch(`/api/admin/tokens/${orgData.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
           body: JSON.stringify({
             wa_phone_number_id: createForm.waPhoneNumberId,
             wa_token: createForm.waToken,
-            ig_token: createForm.igToken,
             updatedBy: user?.uid,
           }),
         })
@@ -384,7 +383,7 @@ export default function AdminPage() {
 
       toast.success(`"${createForm.orgName}" creada`)
       setShowCreate(false)
-      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30, waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: '' })
+      setCreateForm({ orgName: '', industry: '', plan: 'trial', ownerName: '', ownerEmail: '', ownerPassword: '', durationDays: 30, waPhoneNumberId: '', waToken: '', websiteUrl: '' })
       load()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
@@ -403,7 +402,7 @@ export default function AdminPage() {
       durationDays = Math.max(1, days)
     }
     setEditOrg(org)
-    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays, waPhoneNumberId: '', waToken: '', igToken: '', websiteUrl: org.settings?.websiteUrl || '' })
+    setEditForm({ name: org.name, industry: org.settings?.industry || '', plan: org.plan, durationDays, waPhoneNumberId: '', waToken: '', websiteUrl: org.settings?.websiteUrl || '' })
 
     // Cargar tokens existentes
     setLoadingTokens(true)
@@ -413,7 +412,7 @@ export default function AdminPage() {
       })
       if (res.ok) {
         const tokens = await res.json()
-        setEditForm(f => ({ ...f, waPhoneNumberId: tokens.wa_phone_number_id || '', waToken: tokens.wa_token || '', igToken: tokens.ig_token || '' }))
+        setEditForm(f => ({ ...f, waPhoneNumberId: tokens.wa_phone_number_id || '', waToken: tokens.wa_token || '' }))
         setTokenExpiresAt(tokens.wa_token_expires_at || null)
       }
     } finally {
@@ -447,7 +446,6 @@ export default function AdminPage() {
         body: JSON.stringify({
           wa_phone_number_id: editForm.waPhoneNumberId,
           wa_token: editForm.waToken,
-          ig_token: editForm.igToken,
           updatedBy: user?.uid,
         }),
       })
@@ -608,11 +606,6 @@ export default function AdminPage() {
                 <input type="password" value={createForm.waToken} onChange={e => setCreateForm(f => ({ ...f, waToken: e.target.value }))}
                   className={inputCls} placeholder="Token de acceso" />
               </div>
-              <div className="space-y-2">
-                <p className="text-[11px] text-gray-500 font-medium">Instagram</p>
-                <input type="password" value={createForm.igToken} onChange={e => setCreateForm(f => ({ ...f, igToken: e.target.value }))}
-                  className={inputCls} placeholder="Token de acceso IG" />
-              </div>
             </div>
             <button type="submit" disabled={creating}
               className="w-full bg-[#0C1224] hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-md transition-colors">
@@ -681,12 +674,6 @@ export default function AdminPage() {
                 <input type="password" autoComplete="new-password" value={editForm.waToken}
                   onChange={e => setEditForm(f => ({ ...f, waToken: e.target.value }))}
                   className={inputCls} placeholder="Token de acceso (se canjea por 60 días auto.)" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-[11px] text-gray-400 font-medium">Instagram</p>
-                <input type="password" autoComplete="new-password" value={editForm.igToken}
-                  onChange={e => setEditForm(f => ({ ...f, igToken: e.target.value }))}
-                  className={inputCls} placeholder="Token de acceso IG" />
               </div>
             </div>
 

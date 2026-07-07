@@ -122,10 +122,9 @@ export interface Message {
   audioDuration?: number   // seconds — nota de voz grabada desde el CRM
   senderId: string
   senderName: string
-  source: 'internal' | 'whatsapp' | 'instagram'
+  source: 'internal' | 'whatsapp'
   status?: MessageStatus   // solo mensajes enviados por el agente
   whatsappMsgId?: string   // ID del mensaje en Baileys
-  instagramMsgId?: string  // ID del mensaje en Instagram
   isNote?: boolean         // nota interna, no se envía por WA
   replyTo?: {
     id: string
@@ -170,7 +169,6 @@ export interface Client {
   whatsappPhone?: string
   whatsappJid?: string
   isLid?: boolean
-  instagramId?: string     // Instagram user ID (IGSID)
   categoryId?: string
   tags: string[]
   photos: string[]
@@ -209,6 +207,25 @@ export interface LeadSignals {
   hasSSL?: boolean
   websiteLooksOld?: boolean
   googleRating?: number
+}
+
+export interface CampaignTemplateStep {
+  subject: string
+  body: string
+}
+
+/**
+ * Un negocio/campaña de outreach creado desde el CRM (Settings → Campañas).
+ * `client.product` referencia el `id` de este documento.
+ */
+export interface Campaign {
+  id: string
+  orgId: string
+  businessLabel: string
+  industryLabel: string
+  templates: Partial<Record<0 | 5 | 10 | 20, CampaignTemplateStep>>
+  createdAt: Date
+  updatedAt: Date
 }
 
 /** Un paso de la secuencia de outreach por email (día 0/5/10/20). */
@@ -417,6 +434,6 @@ export interface BotLead {
   stage?: string
   appointmentAt?: string
   createdAt: Date
-  channel: 'whatsapp' | 'instagram'
+  channel: 'whatsapp'
   source: 'bot'
 }

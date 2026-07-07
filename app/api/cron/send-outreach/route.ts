@@ -4,7 +4,7 @@ import { adminDb, adminTimestamp } from '@/lib/firebase-admin'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendGmail } from '@/lib/gmail'
-import { getCampaign } from '@/lib/outreach/campaigns'
+import { resolveCampaign } from '@/lib/outreach/resolveCampaign'
 
 // GET /api/cron/send-outreach — Vercel Cron (recomendado: 1 vez al día por la mañana).
 // Envía los pasos de outreach (día 0/5/10/20) cuyo sendAt ya venció, vía Gmail.
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
           continue
         }
 
-        const campaign = getCampaign(client?.product as string | undefined)
+        const campaign = await resolveCampaign(orgId, client?.product as string | undefined)
         const fromName = `Branel — ${campaign.businessLabel}`
 
         const { messageId } = await sendGmail({
