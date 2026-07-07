@@ -4,8 +4,9 @@ import { adminDb, adminTimestamp } from '@/lib/firebase-admin'
 import { requireSuperAdminJWT } from '@/lib/admin-auth'
 import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
-import { renderTemplate, OUTREACH_STEPS, type OutreachStep } from '@/lib/outreach/templates'
+import { renderTemplate } from '@/lib/outreach/templates'
 import { personalizeObservation } from '@/lib/outreach/personalize'
+import { getCampaign } from '@/lib/outreach/campaigns'
 import type { OutreachLanguage, LeadSignals } from '@/types'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -15,6 +16,7 @@ interface ClientLite {
   language: OutreachLanguage
   website?: string
   signals?: LeadSignals
+  product?: string
 }
 
 async function loadClient(orgId: string, clientId: string): Promise<ClientLite | null> {
@@ -22,22 +24,25 @@ async function loadClient(orgId: string, clientId: string): Promise<ClientLite |
   if (!snap.exists) return null
   const d = snap.data() || {}
   return {
-    name: (d.name as string) || 'la clínica',
+    name: (d.name as string) || 'el negocio',
     language: ((d.language as OutreachLanguage) || 'es'),
     website: d.website as string | undefined,
     signals: d.signals as LeadSignals | undefined,
+    product: d.product as string | undefined,
   }
 }
 
 async function renderSequence(client: ClientLite) {
+  const campaign = getCampaign(client.product)
   const observation = await personalizeObservation({
     clinicName: client.name,
     language: client.language,
     website: client.website,
     signals: client.signals,
+    industryLabel: campaign.industryLabel,
   })
-  return OUTREACH_STEPS.map(step => {
-    const { subject, body } = renderTemplate(client.language, step as OutreachStep, {
+  return campaign.steps.map(step => {
+    const { subject, body } = renderTemplate(campaign.templates, client.language, step, {
       clinicName: client.name,
       observation,
     })

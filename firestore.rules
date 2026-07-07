@@ -82,6 +82,19 @@ service cloud.firestore {
           allow update: if isMember(orgId) || isSuperAdmin();
           allow delete: if false;
         }
+
+        // Historial de correos de outreach (enviados + respuestas capturadas por IMAP).
+        // Solo el Admin SDK (cron / API /api/outreach) escribe aquí.
+        match /emails/{emailId} {
+          allow read: if isMember(orgId) || isSuperAdmin();
+          allow write: if false;
+        }
+
+        // Secuencia de outreach programada (día 0/5/10/20). Solo Admin SDK.
+        match /outreach_emails/{stepId} {
+          allow read: if isMember(orgId) || isSuperAdmin();
+          allow write: if false;
+        }
       }
 
       // Categorías

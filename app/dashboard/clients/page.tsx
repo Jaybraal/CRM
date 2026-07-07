@@ -8,8 +8,25 @@ import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import Modal from '@/components/ui/Modal'
 import ClientForm from '@/components/clients/ClientForm'
 import ChatWindow from '@/components/chat/ChatWindow'
-import { Plus, Search, Download, Upload, MessageCircle } from 'lucide-react'
+import EmailLeadPanel from '@/components/clients/EmailLeadPanel'
+import { Plus, Search, Download, Upload, MessageCircle, Instagram, Mail, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getChannel, type ClientChannel } from '@/lib/channel'
+import { getCampaign } from '@/lib/outreach/campaigns'
+
+const CHANNEL_TABS: { value: '' | ClientChannel; label: string; icon: typeof Phone }[] = [
+  { value: '', label: 'Todos', icon: MessageCircle },
+  { value: 'whatsapp', label: 'WhatsApp', icon: Phone },
+  { value: 'instagram', label: 'Instagram', icon: Instagram },
+  { value: 'email', label: 'Email', icon: Mail },
+]
+
+function ChannelIcon({ channel, size = 12 }: { channel: ClientChannel; size?: number }) {
+  if (channel === 'instagram') return <Instagram size={size} className="text-[#E1306C]" />
+  if (channel === 'whatsapp') return <Phone size={size} className="text-[#25D366]" />
+  if (channel === 'email') return <Mail size={size} className="text-[#3b82f6]" />
+  return null
+}
 
 const STATUS_COLORS: Record<string, string> = {
   lead: '#9ca3af',
@@ -42,8 +59,13 @@ function getDisplayPhone(c: Client): string | null {
   return formatPhone(c.phone) || formatPhone(c.whatsappPhone)
 }
 
+function getIdentityLine(c: Client): string | null {
+  if (getChannel(c) === 'email') return c.email || null
+  return getDisplayPhone(c)
+}
+
 export default function ClientsPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [agents, setAgents] = useState<AppUser[]>([])
@@ -51,11 +73,14 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterChannel, setFilterChannel] = useState<'' | ClientChannel>('')
+  const [filterProduct, setFilterProduct] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [importing, setImporting] = useState(false)
   const [visibleCount, setVisibleCount] = useState(50)
+  const [bulkEnrolling, setBulkEnrolling] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
 
   const [hasWhatsApp, setHasWhatsApp] = useState(true) // Usa Baileys — siempre activo
@@ -96,7 +121,15 @@ export default function ClientsPage() {
 
   // Reset visible count when filter changes
   const handleFilterChange = (val: string) => { setFilterStatus(val); setVisibleCount(50) }
+  const handleChannelChange = (val: '' | ClientChannel) => { setFilterChannel(val); setFilterProduct(''); setVisibleCount(50) }
+  const handleProductChange = (val: string) => { setFilterProduct(val); setVisibleCount(50) }
   const handleSearchChange = (val: string) => { setSearch(val); setVisibleCount(50) }
+
+  // Negocios/campañas presentes entre los leads de email — se calcula solo,
+  // no requiere configurar nada a mano al agregar un negocio nuevo.
+  const emailProducts = Array.from(
+    new Set(clients.filter(c => getChannel(c) === 'email').map(c => c.product || 'stod'))
+  )
 
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
@@ -109,7 +142,9 @@ export default function ClientsPage() {
       : filterStatus === '__unread__'
         ? (c.unreadCount ?? 0) > 0
         : c.status === filterStatus
-    return matchSearch && matchStatus
+    const matchChannel = !filterChannel || getChannel(c) === filterChannel
+    const matchProduct = !filterProduct || (c.product || 'stod') === filterProduct
+    return matchSearch && matchStatus && matchChannel && matchProduct
   })
 
   const formatLastTime = (v: unknown): string => {
@@ -177,10 +212,54 @@ export default function ClientsPage() {
     }
   }
 
-  const chatWindowProps = selectedClient ? {
+  // Leads de email pendientes de activar: excluye ya-enrolados y los marcados
+  // como "alianza" (ej. CDO) que requieren un mensaje distinto, hecho a mano.
+  // Respeta el filtro de negocio activo — nunca mezcla campañas de negocios distintos.
+  const pendingEmailLeads = clients.filter(c =>
+    getChannel(c) === 'email' &&
+    c.outreachStatus !== 'enrolled' &&
+    !(c.notes || '').toLowerCase().includes('alianza') &&
+    (!filterProduct || (c.product || 'stod') === filterProduct)
+  )
+
+  const bulkEnrollPending = async () => {
+    if (!profile?.orgId || !user || pendingEmailLeads.length === 0) return
+    const confirmed = window.confirm(
+      `¿Activar la secuencia de outreach para ${pendingEmailLeads.length} leads? Se enviará el correo del día 0 en el próximo envío programado.`
+    )
+    if (!confirmed) return
+
+    setBulkEnrolling(true)
+    let ok = 0, failed = 0
+    try {
+      const token = await user.getIdToken()
+      for (const lead of pendingEmailLeads) {
+        try {
+          const res = await fetch('/api/outreach', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'enroll', orgId: profile.orgId, clientId: lead.id }),
+          })
+          if (res.ok) ok++
+          else failed++
+        } catch {
+          failed++
+        }
+      }
+      toast.success(`Secuencia activada: ${ok} leads${failed > 0 ? `, ${failed} fallaron` : ''}`)
+    } finally {
+      setBulkEnrolling(false)
+    }
+  }
+
+  const selectedChannel = selectedClient ? getChannel(selectedClient) : null
+  const isEmailLead = selectedChannel === 'email'
+
+  const chatWindowProps = selectedClient && !isEmailLead ? {
     client: selectedClient,
     hasWhatsApp,
     fitParent: true as const,
+    channel: (selectedChannel === 'instagram' ? 'instagram' : 'whatsapp') as 'whatsapp' | 'instagram',
     statusOptions: clientStatuses,
     currentStatus: selectedClient.status,
     onStatusChange: async (newStatus: string) => {
@@ -239,6 +318,53 @@ export default function ClientsPage() {
           </div>
         </div>
 
+        {/* Channel filter tabs */}
+        <div className="flex gap-1.5 px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] overflow-x-auto scrollbar-none">
+          {CHANNEL_TABS.map(t => (
+            <button key={t.value} onClick={() => handleChannelChange(t.value)}
+              className={`whitespace-nowrap flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${
+                filterChannel === t.value
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-[#0C1224]'
+                  : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D] dark:text-[#9BA5B7] hover:bg-[#E3E6EC] dark:hover:bg-[#1A2540]'
+              }`}>
+              <t.icon size={12} />
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Negocio/campaña — aparece solo cuando hay más de uno, para no generar ruido con un solo negocio activo */}
+        {filterChannel === 'email' && emailProducts.length > 1 && (
+          <div className="flex gap-1.5 px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] overflow-x-auto scrollbar-none">
+            <button onClick={() => handleProductChange('')}
+              className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                filterProduct === '' ? 'bg-slate-900 dark:bg-white text-white dark:text-[#0C1224]' : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D]'
+              }`}>Todos los negocios</button>
+            {emailProducts.map(p => (
+              <button key={p} onClick={() => handleProductChange(p)}
+                className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                  filterProduct === p ? 'bg-slate-900 dark:bg-white text-white dark:text-[#0C1224]' : 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#68748D]'
+                }`}>{getCampaign(p).businessLabel}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Activación masiva de secuencia — solo visible en la pestaña Email.
+            Si hay más de un negocio, exige elegir uno específico primero (nunca mezcla campañas). */}
+        {filterChannel === 'email' && pendingEmailLeads.length > 0 && (emailProducts.length <= 1 || filterProduct !== '') && (
+          <div className="px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] bg-blue-50 dark:bg-blue-900/10">
+            <button onClick={bulkEnrollPending} disabled={bulkEnrolling}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold bg-[#0D7A65] text-white hover:bg-[#0a5f4f] disabled:opacity-50">
+              {bulkEnrolling ? 'Activando...' : `Activar secuencia para los ${pendingEmailLeads.length} leads pendientes`}
+            </button>
+          </div>
+        )}
+        {filterChannel === 'email' && emailProducts.length > 1 && filterProduct === '' && (
+          <div className="px-3 py-2 text-[11px] text-[#9BA5B7] border-b border-[#E3E6EC] dark:border-[#1A2540]">
+            Elige un negocio arriba para activar su secuencia (no se mezclan campañas).
+          </div>
+        )}
+
         {/* Status filter tabs */}
         <div className="flex gap-1.5 px-3 py-2 border-b border-[#E3E6EC] dark:border-[#1A2540] overflow-x-auto scrollbar-none">
           {[{ value: '', label: 'Todos' }, { value: '__unread__', label: '● No leídos' }, ...clientStatuses].map(s => (
@@ -284,7 +410,10 @@ export default function ClientsPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-[#0C1224] dark:text-[#E8ECF4]' : 'text-[#0C1224] dark:text-[#9BA5B7]'}`}>{client.name}</span>
+                    <span className={`flex items-center gap-1 font-semibold text-sm truncate ${(client.unreadCount ?? 0) > 0 ? 'text-[#0C1224] dark:text-[#E8ECF4]' : 'text-[#0C1224] dark:text-[#9BA5B7]'}`}>
+                      <ChannelIcon channel={getChannel(client)} />
+                      <span className="truncate">{client.name}</span>
+                    </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {(client.unreadCount ?? 0) > 0 ? (
                         <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
@@ -297,12 +426,12 @@ export default function ClientsPage() {
                   </div>
                   {/* Preview último mensaje (estilo inbox) */}
                   <p className={`text-xs truncate mt-0.5 ${(client.unreadCount ?? 0) > 0 ? 'text-[#0C1224] dark:text-[#9BA5B7] font-medium' : 'text-[#9BA5B7] dark:text-[#68748D]'}`}>
-                    {client.lastMessage || getDisplayPhone(client) || (client.isLid ? 'Número privado' : 'Sin teléfono')}
+                    {client.lastMessage || getIdentityLine(client) || (client.isLid ? 'Número privado' : 'Sin contacto')}
                   </p>
-                  {/* Teléfono secundario solo si hay lastMessage */}
+                  {/* Identidad secundaria (email o teléfono) solo si hay lastMessage */}
                   {client.lastMessage && (
                     <p className="text-[10px] text-[#9BA5B7] dark:text-[#68748D] truncate mt-0.5">
-                      {getDisplayPhone(client) || (client.isLid ? 'Número privado' : '')}
+                      {getIdentityLine(client) || (client.isLid ? 'Número privado' : '')}
                     </p>
                   )}
                   {profile?.role !== 'agent' && client.assignedTo && agents.length > 0 && (
@@ -328,7 +457,9 @@ export default function ClientsPage() {
 
       {/* ── Right panel: desktop only ────────────────────────────── */}
       <div className="hidden lg:flex flex-col flex-1 min-w-0 min-h-0">
-        {chatWindowProps ? (
+        {isEmailLead && selectedClient && profile?.orgId ? (
+          <EmailLeadPanel client={selectedClient} orgId={profile.orgId} />
+        ) : chatWindowProps ? (
           <div className="flex-1 min-h-0 overflow-hidden">
             <ChatWindow {...chatWindowProps} />
           </div>
@@ -348,7 +479,12 @@ export default function ClientsPage() {
       </div>
 
       {/* ── Overlay móvil: pantalla completa al abrir un chat ───── */}
-      {showMobileChat && chatWindowProps && (
+      {showMobileChat && isEmailLead && selectedClient && profile?.orgId && (
+        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col">
+          <EmailLeadPanel client={selectedClient} orgId={profile.orgId} onBack={() => setShowMobileChat(false)} />
+        </div>
+      )}
+      {showMobileChat && !isEmailLead && chatWindowProps && (
         <div className="lg:hidden fixed inset-0 z-[60] flex flex-col">
           <ChatWindow {...chatWindowProps} />
         </div>

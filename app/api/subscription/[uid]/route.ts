@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+import { getAdminDb } from '@/lib/firebase-admin';
 
 export async function GET(
   req: NextRequest,
@@ -12,7 +8,7 @@ export async function GET(
   try {
     const { uid } = await params;
 
-    const db = admin.firestore();
+    const db = getAdminDb();
     const doc = await db.collection('subscriptions').doc(uid).get();
 
     if (!doc.exists) {

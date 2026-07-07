@@ -10,6 +10,7 @@ import {
   Search, Filter, Bot, Circle, Phone, Instagram,
   MessageCircle, Users, RefreshCw, Megaphone
 } from 'lucide-react'
+import { getChannel } from '@/lib/channel'
 
 const AVATAR_COLORS = ['#25D366','#128C7E','#075E54','#3b82f6','#7c3aed','#db2777','#d97706']
 
@@ -68,11 +69,13 @@ export default function InboxPage() {
 
   const filtered = clients.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase())
+    const channel = getChannel(c)
+    const isChat = channel === 'whatsapp' || channel === 'instagram'
     const matchTab =
-      tab === 'all'       ? true :
-      tab === 'unread'    ? (c.unreadCount ?? 0) > 0 :
-      tab === 'whatsapp'  ? !c.instagramId :
-      tab === 'instagram' ? !!c.instagramId : true
+      tab === 'all'       ? isChat :
+      tab === 'unread'    ? isChat && (c.unreadCount ?? 0) > 0 :
+      tab === 'whatsapp'  ? channel === 'whatsapp' :
+      tab === 'instagram' ? channel === 'instagram' : true
     return matchSearch && matchTab
   })
 

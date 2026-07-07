@@ -13,6 +13,7 @@ interface PersonalizeInput {
   language: OutreachLanguage
   website?: string
   signals?: LeadSignals
+  industryLabel?: string  // rubro en lenguaje natural, ej. "clínica dental", "tienda de perfumes de nicho"
 }
 
 /**
@@ -31,9 +32,10 @@ export async function personalizeObservation(input: PersonalizeInput): Promise<s
   if (!signalLines) return '' // sin datos reales → no inventar
 
   const lang = LANG_NAME[input.language]
-  const prompt = `Eres un asistente que redacta UNA sola frase de observación para un correo de ventas B2B a una clínica dental, en ${lang}.
+  const industry = input.industryLabel || 'clínica dental'
+  const prompt = `Eres un asistente que redacta UNA sola frase de observación para un correo de ventas B2B a un negocio del rubro "${industry}", en ${lang}.
 
-Clínica: ${input.clinicName}
+Negocio: ${input.clinicName}
 ${input.website ? `Web: ${input.website}` : ''}
 Señales reales detectadas:
 ${signalLines}

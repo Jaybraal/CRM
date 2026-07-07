@@ -196,6 +196,8 @@ export interface Client {
   enrichmentSummary?: string               // resumen de la IA sobre la clínica
   signals?: LeadSignals                    // señales detectadas del sitio
   discoverySource?: 'manual' | 'places' | 'directory'
+  outreachStatus?: 'enrolled' | 'stopped'
+  repliedAt?: Date
 }
 
 export type OutreachLanguage = 'es' | 'en' | 'de'

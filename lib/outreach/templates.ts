@@ -14,10 +14,10 @@ export interface OutreachTemplate {
  * recepcionistas gastando ~4h/día confirmando citas por teléfono.
  *
  * Placeholders:
- *   {{clinicName}}   — nombre de la clínica
+ *   {{clinicName}}   — nombre de la clínica (o negocio, según la campaña)
  *   {{observation}}  — observación concreta (enrichment). Puede quedar vacío.
  */
-const TEMPLATES: Record<OutreachLanguage, Record<OutreachStep, OutreachTemplate>> = {
+export const STOD_TEMPLATES: Record<OutreachLanguage, Record<OutreachStep, OutreachTemplate>> = {
   es: {
     0: {
       subject: 'Menos citas perdidas en {{clinicName}}',
@@ -30,7 +30,7 @@ Desarrollamos STOD, un sistema para clínicas dentales que gestiona agenda, hist
 ¿Te vendría bien una demostración de 15 minutos esta semana?
 
 Un saludo,
-Marck`,
+Branel`,
     },
     5: {
       subject: 'Re: Menos citas perdidas en {{clinicName}}',
@@ -41,7 +41,7 @@ Solo para retomar mi correo anterior. Sé que el día a día en la clínica no d
 Si me dices un día, coordino una demo corta adaptada a {{clinicName}}.
 
 Un saludo,
-Marck`,
+Branel`,
     },
     10: {
       subject: 'Cómo una clínica recuperó horas de recepción',
@@ -54,7 +54,7 @@ STOD hace eso y además centraliza pacientes, historial y cobros en un solo luga
 ¿Lo vemos en 15 minutos?
 
 Un saludo,
-Marck`,
+Branel`,
     },
     20: {
       subject: 'Cierro el tema por ahora',
@@ -65,7 +65,7 @@ No quiero insistir de más. Cierro este hilo por ahora, pero si en algún moment
 Les dejo mi contacto para cuando sea buen momento.
 
 Un saludo,
-Marck`,
+Branel`,
     },
   },
   en: {
@@ -80,7 +80,7 @@ We built STOD, a system for dental clinics that manages scheduling, records and 
 Would a 15-minute demo this week work for you?
 
 Best,
-Marck`,
+Branel`,
     },
     5: {
       subject: 'Re: Fewer missed appointments at {{clinicName}}',
@@ -91,7 +91,7 @@ Just following up on my previous note. I know clinic days are relentless — tha
 Tell me a day and I'll set up a short demo tailored to {{clinicName}}.
 
 Best,
-Marck`,
+Branel`,
     },
     10: {
       subject: 'How one clinic got its front-desk hours back',
@@ -104,7 +104,7 @@ STOD does that and also centralizes patients, records and payments in one place,
 Shall we look at it in 15 minutes?
 
 Best,
-Marck`,
+Branel`,
     },
     20: {
       subject: 'Closing the loop for now',
@@ -115,7 +115,7 @@ I don't want to over-follow-up. I'll close this thread for now, but whenever you
 Leaving my contact for when the timing is right.
 
 Best,
-Marck`,
+Branel`,
     },
   },
   de: {
@@ -130,7 +130,7 @@ Wir haben STOD entwickelt, ein System für Zahnkliniken, das Terminplanung, Pati
 Würde Ihnen diese Woche eine 15-minütige Demo passen?
 
 Beste Grüße,
-Marck`,
+Branel`,
     },
     5: {
       subject: 'Re: Weniger verpasste Termine bei {{clinicName}}',
@@ -141,7 +141,7 @@ nur eine kurze Erinnerung an meine vorherige Nachricht. Ich weiß, der Klinikall
 Nennen Sie mir einen Tag, und ich richte eine kurze, auf {{clinicName}} zugeschnittene Demo ein.
 
 Beste Grüße,
-Marck`,
+Branel`,
     },
     10: {
       subject: 'Wie eine Klinik ihre Rezeptionsstunden zurückgewann',
@@ -154,7 +154,7 @@ STOD leistet das und bündelt zudem Patienten, Akten und Zahlungen an einem Ort,
 Sollen wir es uns in 15 Minuten ansehen?
 
 Beste Grüße,
-Marck`,
+Branel`,
     },
     20: {
       subject: 'Ich schließe das Thema vorerst ab',
@@ -165,21 +165,23 @@ ich möchte nicht zu aufdringlich sein. Ich schließe diesen Verlauf vorerst ab 
 Ich hinterlasse meinen Kontakt für den richtigen Zeitpunkt.
 
 Beste Grüße,
-Marck`,
+Branel`,
     },
   },
 }
 
 export const OUTREACH_STEPS: OutreachStep[] = [0, 5, 10, 20]
 
-/** Rellena una plantilla con el nombre de la clínica y una observación opcional. */
+/** Rellena una plantilla (de cualquier campaña) con el nombre del negocio y una observación opcional. */
 export function renderTemplate(
+  templates: Record<OutreachLanguage, Partial<Record<OutreachStep, OutreachTemplate>>>,
   language: OutreachLanguage,
   step: OutreachStep,
   vars: { clinicName: string; observation?: string }
 ): OutreachTemplate {
-  const tpl = TEMPLATES[language][step]
-  // La observación se antepone con un espacio para encajar tras "...las citas."
+  const tpl = templates[language][step]
+  if (!tpl) throw new Error(`Sin plantilla para idioma=${language} paso=${step}`)
+  // La observación se antepone con un espacio para encajar tras la frase anterior.
   const observation = vars.observation ? ` ${vars.observation.trim()}` : ''
   const fill = (s: string) =>
     s.replace(/\{\{clinicName\}\}/g, vars.clinicName).replace(/\{\{observation\}\}/g, observation)

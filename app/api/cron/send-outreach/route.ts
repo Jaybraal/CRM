@@ -4,6 +4,7 @@ import { adminDb, adminTimestamp } from '@/lib/firebase-admin'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendGmail } from '@/lib/gmail'
+import { getCampaign } from '@/lib/outreach/campaigns'
 
 // GET /api/cron/send-outreach — Vercel Cron (recomendado: 1 vez al día por la mañana).
 // Envía los pasos de outreach (día 0/5/10/20) cuyo sendAt ya venció, vía Gmail.
@@ -41,13 +42,16 @@ export async function GET(req: NextRequest) {
           continue
         }
 
+        const campaign = getCampaign(client?.product as string | undefined)
+        const fromName = `Branel — ${campaign.businessLabel}`
+
         const { messageId } = await sendGmail({
           orgId,
           toEmail,
           toName: client?.name as string | undefined,
           subject,
           body,
-          fromName: 'Marck — STOD',
+          fromName,
         })
 
         // Guardar el hilo bajo el cliente (mismo esquema que send-gmail).
@@ -55,7 +59,8 @@ export async function GET(req: NextRequest) {
           .collection(`organizations/${orgId}/clients/${clientId}/emails`)
           .add({
             orgId, clientId, subject, body,
-            fromName: 'Marck — STOD',
+            product: campaign.id,
+            fromName,
             toEmail,
             direction: 'outbound',
             provider: 'gmail',
