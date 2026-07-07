@@ -174,12 +174,12 @@ export const OUTREACH_STEPS: OutreachStep[] = [0, 5, 10, 20]
 
 /** Rellena una plantilla (de cualquier campaña) con el nombre del negocio y una observación opcional. */
 export function renderTemplate(
-  templates: Record<OutreachLanguage, Partial<Record<OutreachStep, OutreachTemplate>>>,
+  templates: Partial<Record<OutreachLanguage, Partial<Record<OutreachStep, OutreachTemplate>>>>,
   language: OutreachLanguage,
   step: OutreachStep,
   vars: { clinicName: string; observation?: string }
 ): OutreachTemplate {
-  const tpl = templates[language][step]
+  const tpl = templates[language]?.[step]
   if (!tpl) throw new Error(`Sin plantilla para idioma=${language} paso=${step}`)
   // La observación se antepone con un espacio para encajar tras la frase anterior.
   const observation = vars.observation ? ` ${vars.observation.trim()}` : ''

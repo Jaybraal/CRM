@@ -1,5 +1,6 @@
 import type { OutreachLanguage } from '@/types'
-import { STOD_TEMPLATES, type OutreachStep, type OutreachTemplate } from './templates'
+import { STOD_TEMPLATES, type OutreachStep, type OutreachTemplate } from '../templates'
+import { WEBAGENCY_TEMPLATES } from './webagency'
 
 /**
  * Una campaña = un negocio/producto con su propia cadencia y plantillas.
@@ -7,14 +8,14 @@ import { STOD_TEMPLATES, type OutreachStep, type OutreachTemplate } from './temp
  * (celestialbeamagency@gmail.com); lo que cambia es el nombre de remitente,
  * el copy y el rubro (usado para personalizar con IA).
  *
- * client.product referencia el id de campaña (ej. 'stod').
+ * client.product referencia el id de campaña (ej. 'stod', 'webagency').
  */
 export interface CampaignDef {
   id: string
-  businessLabel: string   // nombre del negocio, ej. "STOD"
-  industryLabel: string   // rubro en lenguaje natural, ej. "clínica dental" — usado en el prompt de personalización
+  businessLabel: string   // nombre de remitente, ej. "STOD", "Agencia"
+  industryLabel: string   // rubro por defecto (se usa client.specialty si el lead lo tiene)
   steps: OutreachStep[]
-  templates: Record<OutreachLanguage, Partial<Record<OutreachStep, OutreachTemplate>>>
+  templates: Partial<Record<OutreachLanguage, Partial<Record<OutreachStep, OutreachTemplate>>>>
 }
 
 export const CAMPAIGNS: Record<string, CampaignDef> = {
@@ -24,6 +25,13 @@ export const CAMPAIGNS: Record<string, CampaignDef> = {
     industryLabel: 'clínica dental',
     steps: [0, 5, 10, 20],
     templates: STOD_TEMPLATES,
+  },
+  webagency: {
+    id: 'webagency',
+    businessLabel: 'Agencia',
+    industryLabel: 'negocio con producto físico',
+    steps: [0, 5, 10, 20],
+    templates: WEBAGENCY_TEMPLATES,
   },
 }
 

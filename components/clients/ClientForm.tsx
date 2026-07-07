@@ -8,6 +8,7 @@ import type { Client, Category, ClientStatus } from '@/types'
 import { DEFAULT_CLIENT_STATUSES } from '@/types'
 import toast from 'react-hot-toast'
 import { X } from 'lucide-react'
+import { CAMPAIGNS } from '@/lib/outreach/campaigns'
 
 interface Props {
   categories: Category[]
@@ -33,6 +34,10 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
     notes: existing?.notes || '',
     tags: existing?.tags || [] as string[],
     photos: existing?.photos || [] as string[],
+    product: existing?.product || '',
+    specialty: existing?.specialty || '',
+    website: existing?.website || '',
+    language: existing?.language || 'es' as 'es' | 'en' | 'de',
   })
 
   const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }))
@@ -135,6 +140,39 @@ export default function ClientForm({ categories, clientStatuses = DEFAULT_CLIENT
           className={inputClass}
           placeholder="+52 55 1234 5678"
         />
+      </div>
+
+      <div className="border border-[#E3E6EC] dark:border-[#1A2540] rounded-md p-3 space-y-3">
+        <p className="text-xs font-bold uppercase text-[#9BA5B7]">Lead de email — opcional (campaña de outreach)</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Negocio / campaña</label>
+            <select value={form.product} onChange={e => set('product', e.target.value)} className={inputClass}>
+              <option value="">Ninguno (contacto normal)</option>
+              {Object.values(CAMPAIGNS).map(c => (
+                <option key={c.id} value={c.id}>{c.businessLabel}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Idioma del correo</label>
+            <select value={form.language} onChange={e => set('language', e.target.value)} className={inputClass}>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Rubro (opcional)</label>
+            <input value={form.specialty} onChange={e => set('specialty', e.target.value)} className={inputClass} placeholder="ej. Tienda de ropa" />
+          </div>
+          <div>
+            <label className={labelClass}>Sitio web (opcional)</label>
+            <input value={form.website} onChange={e => set('website', e.target.value)} className={inputClass} placeholder="ejemplo.com" />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

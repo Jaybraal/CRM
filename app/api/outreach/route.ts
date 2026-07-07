@@ -17,6 +17,7 @@ interface ClientLite {
   website?: string
   signals?: LeadSignals
   product?: string
+  specialty?: string
 }
 
 async function loadClient(orgId: string, clientId: string): Promise<ClientLite | null> {
@@ -29,6 +30,7 @@ async function loadClient(orgId: string, clientId: string): Promise<ClientLite |
     website: d.website as string | undefined,
     signals: d.signals as LeadSignals | undefined,
     product: d.product as string | undefined,
+    specialty: d.specialty as string | undefined,
   }
 }
 
@@ -39,7 +41,7 @@ async function renderSequence(client: ClientLite) {
     language: client.language,
     website: client.website,
     signals: client.signals,
-    industryLabel: campaign.industryLabel,
+    industryLabel: client.specialty || campaign.industryLabel,
   })
   return campaign.steps.map(step => {
     const { subject, body } = renderTemplate(campaign.templates, client.language, step, {

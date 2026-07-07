@@ -167,10 +167,11 @@ export default function ClientsPage() {
   }
 
   const exportCSV = () => {
-    const headers = ['Nombre', 'Email', 'Teléfono', 'WhatsApp', 'Estado', 'Etiquetas']
+    const headers = ['Nombre', 'Email', 'Teléfono', 'WhatsApp', 'Estado', 'Etiquetas', 'Notas', 'Negocio', 'Rubro', 'Sitio web', 'Idioma']
     const rows = filtered.map(c => [
       c.name, c.email || '', c.phone || '', c.whatsappPhone || '', c.status,
-      (c.tags || []).join(';'),
+      (c.tags || []).join(';'), c.notes || '',
+      c.product || '', c.specialty || '', c.website || '', c.language || '',
     ])
     const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -191,7 +192,7 @@ export default function ClientsPage() {
       let created = 0
       for (const line of lines) {
         const cols = line.split(',').map(v => v.replace(/^"|"$/g, '').trim())
-        const [name, email, phone, whatsappPhone, status, , tags, notes] = cols
+        const [name, email, phone, whatsappPhone, status, tags, notes, product, specialty, website, language] = cols
         if (!name) continue
         await createClient(profile.orgId, {
           name, email: email || undefined, phone: phone || undefined,
@@ -199,6 +200,10 @@ export default function ClientsPage() {
           status: (['lead', 'prospect', 'active', 'inactive'].includes(status) ? status : 'lead') as Client['status'],
           tags: tags ? tags.split(';').filter(Boolean) : [],
           photos: [], notes: notes || undefined,
+          product: product || undefined,
+          specialty: specialty || undefined,
+          website: website || undefined,
+          language: (['es', 'en', 'de'].includes(language) ? language : 'es') as Client['language'],
           assignedTo: profile.uid, createdBy: profile.uid, pipelineStage: 'new',
         })
         created++
