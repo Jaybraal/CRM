@@ -184,6 +184,45 @@ export interface Client {
   createdAt: Date
   updatedAt: Date
   createdBy: string
+
+  // ── Lead Engine (outreach) ─────────────────────────────
+  specialty?: string                       // ej. "Odontología"
+  language?: OutreachLanguage              // idioma del outreach
+  product?: string                         // producto que se le vende, ej. "stod"
+  website?: string
+  city?: string
+  country?: string
+  opportunityScore?: number                // 0-100 (Fase 2: automático)
+  enrichmentSummary?: string               // resumen de la IA sobre la clínica
+  signals?: LeadSignals                    // señales detectadas del sitio
+  discoverySource?: 'manual' | 'places' | 'directory'
+}
+
+export type OutreachLanguage = 'es' | 'en' | 'de'
+
+export interface LeadSignals {
+  hasWhatsapp?: boolean
+  hasOnlineBooking?: boolean
+  hasChatbot?: boolean
+  hasSSL?: boolean
+  websiteLooksOld?: boolean
+  googleRating?: number
+}
+
+/** Un paso de la secuencia de outreach por email (día 0/5/10/20). */
+export interface OutreachEmail {
+  id: string
+  orgId: string
+  clientId: string
+  step: 0 | 5 | 10 | 20
+  language: OutreachLanguage
+  subject: string
+  body: string
+  status: 'draft' | 'pending' | 'sent' | 'failed' | 'stopped'
+  sendAt: Date
+  sentAt?: Date
+  failReason?: string
+  createdAt: Date
 }
 
 export interface CatalogItem {

@@ -8,7 +8,8 @@ import type { Organization } from '@/types'
 import toast from 'react-hot-toast'
 import BaileysQR from '@/components/settings/BaileysQR'
 import InstagramConnect from '@/components/settings/InstagramConnect'
-import { Building2, MessageCircle, Instagram, Bot, Eye, EyeOff, Clock, MapPin, HelpCircle, Calendar, Plus, Trash2, User } from 'lucide-react'
+import GmailConnect from '@/components/settings/GmailConnect'
+import { Building2, MessageCircle, Instagram, Bot, Eye, EyeOff, Clock, MapPin, HelpCircle, Calendar, Plus, Trash2, User, Mail } from 'lucide-react'
 import { Card, SectionHeader, PageHeader, Spinner, inputClass, labelClass } from '@/components/ui/primitives'
 
 type Tab = 'negocio' | 'conexiones' | 'bot'
@@ -350,6 +351,10 @@ export default function SettingsPage() {
           <Card className="space-y-4">
             <SectionHeader icon={Instagram} title="Instagram" desc="Conecta tu cuenta para recibir mensajes directos" />
             <InstagramConnect />
+          </Card>
+          <Card className="space-y-4">
+            <SectionHeader icon={Mail} title="Gmail / Email de captación" desc="Conecta tu Gmail para enviar campañas de outreach a prospectos" />
+            <GmailConnect />
           </Card>
         </div>
       )}

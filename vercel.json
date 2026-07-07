@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/send-scheduled", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/send-outreach", "schedule": "0 13 * * *" }
+  ]
+}
