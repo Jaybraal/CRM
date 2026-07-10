@@ -286,7 +286,7 @@ export default function ClientsPage() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#F4F5F7] dark:bg-[#0F1829]/50 border-b border-[#E3E6EC] dark:border-[#1A2540]">
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-base">Chats</h1>
+            <h1 className="font-bold text-[#0C1224] dark:text-[#E8ECF4] text-base">Clientes</h1>
             {totalUnread > 0 && (
               <span className="bg-[#25D366] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                 {totalUnread > 99 ? '99+' : totalUnread}
@@ -473,7 +473,7 @@ export default function ClientsPage() {
             <div className="w-24 h-24 bg-[#E3E6EC] dark:bg-[#1A2540] rounded-full flex items-center justify-center mb-5">
               <MessageCircle size={40} className="text-[#9BA5B7] dark:text-[#68748D]" />
             </div>
-            <p className="font-semibold text-[#68748D] dark:text-[#9BA5B7] text-lg">Bienvenido a Chats</p>
+            <p className="font-semibold text-[#68748D] dark:text-[#9BA5B7] text-lg">Bienvenido a Clientes</p>
             <p className="text-sm mt-1.5 text-[#9BA5B7] dark:text-[#68748D]">Selecciona un contacto para abrir la conversación</p>
             <button onClick={() => setShowForm(true)}
               className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-[#0C1224] hover:bg-[#1B2B4B] text-white text-sm font-bold rounded-md shadow-lg transition-colors">

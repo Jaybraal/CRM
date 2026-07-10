@@ -278,6 +278,7 @@ export default function AdminPage() {
 
   const [orgs, setOrgs] = useState<OrgWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [accessDenied, setAccessDenied] = useState(false)
 
   // Create
   const [showCreate, setShowCreate] = useState(false)
@@ -305,19 +306,25 @@ export default function AdminPage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
 
-  const load = async () => {
+  const load = async (ignoreRef?: { current: boolean }) => {
     try {
       const res = await fetch('/api/admin/organizations')
+      if (ignoreRef?.current) return
+      if (res.status === 403) { setAccessDenied(true); return }
       if (!res.ok) throw new Error()
       setOrgs(await res.json())
     } catch {
-      toast.error('Error al cargar organizaciones')
+      if (!ignoreRef?.current) toast.error('Error al cargar organizaciones')
     } finally {
-      setLoading(false)
+      if (!ignoreRef?.current) setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const ignoreRef = { current: false }
+    load(ignoreRef)
+    return () => { ignoreRef.current = true }
+  }, [])
 
   const handleEnter = (org: Organization) => {
     switchOrg(org.id)
@@ -544,6 +551,11 @@ export default function AdminPage() {
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-8 h-8 border-4 border-gray-600 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : accessDenied ? (
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-16 text-center">
+            <ShieldCheck size={32} className="text-gray-700 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Acceso denegado. Tu cuenta no tiene permisos de superadmin.</p>
           </div>
         ) : orgs.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-16 text-center">
