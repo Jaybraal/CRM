@@ -11,7 +11,7 @@ import ChatWindow from '@/components/chat/ChatWindow'
 import EmailLeadPanel from '@/components/clients/EmailLeadPanel'
 import { Plus, Search, Download, Upload, MessageCircle, Mail, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getChannel, type ClientChannel } from '@/lib/channel'
+import { getChannel, hasWhatsapp as clientHasWhatsappChannel, hasEmail as clientHasEmailChannel, type ClientChannel } from '@/lib/channel'
 import { listAllCampaigns, type CampaignOption } from '@/lib/outreach/clientCampaigns'
 
 const CHANNEL_TABS: { value: '' | ClientChannel; label: string; icon: typeof Phone }[] = [
@@ -74,6 +74,7 @@ export default function ClientsPage() {
   const [filterChannel, setFilterChannel] = useState<'' | ClientChannel>('')
   const [filterProduct, setFilterProduct] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailViewTab, setDetailViewTab] = useState<'whatsapp' | 'email'>('whatsapp')
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -165,6 +166,9 @@ export default function ClientsPage() {
   const handleSelectClient = (client: Client) => {
     setSelectedId(client.id)
     setShowMobileChat(true)
+    // Por defecto abre WhatsApp si el cliente tiene ambos canales; el usuario
+    // puede cambiar a Email con el tab de la vista de detalle.
+    setDetailViewTab(clientHasWhatsappChannel(client) ? 'whatsapp' : 'email')
   }
 
   const exportCSV = () => {
@@ -259,7 +263,12 @@ export default function ClientsPage() {
   }
 
   const selectedChannel = selectedClient ? getChannel(selectedClient) : null
-  const isEmailLead = selectedChannel === 'email'
+  const selectedHasWhatsapp = selectedClient ? clientHasWhatsappChannel(selectedClient) : false
+  const selectedHasEmail = selectedClient ? clientHasEmailChannel(selectedClient) : false
+  const selectedHasBothChannels = selectedHasWhatsapp && selectedHasEmail
+  // Con un solo canal, el comportamiento es el de siempre (getChannel decide).
+  // Con ambos canales, el tab elegido por el usuario manda.
+  const isEmailLead = selectedHasBothChannels ? detailViewTab === 'email' : selectedChannel === 'email'
 
   const chatWindowProps = selectedClient && !isEmailLead ? {
     client: selectedClient,
@@ -462,6 +471,20 @@ export default function ClientsPage() {
 
       {/* ── Right panel: desktop only ────────────────────────────── */}
       <div className="hidden lg:flex flex-col flex-1 min-w-0 min-h-0">
+        {selectedHasBothChannels && (
+          <div className="flex gap-1 px-4 pt-3 bg-white dark:bg-[#0C1224] border-b border-[#E3E6EC] dark:border-[#1A2540]">
+            {(['whatsapp', 'email'] as const).map(tab => (
+              <button key={tab} onClick={() => setDetailViewTab(tab)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-t-md transition-colors ${
+                  detailViewTab === tab
+                    ? 'bg-[#F4F5F7] dark:bg-[#1A2540] text-[#0C1224] dark:text-[#E8ECF4]'
+                    : 'text-[#68748D] dark:text-[#9BA5B7] hover:text-[#0C1224] dark:hover:text-[#E8ECF4]'
+                }`}>
+                {tab === 'whatsapp' ? 'WhatsApp' : 'Email'}
+              </button>
+            ))}
+          </div>
+        )}
         {isEmailLead && selectedClient && profile?.orgId ? (
           <EmailLeadPanel client={selectedClient} orgId={profile.orgId} />
         ) : chatWindowProps ? (
